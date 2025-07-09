@@ -1,0 +1,87 @@
+import { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Plus, RefreshCw } from 'lucide-react';
+import { fetchChannels } from '../store/slices/channelSlice';
+import ChannelCard from './ChannelCard';
+import OnboardModal from './OnboardModal';
+
+const ChannelOnboard = () => {
+  const dispatch = useDispatch();
+  const { channels, loading, error } = useSelector(state => state.channels);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchChannels());
+  }, [dispatch]);
+
+  const handleRefresh = () => {
+    dispatch(fetchChannels());
+  };
+
+  if (loading && channels.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-900">Channel Management</h2>
+        <div className="flex space-x-3">
+          <button
+            onClick={handleRefresh}
+            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span>Refresh</span>
+          </button>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Onboard Channel</span>
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <p className="text-sm text-red-600">{error}</p>
+        </div>
+      )}
+
+      {channels.length === 0 && !loading ? (
+        <div className="text-center py-12">
+          <div className="bg-gray-50 rounded-lg p-8">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No channels found</h3>
+            <p className="text-gray-600 mb-4">Get started by onboarding your first channel</p>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Onboard Channel</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {channels.map(channel => (
+            <ChannelCard key={channel.id} channel={channel} />
+          ))}
+        </div>
+      )}
+
+      <OnboardModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
+    </div>
+  );
+};
+
+export default ChannelOnboard;
