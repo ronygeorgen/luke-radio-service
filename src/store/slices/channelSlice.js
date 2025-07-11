@@ -1,52 +1,57 @@
+// channelSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { dummyChannels } from '../../data/dummyData';
+import { axiosInstance } from '../../services/api';
 
 // Async thunks
 export const fetchChannels = createAsyncThunk(
   'channels/fetchChannels',
   async () => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(dummyChannels), 500);
-    });
+    const response = await axiosInstance.get('/channels');
+    return response.data.channels;
   }
 );
 
 export const addChannel = createAsyncThunk(
   'channels/addChannel',
   async (channelData) => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const newChannel = {
-          id: Date.now().toString(),
-          ...channelData,
-          isActive: true,
-          createdAt: new Date().toISOString(),
-        };
-        resolve(newChannel);
-      }, 300);
+    const response = await axiosInstance.post('/channels', {
+      channel_id: parseInt(channelData.channelId, 10),
+      project_id: parseInt(channelData.projectId, 10),
+      name: channelData.name || '' // Using channelId as name as it's required
     });
+    return response.data.channel;
+  }
+);
+
+export const updateChannel = createAsyncThunk(
+  'channels/updateChannel',
+  async (channelData) => {
+    const response = await axiosInstance.put('/channels', {
+      id: channelData.id,
+      channel_id: channelData.channelId,
+      project_id: channelData.projectId,
+      name: channelData.name || ''
+    });
+    return response.data.channel;
   }
 );
 
 export const deleteChannel = createAsyncThunk(
   'channels/deleteChannel',
   async (channelId) => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(channelId), 300);
+    await axiosInstance.delete('/channels', {
+      data: { id: channelId }
     });
+    return channelId;
   }
 );
 
 export const toggleChannel = createAsyncThunk(
   'channels/toggleChannel',
   async (channelId) => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => resolve(channelId), 200);
-    });
+    // Note: The API doesn't have a toggle endpoint, so we'll need to implement this
+    // based on your actual API. For now, I'll just return the channelId
+    return channelId;
   }
 );
 
@@ -71,7 +76,14 @@ const channelSlice = createSlice({
       })
       .addCase(fetchChannels.fulfilled, (state, action) => {
         state.loading = false;
-        state.channels = action.payload;
+        state.channels = action.payload.map(channel => ({
+          id: channel.id.toString(),
+          channelId: channel.channel_id,
+          projectId: channel.project_id,
+          name: channel.name,
+          createdAt: channel.created_at,
+          isActive: !channel.is_deleted
+        }));
       })
       .addCase(fetchChannels.rejected, (state, action) => {
         state.loading = false;
@@ -84,9 +96,41 @@ const channelSlice = createSlice({
       })
       .addCase(addChannel.fulfilled, (state, action) => {
         state.loading = false;
-        state.channels.push(action.payload);
+        state.channels.push({
+          id: action.payload.id.toString(),
+          channelId: action.payload.channel_id,
+          projectId: action.payload.project_id,
+          name: action.payload.name || '',
+          createdAt: action.payload.created_at,
+          isActive: !action.payload.is_deleted
+        });
       })
       .addCase(addChannel.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      })
+      // Update channel
+      .addCase(updateChannel.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateChannel.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.channels.findIndex(
+          channel => channel.id === action.payload.id.toString()
+        );
+        if (index !== -1) {
+          state.channels[index] = {
+            id: action.payload.id.toString(),
+            channelId: action.payload.channel_id,
+            projectId: action.payload.project_id,
+            name: action.payload.name || '',
+            createdAt: action.payload.created_at,
+            isActive: !action.payload.is_deleted
+          };
+        }
+      })
+      .addCase(updateChannel.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message;
       })
@@ -98,7 +142,7 @@ const channelSlice = createSlice({
       .addCase(deleteChannel.fulfilled, (state, action) => {
         state.loading = false;
         state.channels = state.channels.filter(
-          (channel) => channel.id !== action.payload
+          channel => channel.id !== action.payload.toString()
         );
       })
       .addCase(deleteChannel.rejected, (state, action) => {
@@ -113,7 +157,7 @@ const channelSlice = createSlice({
       .addCase(toggleChannel.fulfilled, (state, action) => {
         state.loading = false;
         const channel = state.channels.find(
-          (channel) => channel.id === action.payload
+          channel => channel.id === action.payload.toString()
         );
         if (channel) {
           channel.isActive = !channel.isActive;

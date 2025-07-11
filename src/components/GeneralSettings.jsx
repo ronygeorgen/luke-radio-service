@@ -26,13 +26,14 @@ const GeneralSettings = () => {
       settings: [
         { key: 'openAiTranscriptionApi', label: 'OpenAI - Transcription API' },
         { key: 'openAiOrganisationalId', label: 'OpenAI - Organisational ID' },
-        { key: 'googleCloudClientId', label: 'Google Cloud - Client ID' },
-        { key: 'googleCloudClientSecret', label: 'Google Cloud - Client Secret' },
-        { key: 'assemblyAiUser', label: 'Assembly AI - User' },
-        { key: 'assemblyAiPassword', label: 'Assembly AI - Password' },
-        { key: 'assemblyAiApi', label: 'Assembly AI - API' },
+        // { key: 'googleCloudClientId', label: 'Google Cloud - Client ID' },
+        // { key: 'googleCloudClientSecret', label: 'Google Cloud - Client Secret' },
+        // { key: 'assemblyAiUser', label: 'Assembly AI - User' },
+        // { key: 'assemblyAiPassword', label: 'Assembly AI - Password' },
+        // { key: 'assemblyAiApi', label: 'Assembly AI - API' },
+        { key: 'acrCloudApi', label: 'ACR Cloud - API Key' },
         { key: 'revAiAccessToken', label: 'Rev.ai Access Token' },
-        { key: 'revAiAuthorization', label: 'RevAi - Authorization' },
+        // { key: 'revAiAuthorization', label: 'RevAi - Authorization' },
       ]
     },
     {

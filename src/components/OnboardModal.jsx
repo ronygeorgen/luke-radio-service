@@ -1,28 +1,80 @@
-import { useState } from 'react';
+// OnboardModal.jsx
+import { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { X } from 'lucide-react';
-import { addChannel } from '../store/slices/channelSlice';
+import { addChannel, updateChannel } from '../store/slices/channelSlice';
 
-const OnboardModal = ({ isOpen, onClose }) => {
+const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
   const dispatch = useDispatch();
   const [formData, setFormData] = useState({
+    id: '',
     channelId: '',
     projectId: '',
+    name: '',
   });
+
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (channelToEdit) {
+      setFormData({
+        id: channelToEdit.id,
+        channelId: channelToEdit.channelId,
+        projectId: channelToEdit.projectId,
+        name: channelToEdit.name || ''
+      });
+    } else {
+      setFormData({
+        id: '',
+        channelId: '',
+        projectId: '',
+        name: ''
+      });
+    }
+  }, [channelToEdit]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.channelId.trim() || !formData.projectId.trim()) {
-      alert('Please fill in all fields');
+    
+    // Safely handle all fields with proper fallbacks
+    const channelId = String(formData.channelId || '').trim();
+    const projectId = String(formData.projectId || '').trim();
+    const name = formData.name ? String(formData.name).trim() : ''; // Safely handle name
+    
+    if (!channelId || !projectId) {
+      alert('Please fill in Channel ID and Project ID');
       return;
     }
 
     setIsSubmitting(true);
-    await dispatch(addChannel(formData));
-    setIsSubmitting(false);
-    setFormData({ channelId: '', projectId: '' });
-    onClose();
+    try {
+      const payload = {
+        channelId,
+        projectId,
+        name // Will be empty string if not provided
+      };
+      
+      if (formData.id) {
+        payload.id = formData.id;
+        await dispatch(updateChannel(payload));
+      } else {
+        await dispatch(addChannel(payload));
+      }
+      
+      // Reset form after successful submission
+      setFormData({
+        id: '',
+        channelId: '',
+        projectId: '',
+        name: ''
+      });
+      setIsSubmitting(false);
+      onClose();
+    } catch (error) {
+      setIsSubmitting(false);
+      console.error('Error saving channel:', error);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -40,7 +92,7 @@ const OnboardModal = ({ isOpen, onClose }) => {
       <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-gray-900">
-            Onboard New Channel
+            {formData.id ? 'Edit Channel' : 'Onboard New Channel'}
           </h2>
           <button
             onClick={onClose}
@@ -82,6 +134,23 @@ const OnboardModal = ({ isOpen, onClose }) => {
               required
             />
           </div>
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+              Channel Name (Optional)
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name || ''} // Ensure value is never undefined
+              onChange={(e) => setFormData(prev => ({
+                ...prev,
+                name: e.target.value
+              }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter channel name"
+            />
+          </div>
 
           <div className="flex justify-end space-x-3 pt-4">
             <button
@@ -97,7 +166,9 @@ const OnboardModal = ({ isOpen, onClose }) => {
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Adding...' : 'Add Channel'}
+              {isSubmitting 
+                ? formData.id ? 'Updating...' : 'Adding...' 
+                : formData.id ? 'Update Channel' : 'Add Channel'}
             </button>
           </div>
         </form>

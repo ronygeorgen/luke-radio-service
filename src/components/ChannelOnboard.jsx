@@ -1,3 +1,4 @@
+// ChannelOnboard.jsx
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Plus, RefreshCw } from 'lucide-react';
@@ -9,6 +10,7 @@ const ChannelOnboard = () => {
   const dispatch = useDispatch();
   const { channels, loading, error } = useSelector(state => state.channels);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [channelToEdit, setChannelToEdit] = useState(null);
 
   useEffect(() => {
     dispatch(fetchChannels());
@@ -16,6 +18,28 @@ const ChannelOnboard = () => {
 
   const handleRefresh = () => {
     dispatch(fetchChannels());
+  };
+
+  const [formData, setFormData] = useState({
+    id: '',
+    channelId: '',
+    projectId: ''
+  });
+
+  const handleEditChannel = (channel) => {
+    setChannelToEdit(channel);
+    setFormData({
+      id: channel.id,
+      channelId: String(channel.channelId || ''),
+      projectId: String(channel.projectId || ''),
+      name: channel.name || '' 
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setChannelToEdit(null);
   };
 
   if (loading && channels.length === 0) {
@@ -71,14 +95,19 @@ const ChannelOnboard = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {channels.map(channel => (
-            <ChannelCard key={channel.id} channel={channel} />
+            <ChannelCard 
+              key={channel.id} 
+              channel={channel} 
+              onEdit={handleEditChannel}
+            />
           ))}
         </div>
       )}
 
       <OnboardModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
+        channelToEdit={channelToEdit}
       />
     </div>
   );

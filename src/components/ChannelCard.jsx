@@ -1,9 +1,10 @@
+// ChannelCard.jsx
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Trash2, Power, PowerOff } from 'lucide-react';
+import { Trash2, Power, PowerOff, Edit } from 'lucide-react';
 import { deleteChannel, toggleChannel } from '../store/slices/channelSlice';
 
-const ChannelCard = ({ channel }) => {
+const ChannelCard = ({ channel, onEdit }) => {
   const dispatch = useDispatch();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
@@ -27,8 +28,13 @@ const ChannelCard = ({ channel }) => {
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Channel: {channel.channelId}
+            {channel.name ? channel.name : `Channel: ${channel.channelId}`}
           </h3>
+          {channel.name && (
+            <p className="text-sm text-gray-600 mb-1">
+              Channel ID: {channel.channelId}
+            </p>
+          )}
           <p className="text-sm text-gray-600 mb-1">
             <span className="font-medium">Project ID:</span> {channel.projectId}
           </p>
@@ -37,6 +43,12 @@ const ChannelCard = ({ channel }) => {
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          <button
+            onClick={() => onEdit(channel)}
+            className="p-2 rounded-full text-blue-600 hover:bg-blue-50 transition-colors duration-200"
+          >
+            <Edit className="h-4 w-4" />
+          </button>
           <button
             onClick={handleToggle}
             disabled={isToggling}

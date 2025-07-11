@@ -12,43 +12,49 @@ const BucketManager = () => {
   const [editValues, setEditValues] = useState({});
 
   const handleAddBucket = async () => {
-    if (!newBucket.name.trim() || !newBucket.value.trim()) {
-      alert('Please fill in both bucket name and value');
-      return;
-    }
+      if (!newBucket.name.trim() || !newBucket.value.trim()) {
+        alert('Please fill in both bucket name and value');
+        return;
+      }
 
-    if (buckets.length >= 20) {
-      alert('Maximum of 20 buckets allowed');
-      return;
-    }
+      if (buckets.length >= 20) {
+        alert('Maximum of 20 buckets allowed');
+        return;
+      }
 
-    await dispatch(addBucket(newBucket));
-    setNewBucket({ name: '', value: '' });
-    setIsAddingBucket(false);
-  };
+      await dispatch(addBucket({
+        name: newBucket.name,
+        value: newBucket.value,
+        prompt: newBucket.prompt || ''
+      }));
+      setNewBucket({ name: '', value: '', prompt: '' });
+      setIsAddingBucket(false);
+    };
 
   const handleEditBucket = (bucket) => {
     setEditingBucket(bucket.id);
     setEditValues({
       name: bucket.name,
-      value: bucket.value
+      value: bucket.value,
+      prompt: bucket.prompt || ''
     });
   };
 
   const handleSaveEdit = async (bucketId) => {
-    if (!editValues.name.trim() || !editValues.value.trim()) {
-      alert('Please fill in both bucket name and value');
-      return;
-    }
+      if (!editValues.name.trim() || !editValues.value.trim()) {
+        alert('Please fill in both bucket name and value');
+        return;
+      }
 
-    await dispatch(updateBucket({
-      id: bucketId,
-      name: editValues.name,
-      value: editValues.value
-    }));
-    setEditingBucket(null);
-    setEditValues({});
-  };
+      await dispatch(updateBucket({
+        id: bucketId,
+        name: editValues.name,
+        value: editValues.value,
+        prompt: editValues.prompt
+      }));
+      setEditingBucket(null);
+      setEditValues({});
+    };
 
   const handleCancelEdit = () => {
     setEditingBucket(null);
@@ -107,11 +113,23 @@ const BucketManager = () => {
                 placeholder="Enter bucket value/description"
               />
             </div>
+            {/* <div>
+              <label className="block text-sm font-medium text-blue-800 mb-1">
+                Bucket Prompt (Optional)
+              </label>
+              <textarea
+                value={newBucket.prompt}
+                onChange={(e) => setNewBucket(prev => ({ ...prev, prompt: e.target.value }))}
+                className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                rows={4}
+                placeholder="Enter bucket prompt"
+              />
+            </div> */}
             <div className="flex justify-end space-x-2">
               <button
                 onClick={() => {
                   setIsAddingBucket(false);
-                  setNewBucket({ name: '', value: '' });
+                  setNewBucket({ name: '', value: '', prompt: '' });
                 }}
                 className="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
               >
@@ -157,6 +175,17 @@ const BucketManager = () => {
                     rows={4}
                   />
                 </div>
+                {/* <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Bucket Prompt (Optional)
+                  </label>
+                  <textarea
+                    value={editValues.prompt}
+                    onChange={(e) => setEditValues(prev => ({ ...prev, prompt: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    rows={4}
+                  />
+                </div> */}
                 <div className="flex justify-end space-x-2">
                   <button
                     onClick={handleCancelEdit}
