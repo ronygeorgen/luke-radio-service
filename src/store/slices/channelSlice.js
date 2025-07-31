@@ -13,15 +13,23 @@ export const fetchChannels = createAsyncThunk(
 
 export const addChannel = createAsyncThunk(
   'channels/addChannel',
-  async (channelData) => {
-    const response = await axiosInstance.post('/channels', {
-      channel_id: parseInt(channelData.channelId, 10),
-      project_id: parseInt(channelData.projectId, 10),
-      name: channelData.name || '' // Using channelId as name as it's required
-    });
-    return response.data.channel;
+  async (channelData, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post('/channels', {
+        channel_id: parseInt(channelData.channelId, 10),
+        project_id: parseInt(channelData.projectId, 10),
+        name: channelData.name || ''
+      });
+      return response.data.channel;
+    } catch (err) {
+      if (err.response && err.response.data && err.response.data.error) {
+        return rejectWithValue(err.response.data.error); // Use backend error message
+      }
+      return rejectWithValue(err.message || 'Something went wrong');
+    }
   }
 );
+
 
 export const updateChannel = createAsyncThunk(
   'channels/updateChannel',
@@ -107,7 +115,7 @@ const channelSlice = createSlice({
       })
       .addCase(addChannel.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload || action.error.message;
       })
       // Update channel
       .addCase(updateChannel.pending, (state) => {

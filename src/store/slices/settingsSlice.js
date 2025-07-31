@@ -37,7 +37,7 @@ export const fetchSettings = createAsyncThunk(
         radioSegmentErrorRate: response.data.settings.radio_segment_error_rate || '',
       },
       buckets: response.data.buckets.map(bucket => ({
-        id: bucket.bucket_id,
+        id: bucket.id,
         name: bucket.title,
         value: bucket.description,
         prompt: bucket.prompt,
