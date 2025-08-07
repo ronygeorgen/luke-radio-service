@@ -67,10 +67,14 @@ const channelSlice = createSlice({
   name: 'channels',
   initialState: {
     channels: [],
+    selectedChannel: null,
     loading: false,
     error: null,
   },
   reducers: {
+    setSelectedChannel: (state, action) => {
+      state.selectedChannel = action.payload;
+    },
     clearError: (state) => {
       state.error = null;
     },
@@ -178,5 +182,6 @@ const channelSlice = createSlice({
   },
 });
 
-export const { clearError } = channelSlice.actions;
+export const selectSelectedChannel = (state) => state.channels.selectedChannel;
+export const { clearError, setSelectedChannel  } = channelSlice.actions;
 export default channelSlice.reducer;

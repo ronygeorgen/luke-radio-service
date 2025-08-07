@@ -5,6 +5,8 @@ import { store } from './store/store';
 import AdminLayout from './layouts/AdminLayout';
 import ChannelsPage from './pages/admin/ChannelsPage';
 import SettingsPage from './pages/admin/SettingsPage';
+import UserChannelsPage from './pages/user/UserChannelsPage';
+import UserAudioSegmentsPage from './pages/user/AudioSegmentsPage';
 
 function App() {
   return (
@@ -12,15 +14,20 @@ function App() {
       <Router>
         <div className="min-h-screen bg-gray-50">
           <Routes>
-            {/* Admin Routes */}
+            {/* Admin Routes - nested under /admin */}
             <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<Navigate to="/admin/channels" replace />} />
+              <Route index element={<Navigate to="channels" replace />} />
               <Route path="channels" element={<ChannelsPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
-            
-            {/* Default redirect */}
-            <Route path="/" element={<Navigate to="/admin" replace />} />
+
+            {/* User Routes - not nested */}
+            <Route path="/" element={<UserChannelsPage />} />
+            <Route path="/user-channels" element={<UserChannelsPage />} />
+            <Route path="/channels/:channelId/segments" element={<UserAudioSegmentsPage />} />
+
+            {/* Default redirect - only needed if you want to redirect from other paths */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </Router>
