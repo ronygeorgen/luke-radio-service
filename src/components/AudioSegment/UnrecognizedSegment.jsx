@@ -15,8 +15,8 @@ const UnrecognizedSegment = ({ segment }) => {
         <div>
           <h4 className="font-medium text-gray-900">Unrecognized Audio</h4>
           <p className="text-sm text-gray-500">
-            {new Date(segment.start_time).toLocaleTimeString()} -{' '}
-            {new Date(segment.end_time).toLocaleTimeString()} ({segment.duration_seconds}s)
+            {new Date(segment.start_time).toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false })} -{' '}
+            {new Date(segment.end_time).toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false })} ({segment.duration_seconds}s)
           </p>
           <p className="text-xs text-gray-400 mt-1">
             Before: {segment.title_before || 'Unknown'} | After: {segment.title_after || 'Unknown'}

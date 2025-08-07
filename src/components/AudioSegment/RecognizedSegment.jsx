@@ -9,8 +9,8 @@ const RecognizedSegment = ({ segment }) => {
         <div>
           <h4 className="font-medium text-gray-900">{segment.title || 'Unknown Title'}</h4>
           <p className="text-sm text-gray-500">
-            {new Date(segment.start_time).toLocaleTimeString()} -{' '}
-            {new Date(segment.end_time).toLocaleTimeString()} ({segment.duration_seconds}s)
+            {new Date(segment.start_time).toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false })} -{' '}
+            {new Date(segment.end_time).toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false })} ({segment.duration_seconds}s)
           </p>
         </div>
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
