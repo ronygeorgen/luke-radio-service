@@ -178,7 +178,7 @@ export const deleteBucket = createAsyncThunk(
       buckets: buckets
         .filter(bucket => bucket.id !== bucketId)
         .map(bucket => ({
-          bucket_id: bucket.id,
+          id: bucket.id,
           title: bucket.name,
           description: bucket.value,
           prompt: bucket.prompt
