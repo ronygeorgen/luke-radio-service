@@ -1,10 +1,17 @@
 import React, { useRef, useState, useEffect } from 'react';
 
+// Track the currently playing audio globally
+let currentlyPlayingAudio = null;
+
 const AudioPlayer = ({ src }) => {
+
+const fullSrc = `${import.meta.env.VITE_API_AUDIO_URL}${src}`;
   const audioRef = useRef(null);
+  const progressBarRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [hasError, setHasError] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     // Reset error state when src changes
@@ -31,18 +38,28 @@ const AudioPlayer = ({ src }) => {
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Pause any currently playing audio
+    if (currentlyPlayingAudio && currentlyPlayingAudio !== audio) {
+      currentlyPlayingAudio.pause();
+      currentlyPlayingAudio.currentTime = 0;
+      // Note: We rely on the other AudioPlayer's onEnded/onPause to update its state
+    }
+
     if (isPlaying) {
       audio.pause();
+      currentlyPlayingAudio = null;
     } else {
       audio.play().catch(error => {
         console.error('Playback failed:', error);
         setHasError(true);
       });
+      currentlyPlayingAudio = audio;
     }
     setIsPlaying(!isPlaying);
   };
 
   const handleTimeUpdate = () => {
+    if (isDragging) return;
     const audio = audioRef.current;
     if (audio && audio.duration) {
       setProgress((audio.currentTime / audio.duration) * 100);
@@ -52,6 +69,57 @@ const AudioPlayer = ({ src }) => {
   const handleEnded = () => {
     setIsPlaying(false);
     setProgress(0);
+    currentlyPlayingAudio = null;
+  };
+
+  const handleProgressBarClick = (e) => {
+    const progressBar = progressBarRef.current;
+    if (!progressBar) return;
+
+    const rect = progressBar.getBoundingClientRect();
+    const clickPosition = e.clientX - rect.left;
+    const percentage = (clickPosition / rect.width) * 100;
+    seekAudio(percentage);
+  };
+
+  const handleMouseDown = () => {
+    setIsDragging(true);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseMove = (e) => {
+    const progressBar = progressBarRef.current;
+    if (!progressBar) return;
+
+    const rect = progressBar.getBoundingClientRect();
+    let clickPosition = e.clientX - rect.left;
+    clickPosition = Math.max(0, Math.min(clickPosition, rect.width));
+    const percentage = (clickPosition / rect.width) * 100;
+    setProgress(percentage);
+  };
+
+  const handleMouseUp = (e) => {
+    setIsDragging(false);
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+
+    const progressBar = progressBarRef.current;
+    if (!progressBar) return;
+
+    const rect = progressBar.getBoundingClientRect();
+    const clickPosition = e.clientX - rect.left;
+    const percentage = (clickPosition / rect.width) * 100;
+    seekAudio(percentage);
+  };
+
+  const seekAudio = (percentage) => {
+    const audio = audioRef.current;
+    if (!audio || !audio.duration) return;
+
+    const newTime = (percentage / 100) * audio.duration;
+    audio.currentTime = newTime;
+    setProgress(percentage);
   };
 
   if (!src || hasError) {
@@ -84,17 +152,31 @@ const AudioPlayer = ({ src }) => {
           </svg>
         )}
       </button>
-      <div className="flex-1 bg-gray-200 rounded-full h-2">
+      <div 
+        ref={progressBarRef}
+        className="flex-1 bg-gray-200 rounded-full h-2 cursor-pointer relative"
+        onClick={handleProgressBarClick}
+      >
         <div
-          className="bg-blue-500 h-2 rounded-full"
+          className="bg-blue-500 h-2 rounded-full relative"
           style={{ width: `${progress}%` }}
-        ></div>
+        >
+          <div 
+            className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-1/2 w-3 h-3 bg-blue-700 rounded-full cursor-pointer"
+            onMouseDown={handleMouseDown}
+          />
+        </div>
       </div>
       <audio
         ref={audioRef}
-        src={src}
+        src={fullSrc}
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleEnded}
+        onPause={() => {
+          if (currentlyPlayingAudio === audioRef.current) {
+            currentlyPlayingAudio = null;
+          }
+        }}
         preload="metadata"
       />
     </div>
