@@ -1,11 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
 
-// Track the currently playing audio globally
-let currentlyPlayingAudio = null;
+// Global state for audio management
+const audioPlayers = new Set();
 
 const AudioPlayer = ({ src }) => {
-
-const fullSrc = `${import.meta.env.VITE_API_AUDIO_URL}${src}`;
+  const fullSrc = `${import.meta.env.VITE_API_AUDIO_URL}${src}`;
   const audioRef = useRef(null);
   const progressBarRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -27,8 +26,21 @@ const fullSrc = `${import.meta.env.VITE_API_AUDIO_URL}${src}`;
     };
 
     audio.addEventListener('error', handleError);
+    
+    // Add to global set when mounted
+    audioPlayers.add({
+      audio,
+      setIsPlaying
+    });
+
     return () => {
       audio.removeEventListener('error', handleError);
+      // Remove from global set when unmounted
+      audioPlayers.forEach(player => {
+        if (player.audio === audio) {
+          audioPlayers.delete(player);
+        }
+      });
     };
   }, [src]);
 
@@ -38,22 +50,22 @@ const fullSrc = `${import.meta.env.VITE_API_AUDIO_URL}${src}`;
     const audio = audioRef.current;
     if (!audio) return;
 
-    // Pause any currently playing audio
-    if (currentlyPlayingAudio && currentlyPlayingAudio !== audio) {
-      currentlyPlayingAudio.pause();
-      currentlyPlayingAudio.currentTime = 0;
-      // Note: We rely on the other AudioPlayer's onEnded/onPause to update its state
-    }
+    // Pause all other audio players and reset their states
+    audioPlayers.forEach(player => {
+      if (player.audio !== audio) {
+        player.audio.pause();
+        player.audio.currentTime = 0;
+        player.setIsPlaying(false);
+      }
+    });
 
     if (isPlaying) {
       audio.pause();
-      currentlyPlayingAudio = null;
     } else {
       audio.play().catch(error => {
         console.error('Playback failed:', error);
         setHasError(true);
       });
-      currentlyPlayingAudio = audio;
     }
     setIsPlaying(!isPlaying);
   };
@@ -69,7 +81,6 @@ const fullSrc = `${import.meta.env.VITE_API_AUDIO_URL}${src}`;
   const handleEnded = () => {
     setIsPlaying(false);
     setProgress(0);
-    currentlyPlayingAudio = null;
   };
 
   const handleProgressBarClick = (e) => {
@@ -173,8 +184,9 @@ const fullSrc = `${import.meta.env.VITE_API_AUDIO_URL}${src}`;
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleEnded}
         onPause={() => {
-          if (currentlyPlayingAudio === audioRef.current) {
-            currentlyPlayingAudio = null;
+          // Only update state if this was an actual pause (not because another player took over)
+          if (isPlaying) {
+            setIsPlaying(false);
           }
         }}
         preload="metadata"
