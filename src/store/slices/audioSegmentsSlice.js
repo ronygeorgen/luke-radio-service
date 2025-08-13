@@ -24,14 +24,19 @@ const audioSegmentsSlice = createSlice({
     loading: false,
     error: null,
     currentPlayingId: null,
-    activeFilter: 'all' // 'all', 'active', 'inactive'
+    filters: {
+      status: 'all', // 'all', 'active', 'inactive'
+      recognition: 'all', // 'all', 'recognized', 'unrecognized'
+      hour: 'all', // 'all', 0-23
+      date: new Date().toISOString().split('T')[0]
+    }
   },
   reducers: {
     setCurrentPlaying: (state, action) => {
       state.currentPlayingId = action.payload;
     },
-    setActiveFilter: (state, action) => {
-      state.activeFilter = action.payload;
+    setFilter: (state, action) => {
+      state.filters = { ...state.filters, ...action.payload };
     },
     clearError: (state) => {
       state.error = null;
@@ -62,5 +67,5 @@ const audioSegmentsSlice = createSlice({
   }
 });
 
-export const { setCurrentPlaying, setActiveFilter, clearError } = audioSegmentsSlice.actions;
+export const { setCurrentPlaying, setFilter, clearError } = audioSegmentsSlice.actions;
 export default audioSegmentsSlice.reducer;
