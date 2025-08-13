@@ -5,12 +5,12 @@ export const fetchAudioSegments = createAsyncThunk(
   'audioSegments/fetchAudioSegments',
   async ({ channelId, date, hour }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get(
-        `/separated_audio_segments?channel_id=${channelId}&date=${date}&hour=${hour}`
-      );
+      const response = await axiosInstance.get('/audio_segments_with_transcription', {
+        params: { channel_id: channelId, date, hour }
+      });
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.error || err.message);
+      return rejectWithValue(err.response?.data || err.message);
     }
   }
 );
@@ -18,36 +18,24 @@ export const fetchAudioSegments = createAsyncThunk(
 const audioSegmentsSlice = createSlice({
   name: 'audioSegments',
   initialState: {
-    data: {
-      recognized: [],
-      unrecognized: [],
-      channel_info: null,
-    },
+    segments: [],
+    channelInfo: null,
+    totals: {},
     loading: false,
     error: null,
-    filters: {
-      date: new Date().toISOString().split('T')[0].replace(/-/g, ''),
-      hour: '0',
-      showRecognized: true,
-      showUnrecognized: true,
-    },
+    currentPlayingId: null,
+    activeFilter: 'all' // 'all', 'active', 'inactive'
   },
   reducers: {
-    setDateFilter: (state, action) => {
-      state.filters.date = action.payload;
+    setCurrentPlaying: (state, action) => {
+      state.currentPlayingId = action.payload;
     },
-    setHourFilter: (state, action) => {
-      state.filters.hour = action.payload;
-    },
-    toggleRecognizedFilter: (state) => {
-      state.filters.showRecognized = !state.filters.showRecognized;
-    },
-    toggleUnrecognizedFilter: (state) => {
-      state.filters.showUnrecognized = !state.filters.showUnrecognized;
+    setActiveFilter: (state, action) => {
+      state.activeFilter = action.payload;
     },
     clearError: (state) => {
       state.error = null;
-    },
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -57,22 +45,22 @@ const audioSegmentsSlice = createSlice({
       })
       .addCase(fetchAudioSegments.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload.data;
-        state.data.channel_info = action.payload.channel_info;
+        state.segments = action.payload.data.segments;
+        state.channelInfo = action.payload.data.channel_info;
+        state.totals = {
+          total: action.payload.data.total_segments,
+          recognized: action.payload.data.total_recognized,
+          unrecognized: action.payload.data.total_unrecognized,
+          withTranscription: action.payload.data.total_with_transcription,
+          withAnalysis: action.payload.data.total_with_analysis
+        };
       })
       .addCase(fetchAudioSegments.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || 'Failed to fetch audio segments';
       });
-  },
+  }
 });
 
-export const {
-  setDateFilter,
-  setHourFilter,
-  toggleRecognizedFilter,
-  toggleUnrecognizedFilter,
-  clearError,
-} = audioSegmentsSlice.actions;
-
+export const { setCurrentPlaying, setActiveFilter, clearError } = audioSegmentsSlice.actions;
 export default audioSegmentsSlice.reducer;
