@@ -635,14 +635,14 @@ const AudioSegmentsPage = () => {
               </div>
 
               {/* Insights section */}
-              <div className="mt-6 bg-gradient-to-r from-blue-500 to-blue-700 rounded-md p-4">
+              {/* <div className="mt-6 bg-gradient-to-r from-blue-500 to-blue-700 rounded-md p-4">
                 <div className="flex justify-between items-center">
                   <h3 className="font-bold text-white">Insights</h3>
                   <button className="bg-gradient-to-r from-purple-500 to-purple-700 text-white px-3 py-1 rounded-md text-sm">
                     + Add Insight
                   </button>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         ))}
