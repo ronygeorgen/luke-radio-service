@@ -598,7 +598,32 @@ const AudioSegmentsPage = () => {
                   </div>
                   {segment.analysis && (
                     <>
+                    <div className="mt-4 space-y-3">
+                      {/* General Topics */}
                       <div>
+                        <label className="block text-sm font-medium text-gray-500">General Topics</label>
+                        <div className="mt-1 bg-gray-50 p-2 rounded">
+                          {segment.analysis.general_topics.split('\n').map((topic, index) => (
+                            <div key={index} className="text-sm text-gray-700">
+                              {topic}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Bucket Prompt */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500">Category</label>
+                        <div className="mt-1 bg-gray-50 p-2 rounded">
+                          <div className="text-sm text-gray-700">
+                            {segment.analysis.bucket_prompt !== 'Undefined, N/A' 
+                              ? segment.analysis.bucket_prompt 
+                              : 'Not categorized'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                      {/* <div>
                         <label className="block text-sm font-medium text-gray-500">Wellness Matrix</label>
                         <div className="mt-1">
                           <div className="flex justify-between text-xs text-gray-500 mb-1">
@@ -618,11 +643,11 @@ const AudioSegmentsPage = () => {
                             <div className="bg-purple-600 h-2 rounded-full" style={{ width: '45%' }}></div>
                           </div>
                         </div>
-                      </div>
-                      <div>
+                      </div> */}
+                      {/* <div>
                         <label className="block text-sm font-medium text-gray-500">Content Type</label>
                         <p className="text-gray-900 text-sm">News (85%)</p>
-                      </div>
+                      </div> */}
                       <div>
                         <label className="block text-sm font-medium text-gray-500">IAB Topics</label>
                         <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
