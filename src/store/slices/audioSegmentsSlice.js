@@ -27,7 +27,7 @@ const audioSegmentsSlice = createSlice({
     filters: {
       status: 'all', // 'all', 'active', 'inactive'
       recognition: 'all', // 'all', 'recognized', 'unrecognized'
-      hour: 'all', // 'all', 0-23
+      hour: '0', // 'all', 0-23
       date: new Date().toISOString().split('T')[0]
     }
   },
