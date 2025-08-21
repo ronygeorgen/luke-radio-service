@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { fetchAudioSegments, setCurrentPlaying, setFilter } from '../../store/slices/audioSegmentsSlice';
+import { ChevronDown, ChevronUp, Search, Calendar, Filter, RotateCcw, Clock, CheckCircle, X } from 'lucide-react';
 import AudioPlayer from './AudioPlayer';
 import SummaryModal from './SummaryModal';
 import TranscriptionModal from './TranscriptionModal';
@@ -27,14 +28,8 @@ const AudioSegmentsPage = () => {
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
   const [selectedSegment, setSelectedSegment] = useState(null);
   
-  // Refs for filter dropdowns
-  const dateFilterRef = useRef(null);
-  const hourFilterRef = useRef(null);
-  const statusFilterRef = useRef(null);
-  const recognitionFilterRef = useRef(null);
-  
-  // State for open/close filters
-  const [openFilter, setOpenFilter] = useState(null);
+  // State for collapsible filters
+  const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
   // Initialize with URL params or defaults
   useEffect(() => {
@@ -82,29 +77,6 @@ const AudioSegmentsPage = () => {
       setSearchParams(params);
     }
   }, [filters.date, filters.hour, channelId]);
-
-  // Close filter when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (openFilter === 'date' && dateFilterRef.current && !dateFilterRef.current.contains(event.target)) {
-        setOpenFilter(null);
-      }
-      if (openFilter === 'hour' && hourFilterRef.current && !hourFilterRef.current.contains(event.target)) {
-        setOpenFilter(null);
-      }
-      if (openFilter === 'status' && statusFilterRef.current && !statusFilterRef.current.contains(event.target)) {
-        setOpenFilter(null);
-      }
-      if (openFilter === 'recognition' && recognitionFilterRef.current && !recognitionFilterRef.current.contains(event.target)) {
-        setOpenFilter(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [openFilter]);
 
   // Filter segments (client-side filtering for status and recognition)
   const filteredSegments = segments.filter(segment => {
@@ -169,11 +141,10 @@ const AudioSegmentsPage = () => {
     
     // Update URL params
     setSearchParams({ date: today });
-    setOpenFilter(null);
   };
 
-  const toggleFilter = (filterName) => {
-    setOpenFilter(openFilter === filterName ? null : filterName);
+  const toggleFilters = () => {
+    setIsFiltersExpanded(!isFiltersExpanded);
   };
 
   if (loading) {
@@ -194,12 +165,12 @@ const AudioSegmentsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Compact Header */}
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Navigation */}
-          <div className="flex items-center py-4">
-            <a href="/reports" className="text-blue-600 hover:text-blue-800 flex items-center">
+          <div className="flex items-center py-2">
+            <a href="/reports" className="text-blue-600 hover:text-blue-800 flex items-center text-sm">
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
@@ -207,189 +178,166 @@ const AudioSegmentsPage = () => {
             </a>
           </div>
 
-          {/* Main Header Content */}
-          <div className="flex items-center justify-between py-6">
+          {/* Compact Header Content */}
+          <div className="flex items-center justify-between py-3">
             {/* Left side - Channel info */}
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{channelInfo?.channel_name || 'Channel'}</h1>
-              <div className="mt-3">
-                <p className="text-sm text-gray-600">
-                  Showing data for: <span className="font-medium text-gray-900">{formatDateForDisplay(filters.date)}</span>
-                  {filters.hour !== 'all' && (
-                    <span>, Hour: <span className="font-medium text-gray-900">{filters.hour}:00</span></span>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            {/* Right side - Filter controls */}
-            <div className="relative">
-              <div className="flex items-center space-x-3">
-                {/* Active Filters Display */}
-                <div className="flex items-center space-x-2">
-                  {/* Date Filter */}
-                  <div className="relative" ref={dateFilterRef}>
-                    <button 
-                      onClick={() => toggleFilter('date')}
-                      className="flex items-center px-3 py-1.5 bg-gray-100 rounded-lg text-sm hover:bg-gray-200"
-                    >
-                      <span className="text-gray-700">Date: {new Date(filters.date).toLocaleDateString()}</span>
-                    </button>
-                    {openFilter === 'date' && (
-                      <div className="absolute right-0 mt-1 w-56 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                        <input
-                          type="date"
-                          value={filters.date}
-                          onChange={(e) => {
-                            dispatch(setFilter({ date: e.target.value }));
-                            setOpenFilter(null);
-                          }}
-                          className="w-full p-2 border border-gray-300 rounded-md"
-                          max={new Date().toISOString().split('T')[0]}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Hour Filter */}
-                  <div className="relative" ref={hourFilterRef}>
-                    <button 
-                      onClick={() => toggleFilter('hour')}
-                      className="flex items-center px-3 py-1.5 bg-gray-100 rounded-lg text-sm hover:bg-gray-200"
-                    >
-                      <span className="text-gray-700">
-                        Hour: {`${filters.hour}:00`}  {/* Changed from showing 'All' to showing the hour */}
-                      </span>
-                    </button>
-                    {openFilter === 'hour' && (
-                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200 overflow-y-auto max-h-60">
-                          <div className="py-1">
-                            {Array.from({ length: 24 }, (_, i) => i).map(hour => (
-                              <button
-                                key={hour}
-                                onClick={() => {
-                                  dispatch(setFilter({ hour: hour.toString() }));
-                                  setOpenFilter(null);
-                                }}
-                                className={`block w-full text-left px-4 py-2 text-sm ${filters.hour === hour.toString() ? 'bg-blue-100 text-blue-800' : 'text-gray-700 hover:bg-gray-100'}`}
-                              >
-                                {hour}:00
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                  </div>
-
-                  {/* Status Filter */}
-                  <div className="relative" ref={statusFilterRef}>
-                    <button 
-                      onClick={() => toggleFilter('status')}
-                      className="flex items-center px-3 py-1.5 bg-gray-100 rounded-lg text-sm hover:bg-gray-200"
-                    >
-                      <span className="text-gray-700">
-                        Status: {filters.status === 'all' ? 'All' : filters.status === 'active' ? 'Active' : 'Inactive'}
-                      </span>
-                    </button>
-                    {openFilter === 'status' && (
-                      <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                        <div className="py-1">
-                          <button
-                            onClick={() => {
-                              dispatch(setFilter({ status: 'all' }));
-                              setOpenFilter(null);
-                            }}
-                            className={`block w-full text-left px-4 py-2 text-sm ${filters.status === 'all' ? 'bg-blue-100 text-blue-800' : 'text-gray-700 hover:bg-gray-100'}`}
-                          >
-                            All ({segments.length})
-                          </button>
-                          <button
-                            onClick={() => {
-                              dispatch(setFilter({ status: 'active' }));
-                              setOpenFilter(null);
-                            }}
-                            className={`block w-full text-left px-4 py-2 text-sm ${filters.status === 'active' ? 'bg-blue-100 text-blue-800' : 'text-gray-700 hover:bg-gray-100'}`}
-                          >
-                            Active ({segments.filter(s => s.is_active).length})
-                          </button>
-                          <button
-                            onClick={() => {
-                              dispatch(setFilter({ status: 'inactive' }));
-                              setOpenFilter(null);
-                            }}
-                            className={`block w-full text-left px-4 py-2 text-sm ${filters.status === 'inactive' ? 'bg-blue-100 text-blue-800' : 'text-gray-700 hover:bg-gray-100'}`}
-                          >
-                            Inactive ({segments.filter(s => !s.is_active).length})
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Recognition Filter */}
-                  <div className="relative" ref={recognitionFilterRef}>
-                    <button 
-                      onClick={() => toggleFilter('recognition')}
-                      className="flex items-center px-3 py-1.5 bg-gray-100 rounded-lg text-sm hover:bg-gray-200"
-                    >
-                      <span className="text-gray-700">
-                        Recognition: {filters.recognition === 'all' ? 'All' : filters.recognition === 'recognized' ? 'Recognized' : 'Unrecognized'}
-                      </span>
-                    </button>
-                    {openFilter === 'recognition' && (
-                      <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                        <div className="py-1">
-                          <button
-                            onClick={() => {
-                              dispatch(setFilter({ recognition: 'all' }));
-                              setOpenFilter(null);
-                            }}
-                            className={`block w-full text-left px-4 py-2 text-sm ${filters.recognition === 'all' ? 'bg-blue-100 text-blue-800' : 'text-gray-700 hover:bg-gray-100'}`}
-                          >
-                            All ({segments.length})
-                          </button>
-                          <button
-                            onClick={() => {
-                              dispatch(setFilter({ recognition: 'recognized' }));
-                              setOpenFilter(null);
-                            }}
-                            className={`block w-full text-left px-4 py-2 text-sm ${filters.recognition === 'recognized' ? 'bg-blue-100 text-blue-800' : 'text-gray-700 hover:bg-gray-100'}`}
-                          >
-                            Recognized ({segments.filter(s => s.is_recognized).length})
-                          </button>
-                          <button
-                            onClick={() => {
-                              dispatch(setFilter({ recognition: 'unrecognized' }));
-                              setOpenFilter(null);
-                            }}
-                            className={`block w-full text-left px-4 py-2 text-sm ${filters.recognition === 'unrecognized' ? 'bg-blue-100 text-blue-800' : 'text-gray-700 hover:bg-gray-100'}`}
-                          >
-                            Unrecognized ({segments.filter(s => !s.is_recognized).length})
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Reset Button */}
-                <button
-                  onClick={handleResetFilters}
-                  className="flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg shadow-md transition-all duration-200"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Reset
-                </button>
-              </div>
+              <h1 className="text-xl font-bold text-gray-900">{channelInfo?.channel_name || 'Channel'}</h1>
+              <p className="text-xs text-gray-600 mt-1">
+                {formatDateForDisplay(filters.date)} • Hour: {filters.hour}:00
+              </p>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Collapsible Filters */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+          {/* Filter Header */}
+          <div 
+            className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+            onClick={toggleFilters}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                <Search className="w-5 h-5 text-white" />
+              </div>
+              <h2 className="text-lg font-semibold text-blue-600">Filter Parameters</h2>
+            </div>
+            {isFiltersExpanded ? (
+              <ChevronUp className="w-5 h-5 text-gray-400" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-gray-400" />
+            )}
+          </div>
+
+          {/* Expandable Filter Content */}
+          {isFiltersExpanded && (
+            <div className="border-t border-gray-200 p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Date & Time Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                      <Calendar className="w-4 h-4 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900">Date & Time</h3>
+                  </div>
+
+                  {/* Date Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                    <input
+                      type="date"
+                      value={filters.date}
+                      onChange={(e) => dispatch(setFilter({ date: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      max={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+
+                  {/* Hour Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Hour</label>
+                    <select
+                      value={filters.hour}
+                      onChange={(e) => dispatch(setFilter({ hour: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => i).map(hour => (
+                        <option key={hour} value={hour.toString()}>
+                          {hour.toString().padStart(2, '0')}:00
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Status & Recognition Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                      <Filter className="w-4 h-4 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900">Content Filters</h3>
+                  </div>
+
+                  {/* Status Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Status Filter</label>
+                    <select
+                      value={filters.status || 'all'}
+                      onChange={(e) => dispatch(setFilter({ status: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    >
+                      <option value="all">All Status ({segments.length})</option>
+                      <option value="active">Active ({segments.filter(s => s.is_active).length})</option>
+                      <option value="inactive">Inactive ({segments.filter(s => !s.is_active).length})</option>
+                    </select>
+                  </div>
+
+                  {/* Recognition Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Recognition Filter</label>
+                    <select
+                      value={filters.recognition || 'all'}
+                      onChange={(e) => dispatch(setFilter({ recognition: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    >
+                      <option value="all">All Recognition ({segments.length})</option>
+                      <option value="recognized">Recognized ({segments.filter(s => s.is_recognized).length})</option>
+                      <option value="unrecognized">Unrecognized ({segments.filter(s => !s.is_recognized).length})</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-center mt-8 pt-6 border-t border-gray-200">
+                <button
+                  onClick={handleResetFilters}
+                  className="flex items-center px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg shadow-md transition-all duration-200 mr-4"
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset Filters
+                </button>
+                <button
+                  onClick={toggleFilters}
+                  className="flex items-center px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg shadow-md transition-all duration-200 mr-4"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Close Filter
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Results Summary */}
+        {/* <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <span className="text-sm font-medium text-gray-700">
+                  Found {filteredSegments.length} segments
+                </span>
+              </div>
+              <div className="h-4 w-px bg-gray-300"></div>
+              <div className="text-xs text-gray-500">
+                Active: {filteredSegments.filter(s => s.is_active).length} • 
+                Recognized: {filteredSegments.filter(s => s.is_recognized).length}
+              </div>
+            </div>
+            <div className="text-xs text-gray-500">
+              {formatDateForDisplay(filters.date)} • {filters.hour}:00
+            </div>
+          </div>
+        </div> */}
+
+        {/* Audio Segments */}
         {filteredSegments.map((segment) => (
           <div 
             key={segment.id} 
