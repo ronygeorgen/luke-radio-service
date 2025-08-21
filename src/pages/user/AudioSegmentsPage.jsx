@@ -395,163 +395,198 @@ const AudioSegmentsPage = () => {
             key={segment.id} 
             className={`bg-white rounded-xl shadow-md overflow-hidden mb-6 ${!segment.is_active ? 'opacity-70' : ''}`}
           >
-            <div className="p-6">
-              {/* Title bar */}
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center">
-                  {segment.title || 'Untitled Report Item'}
-                  <button className="ml-2 text-gray-400 hover:text-gray-600">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </button>
-                </h2>
-                <div className="flex space-x-2">
-                  <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
-                    {segment.duration_seconds}s
-                  </span>
-                </div>
-              </div>
-
-              {/* Three-column layout */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                {/* Left column - Details (20% width) */}
-                <div className="md:col-span-2 space-y-4">
-                  <h3 className="font-bold text-center text-white bg-gradient-to-r from-blue-500 to-blue-600 py-2 px-4 rounded-md mb-4">
-                    Details
-                  </h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500">Date</label>
-                    <p className="text-gray-900 text-sm">{new Date(segment.start_time).toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500">Duration</label>
-                    <p className="text-gray-900 text-sm">{segment.duration_seconds} seconds</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500">Sentiment</label>
-                    <div className="flex items-center">
-                      <span className="text-gray-900 text-sm mr-2">{segment.analysis?.sentiment || 'N/A'}</span>
-                      {segment.analysis?.sentiment && (
-                        <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">
-                          {segment.analysis.sentiment >= 70 ? 'Positive' : 
-                           segment.analysis.sentiment >= 40 ? 'Neutral' : 'Negative'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handlePlayAudio(segment.id)}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center justify-center text-sm"
-                  >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Play Audio
-                  </button>
-                </div>
-
-                {/* Middle column - Content (60% width) */}
-                <div className="md:col-span-7 space-y-4">
-                  <h3 className="font-bold text-center text-white bg-gradient-to-r from-blue-500 to-blue-600 py-2 px-4 rounded-md mb-4">
-                    Content
-                  </h3>
-                  
-                  {segment.analysis?.summary || segment.transcription?.transcript ? (
-                    <>
-                      {segment.analysis?.summary && (
-                        <div 
-                          className="cursor-pointer"
-                          onClick={() => handleSummaryClick(segment)}
-                        >
-                          <h4 className="font-bold text-gray-900 text-sm">Summary</h4>
-                          <p className="text-gray-700 text-sm line-clamp-3">{segment.analysis.summary}</p>
-                        </div>
-                      )}
-                      {segment.transcription?.transcript && (
-                        <div 
-                          className="cursor-pointer"
-                          onClick={() => handleTranscriptionClick(segment)}
-                        >
-                          <h4 className="font-bold text-gray-900 text-sm">Transcription</h4>
-                          <div className="text-gray-700 text-sm line-clamp-3">
-                            {segment.transcription.transcript.split('\n').slice(0, 3).map((line, i) => (
-                              <p key={i}>{line}</p>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-                      <svg 
-                        className="w-12 h-12 mb-2" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={1.5} 
-                          d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
-                        />
+            {segment.analysis?.summary || segment.transcription?.transcript ? (
+              // Full layout for segments with summary or transcription
+              <div className="p-6">
+                {/* Title bar */}
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                    {segment.title || 'Untitled Report Item'}
+                    <button className="ml-2 text-gray-400 hover:text-gray-600">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                       </svg>
-                      <p className="text-sm">No content available for this segment</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Right column - Metadata (20% width) */}
-                <div className="md:col-span-3 space-y-4">
-                  <h3 className="font-bold text-center text-white bg-gradient-to-r from-purple-500 to-purple-600 py-2 px-4 rounded-md mb-4">
-                    Metadata
-                  </h3>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500">Topics</label>
-                    <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
-                      {segment.analysis?.general_topics?.split('\n').length || 0} topics
+                    </button>
+                  </h2>
+                  <div className="flex space-x-2">
+                    <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
+                      {segment.duration_seconds}s
                     </span>
                   </div>
-                  {segment.analysis && (
-                    <>
-                    <div className="mt-4 space-y-3">
-                      {/* General Topics */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500">General Topics</label>
-                        <div className="mt-1 bg-gray-50 p-2 rounded">
-                          {segment.analysis.general_topics.split('\n').map((topic, index) => (
-                            <div key={index} className="text-sm text-gray-700">
-                              {topic}
-                            </div>
+                </div>
+
+                {/* Three-column layout */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  {/* Left column - Details (20% width) */}
+                  <div className="md:col-span-2 space-y-4">
+                    <h3 className="font-bold text-center text-white bg-gradient-to-r from-blue-500 to-blue-600 py-2 px-4 rounded-md mb-4">
+                      Details
+                    </h3>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Date</label>
+                      <p className="text-gray-900 text-sm">{new Date(segment.start_time).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Duration</label>
+                      <p className="text-gray-900 text-sm">{segment.duration_seconds} seconds</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Sentiment</label>
+                      <div className="flex items-center">
+                        <span className="text-gray-900 text-sm mr-2">{segment.analysis?.sentiment || 'N/A'}</span>
+                        {segment.analysis?.sentiment && (
+                          <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-800">
+                            {segment.analysis.sentiment >= 70 ? 'Positive' : 
+                              segment.analysis.sentiment >= 40 ? 'Neutral' : 'Negative'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handlePlayAudio(segment.id)}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center justify-center text-sm"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Play Audio
+                    </button>
+                  </div>
+
+                  {/* Middle column - Content (60% width) */}
+                  <div className="md:col-span-7 space-y-4">
+                    <h3 className="font-bold text-center text-white bg-gradient-to-r from-blue-500 to-blue-600 py-2 px-4 rounded-md mb-4">
+                      Content
+                    </h3>
+                    
+                    {segment.analysis?.summary && (
+                      <div 
+                        className="cursor-pointer"
+                        onClick={() => handleSummaryClick(segment)}
+                      >
+                        <h4 className="font-bold text-gray-900 text-sm">Summary</h4>
+                        <p className="text-gray-700 text-sm line-clamp-3">{segment.analysis.summary}</p>
+                      </div>
+                    )}
+                    {segment.transcription?.transcript && (
+                      <div 
+                        className="cursor-pointer"
+                        onClick={() => handleTranscriptionClick(segment)}
+                      >
+                        <h4 className="font-bold text-gray-900 text-sm">Transcription</h4>
+                        <div className="text-gray-700 text-sm line-clamp-3">
+                          {segment.transcription.transcript.split('\n').slice(0, 3).map((line, i) => (
+                            <p key={i}>{line}</p>
                           ))}
                         </div>
                       </div>
+                    )}
+                  </div>
 
-                      {/* Bucket Prompt */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500">Category</label>
-                        <div className="mt-1 bg-gray-50 p-2 rounded">
-                          <div className="text-sm text-gray-700">
-                            {segment.analysis.bucket_prompt !== 'Undefined, N/A' 
-                              ? segment.analysis.bucket_prompt 
-                              : 'Not categorized'}
+                  {/* Right column - Metadata (20% width) */}
+                  <div className="md:col-span-3 space-y-4">
+                    <h3 className="font-bold text-center text-white bg-gradient-to-r from-purple-500 to-purple-600 py-2 px-4 rounded-md mb-4">
+                      Metadata
+                    </h3>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">Topics</label>
+                      <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
+                        {segment.analysis?.general_topics?.split('\n').length || 0} topics
+                      </span>
+                    </div>
+                    {segment.analysis && (
+                      <>
+                      <div className="mt-4 space-y-3">
+                        {/* General Topics */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">General Topics</label>
+                          <div className="mt-1 bg-gray-50 p-2 rounded">
+                            {segment.analysis.general_topics.split('\n').map((topic, index) => (
+                              <div key={index} className="text-sm text-gray-700">
+                                {topic}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Bucket Prompt */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">Category</label>
+                          <div className="mt-1 bg-gray-50 p-2 rounded">
+                            <div className="text-sm text-gray-700">
+                              {segment.analysis.bucket_prompt !== 'Undefined, N/A' 
+                                ? segment.analysis.bucket_prompt 
+                                : 'Not categorized'}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500">IAB Topics</label>
-                        <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
-                          {segment.analysis?.iab_topics === 'Empty_RESULT' ? 0 : 1} topics
-                        </span>
-                      </div>
-                    </>
-                  )}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-500">IAB Topics</label>
+                          <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
+                            {segment.analysis?.iab_topics === 'Empty_RESULT' ? 0 : 1} topics
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              // Compact layout for segments without summary or transcription
+              <div className="p-4">
+                <div className="flex items-center justify-between">
+                  {/* Left side - Audio play button and basic info */}
+                  <div className="flex items-center space-x-4">
+                    <button
+                      onClick={() => handlePlayAudio(segment.id)}
+                      className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full flex items-center justify-center"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      </svg>
+                    </button>
+                    
+                    <div className="flex flex-col">
+                      <span className="text-sm text-gray-900">
+                        {new Date(segment.start_time).toLocaleDateString()}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(segment.start_time).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    
+                    <div className="text-sm text-gray-700">
+                      {segment.duration_seconds}s
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <span className="text-sm text-gray-700 mr-1">Sentiment:</span>
+                      {segment.analysis?.sentiment ? (
+                        <span className={`px-2 py-0.5 text-xs rounded-full ${
+                          segment.analysis.sentiment >= 70 
+                            ? 'bg-green-100 text-green-800' 
+                            : segment.analysis.sentiment >= 40 
+                              ? 'bg-yellow-100 text-yellow-800' 
+                              : 'bg-red-100 text-red-800'
+                        }`}>
+                          {segment.analysis.sentiment >= 70 ? 'Positive' : 
+                            segment.analysis.sentiment >= 40 ? 'Neutral' : 'Negative'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-500">N/A</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Right side - No content available indicator */}
+                  <div className="text-sm text-gray-400 italic">
+                    No content available
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </main>

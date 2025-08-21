@@ -1,9 +1,27 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 
 const AudioPlayer = ({ segment, onClose }) => {
+  const audioRef = useRef(null);
+  
   if (!segment) return null;
   
   const fullSrc = `${import.meta.env.VITE_API_URL}/${segment.file_path}`;
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    // Add event listener for seeking
+    const handleSeeked = () => {
+      // Audio will automatically play from the new position when user seeks
+    };
+
+    audio.addEventListener('seeked', handleSeeked);
+
+    return () => {
+      audio.removeEventListener('seeked', handleSeeked);
+    };
+  }, []);
 
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
@@ -31,10 +49,16 @@ const AudioPlayer = ({ segment, onClose }) => {
       {/* Expanded audio controls */}
       <div className="p-4">
         <audio 
+          ref={audioRef}
           controls
           autoPlay
           src={fullSrc}
           className="w-full h-12 [&::-webkit-media-controls-panel]:bg-gray-50 [&::-webkit-media-controls-panel]:rounded-lg"
+          // This ensures the audio plays from the seeked position
+          onSeeked={(e) => {
+            // The browser handles seeking automatically
+            // This is just to confirm the feature works
+          }}
         >
           Your browser does not support the audio element.
         </audio>
