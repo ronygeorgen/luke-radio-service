@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { fetchAudioSegments, setCurrentPlaying, setFilter } from '../../store/slices/audioSegmentsSlice';
+import { fetchAudioSegments, setCurrentPlaying, setIsPlaying, setFilter } from '../../store/slices/audioSegmentsSlice';
 import { ChevronDown, ChevronUp, Search, Calendar, Filter, RotateCcw, Clock, CheckCircle, X } from 'lucide-react';
 import AudioPlayer from './AudioPlayer';
 import SummaryModal from './SummaryModal';
@@ -21,6 +21,7 @@ const AudioSegmentsPage = () => {
     loading, 
     error, 
     currentPlayingId,
+    isPlaying,
     filters  
   } = useSelector((state) => state.audioSegments);
   
@@ -30,6 +31,17 @@ const AudioSegmentsPage = () => {
   
   // State for collapsible filters
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
+
+  const handlePlayPauseAudio = (segmentId) => {
+    if (currentPlayingId === segmentId) {
+      // Toggle play/pause for the current audio
+      dispatch(setIsPlaying(!isPlaying));
+    } else {
+      // Play a new audio
+      dispatch(setCurrentPlaying(segmentId));
+      dispatch(setIsPlaying(true));
+    }
+  };
 
   // Initialize with URL params or defaults
   useEffect(() => {
@@ -88,8 +100,24 @@ const AudioSegmentsPage = () => {
     
     // Recognition filter
     if (filters.recognition !== 'all') {
-      if (filters.recognition === 'recognized' && !segment.is_recognized) return false;
-      if (filters.recognition === 'unrecognized' && segment.is_recognized) return false;
+      const hasContent = segment.analysis?.summary || segment.transcription?.transcript;
+      
+      switch (filters.recognition) {
+        case 'recognized':
+          if (!segment.is_recognized) return false;
+          break;
+        case 'unrecognized':
+          if (segment.is_recognized) return false;
+          break;
+        case 'unrecognized_with_content':
+          if (segment.is_recognized || !hasContent) return false;
+          break;
+        case 'unrecognized_without_content':
+          if (segment.is_recognized || hasContent) return false;
+          break;
+        default:
+          break;
+      }
     }
     
     return true;
@@ -281,17 +309,27 @@ const AudioSegmentsPage = () => {
                   {/* Recognition Filter */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Recognition Filter</label>
-                    <select
-                      value={filters.recognition || 'all'}
-                      onChange={(e) => dispatch(setFilter({ recognition: e.target.value }))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    >
-                      <option value="all">All Recognition ({segments.length})</option>
-                      <option value="recognized">Recognized ({segments.filter(s => s.is_recognized).length})</option>
-                      <option value="unrecognized">Unrecognized ({segments.filter(s => !s.is_recognized).length})</option>
-                    </select>
+                      <select
+                        value={filters.recognition || 'all'}
+                        onChange={(e) => dispatch(setFilter({ recognition: e.target.value }))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      >
+                        <option value="all">All Recognition ({segments.length})</option>
+                        <option value="recognized">Recognized ({segments.filter(s => s.is_recognized).length})</option>
+                        <option value="unrecognized">Unrecognized ({segments.filter(s => !s.is_recognized).length})</option>
+                        <option value="unrecognized_with_content">
+                          Unrecognized with Content ({
+                            segments.filter(s => !s.is_recognized && (s.analysis?.summary || s.transcription?.transcript)).length
+                          })
+                        </option>
+                        <option value="unrecognized_without_content">
+                          Unrecognized without Content ({
+                            segments.filter(s => !s.is_recognized && !s.analysis?.summary && !s.transcription?.transcript).length
+                          })
+                        </option>
+                      </select>
+                    </div>
                   </div>
-                </div>
               </div>
 
               {/* Action Buttons */}
@@ -314,28 +352,6 @@ const AudioSegmentsPage = () => {
             </div>
           )}
         </div>
-
-        {/* Results Summary */}
-        {/* <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <span className="text-sm font-medium text-gray-700">
-                  Found {filteredSegments.length} segments
-                </span>
-              </div>
-              <div className="h-4 w-px bg-gray-300"></div>
-              <div className="text-xs text-gray-500">
-                Active: {filteredSegments.filter(s => s.is_active).length} • 
-                Recognized: {filteredSegments.filter(s => s.is_recognized).length}
-              </div>
-            </div>
-            <div className="text-xs text-gray-500">
-              {formatDateForDisplay(filters.date)} • {filters.hour}:00
-            </div>
-          </div>
-        </div> */}
 
         {/* Audio Segments */}
         {filteredSegments.map((segment) => (
@@ -391,15 +407,29 @@ const AudioSegmentsPage = () => {
                       </div>
                     </div>
                     <button
-                      onClick={() => handlePlayAudio(segment.id)}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md flex items-center justify-center text-sm"
-                    >
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Play Audio
-                    </button>
+                        onClick={() => handlePlayPauseAudio(segment.id)}
+                        className={`w-full ${
+                          currentPlayingId === segment.id && isPlaying 
+                            ? 'bg-yellow-600 hover:bg-yellow-700' 
+                            : 'bg-green-600 hover:bg-green-700'
+                        } text-white py-2 px-4 rounded-md flex items-center justify-center text-sm`}
+                      >
+                        {currentPlayingId === segment.id && isPlaying ? (
+                          <>
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
+                            </svg>
+                            Pause Audio
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            </svg>
+                            Play Audio
+                          </>
+                        )}
+                      </button>
                   </div>
 
                   {/* Middle column - Content (60% width) */}
@@ -488,12 +518,22 @@ const AudioSegmentsPage = () => {
                   {/* Left side - Audio play button and basic info */}
                   <div className="flex items-center space-x-4">
                     <button
-                      onClick={() => handlePlayAudio(segment.id)}
-                      className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full flex items-center justify-center"
+                      onClick={() => handlePlayPauseAudio(segment.id)}
+                      className={`${
+                        currentPlayingId === segment.id && isPlaying 
+                          ? 'bg-yellow-600 hover:bg-yellow-700' 
+                          : 'bg-green-600 hover:bg-green-700'
+                      } text-white p-2 rounded-full flex items-center justify-center`}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                      </svg>
+                      {currentPlayingId === segment.id && isPlaying ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        </svg>
+                      )}
                     </button>
                     
                     <div className="flex flex-col">
