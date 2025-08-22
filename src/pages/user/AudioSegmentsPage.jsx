@@ -336,19 +336,21 @@ const AudioSegmentsPage = () => {
               <div className="flex items-center justify-center mt-8 pt-6 border-t border-gray-200">
                 <button
                   onClick={handleResetFilters}
-                  className="flex items-center px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg shadow-md transition-all duration-200 mr-4"
+                  className="flex items-center px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-all duration-200 mr-4"
                 >
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Reset Filters
                 </button>
+
                 <button
                   onClick={toggleFilters}
-                  className="flex items-center px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg shadow-md transition-all duration-200 mr-4"
+                  className="flex items-center px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all duration-200"
                 >
                   <X className="w-4 h-4 mr-2" />
                   Close Filter
                 </button>
               </div>
+
             </div>
           )}
         </div>
