@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Search, Calendar, Filter, RotateCcw, X } from 'lucide-react';
+import { setFilter } from '../../store/slices/audioSegmentsSlice';
 
 const FilterPanel = ({ 
   filters, 
@@ -13,9 +14,11 @@ const FilterPanel = ({
   localEndTime,
   setLocalStartTime,
   setLocalEndTime,
-  handleResetFilters 
+  handleResetFilters,
+  isInHeader = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const filterRef = useRef(null);
 
   const daypartOptions = [
     { value: 'none', label: 'None', startTime: '', endTime: '' },
@@ -27,10 +30,161 @@ const FilterPanel = ({
     { value: 'weekend', label: 'Weekend (Saturday & Sunday full day)', startTime: '00:00:00', endTime: '23:59:59' }
   ];
 
+  // Close filter when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterRef.current && !filterRef.current.contains(event.target)) {
+        setIsExpanded(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const toggleFilters = () => setIsExpanded(!isExpanded);
 
+  // Compact version for header
+  if (isInHeader) {
+    return (
+      <div className="bg-white border-t border-gray-200" ref={filterRef}>
+        <div 
+          className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+          onClick={toggleFilters}
+        >
+          <div className="flex items-center space-x-2">
+            <Filter className="w-4 h-4 text-blue-500" />
+            <span className="text-sm font-medium text-gray-700">Filters</span>
+            {filters.status !== 'all' || filters.recognition !== 'all' ? (
+              <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-blue-500 rounded-full">
+                Active
+              </span>
+            ) : null}
+          </div>
+          {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        </div>
+
+        {isExpanded && (
+          <div className="border-t border-gray-200 p-4 bg-white">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              {/* Date Input */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={filters.date}
+                  onChange={(e) => dispatch(setFilter({ date: e.target.value }))}
+                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  max={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+
+              {/* Time of Day */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Time of Day</label>
+                <select
+                  value={filters.daypart || 'none'}
+                  onChange={(e) => handleDaypartChange(e.target.value)}
+                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {daypartOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label.length > 20 ? option.label.substring(0, 20) + '...' : option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={filters.status || 'all'}
+                  onChange={(e) => dispatch(setFilter({ status: e.target.value }))}
+                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+
+              {/* Recognition Filter */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Recognition</label>
+                <select
+                  value={filters.recognition || 'all'}
+                  onChange={(e) => dispatch(setFilter({ recognition: e.target.value }))}
+                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">All Recognition</option>
+                  <option value="recognized">Recognized</option>
+                  <option value="unrecognized">Unrecognized</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Custom Time Inputs (only show when daypart is none) */}
+            {filters.daypart === 'none' && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Start Time</label>
+                  <input
+                    type="time"
+                    value={localStartTime}
+                    onChange={(e) => setLocalStartTime(e.target.value)}
+                    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">End Time</label>
+                  <input
+                    type="time"
+                    value={localEndTime}
+                    onChange={(e) => setLocalEndTime(e.target.value)}
+                    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <button
+                    onClick={handleSearchWithCustomTime}
+                    className="w-full p-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                  >
+                    Apply Time
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-between items-center">
+              <button
+                onClick={handleResetFilters}
+                className="flex items-center px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
+              >
+                <RotateCcw className="w-3 h-3 mr-1" />
+                Reset
+              </button>
+
+              <button
+                onClick={toggleFilters}
+                className="flex items-center px-3 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
+              >
+                <X className="w-3 h-3 mr-1" />
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Original expanded version (for when not in header)
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6" ref={filterRef}>
       <div 
         className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
         onClick={toggleFilters}
