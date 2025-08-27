@@ -3,10 +3,19 @@ import { axiosInstance } from '../../services/api';
 
 export const fetchAudioSegments = createAsyncThunk(
   'audioSegments/fetchAudioSegments',
-  async ({ channelId, date, hour }, { rejectWithValue }) => {
+  async ({ channelId, date, startTime, endTime }, { rejectWithValue }) => {
     try {
+      const params = { 
+        channel_id: channelId, 
+        date 
+      };
+      
+      // Only add time params if they exist
+      if (startTime) params.start_time = startTime;
+      if (endTime) params.end_time = endTime;
+      
       const response = await axiosInstance.get('/audio_segments_with_transcription', {
-        params: { channel_id: channelId, date, hour }
+        params
       });
       return response.data;
     } catch (err) {
@@ -15,6 +24,7 @@ export const fetchAudioSegments = createAsyncThunk(
   }
 );
 
+// audioSegmentsSlice.js
 const audioSegmentsSlice = createSlice({
   name: 'audioSegments',
   initialState: {
@@ -26,10 +36,12 @@ const audioSegmentsSlice = createSlice({
     currentPlayingId: null,
     isPlaying: false,
     filters: {
-      status: 'all', // 'all', 'active', 'inactive'
-      recognition: 'all', // 'all', 'recognized', 'unrecognized'
-      hour: '0', // 'all', 0-23
-      date: new Date().toISOString().split('T')[0]
+      status: 'all',
+      recognition: 'all',
+      date: new Date().toISOString().split('T')[0],
+      startTime: '',
+      endTime: '',
+      daypart: 'none'
     }
   },
   reducers: {
@@ -48,28 +60,31 @@ const audioSegmentsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(fetchAudioSegments.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(fetchAudioSegments.fulfilled, (state, action) => {
-          state.loading = false;
-          state.segments = action.payload.data.segments;
-          state.channelInfo = action.payload.data.channel_info;
-          
-          const segments = action.payload.data.segments;
-          const unrecognizedSegments = segments.filter(s => !s.is_recognized);
-          
-          state.totals = {
-            total: action.payload.data.total_segments,
-            recognized: action.payload.data.total_recognized,
-            unrecognized: action.payload.data.total_unrecognized,
-            unrecognizedWithContent: unrecognizedSegments.filter(s => 
-              s.analysis?.summary || s.transcription?.transcript
-            ).length,
-            unrecognizedWithoutContent: unrecognizedSegments.filter(s => 
-              !s.analysis?.summary && !s.transcription?.transcript
-            ).length,
-            withTranscription: action.payload.data.total_with_transcription,
-            withAnalysis: action.payload.data.total_with_analysis
-          };
-        })
+        state.loading = false;
+        state.segments = action.payload.data.segments;
+        state.channelInfo = action.payload.data.channel_info;
+        
+        const segments = action.payload.data.segments;
+        const unrecognizedSegments = segments.filter(s => !s.is_recognized);
+        
+        state.totals = {
+          total: action.payload.data.total_segments,
+          recognized: action.payload.data.total_recognized,
+          unrecognized: action.payload.data.total_unrecognized,
+          unrecognizedWithContent: unrecognizedSegments.filter(s => 
+            s.analysis?.summary || s.transcription?.transcript
+          ).length,
+          unrecognizedWithoutContent: unrecognizedSegments.filter(s => 
+            !s.analysis?.summary && !s.transcription?.transcript
+          ).length,
+          withTranscription: action.payload.data.total_with_transcription,
+          withAnalysis: action.payload.data.total_with_analysis
+        };
+      })
       .addCase(fetchAudioSegments.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || 'Failed to fetch audio segments';

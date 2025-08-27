@@ -11,7 +11,9 @@ const AudioSegmentsPage = () => {
   const { channelId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const date = searchParams.get('date');
-  const hour = searchParams.get('hour');
+  const startTime = searchParams.get('startTime');
+  const endTime = searchParams.get('endTime');
+  const daypart = searchParams.get('daypart');
   
   const dispatch = useDispatch();
   const { 
@@ -31,16 +33,74 @@ const AudioSegmentsPage = () => {
   
   // State for collapsible filters
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
+  // State for local time inputs (to prevent immediate fetching)
+  const [localStartTime, setLocalStartTime] = useState(filters.startTime?.substring(0, 5) || '');
+  const [localEndTime, setLocalEndTime] = useState(filters.endTime?.substring(0, 5) || '');
+
+  // Daypart options
+  const daypartOptions = [
+    { value: 'none', label: 'None', startTime: '', endTime: '' },
+    { value: 'morning', label: 'Morning (06:00–10:00)', startTime: '06:00:00', endTime: '10:00:00' },
+    { value: 'midday', label: 'Midday (10:00–15:00)', startTime: '10:00:00', endTime: '15:00:00' },
+    { value: 'afternoon', label: 'Afternoon (15:00–19:00)', startTime: '15:00:00', endTime: '19:00:00' },
+    { value: 'evening', label: 'Evening (19:00–00:00)', startTime: '19:00:00', endTime: '23:59:59' },
+    { value: 'overnight', label: 'Overnight (00:00–06:00)', startTime: '00:00:00', endTime: '06:00:00' },
+    { value: 'weekend', label: 'Weekend (Saturday & Sunday full day)', startTime: '00:00:00', endTime: '23:59:59' }
+  ];
 
   const handlePlayPauseAudio = (segmentId) => {
     if (currentPlayingId === segmentId) {
-      // Toggle play/pause for the current audio
       dispatch(setIsPlaying(!isPlaying));
     } else {
-      // Play a new audio
       dispatch(setCurrentPlaying(segmentId));
       dispatch(setIsPlaying(true));
     }
+  };
+
+  // Handle daypart selection
+  const handleDaypartChange = (selectedDaypart) => {
+    if (selectedDaypart === 'none') {
+      dispatch(setFilter({ 
+        daypart: 'none',
+        startTime: '',
+        endTime: ''
+      }));
+      setLocalStartTime('');
+      setLocalEndTime('');
+    } else {
+      const daypart = daypartOptions.find(opt => opt.value === selectedDaypart);
+      dispatch(setFilter({ 
+        daypart: selectedDaypart,
+        startTime: daypart.startTime,
+        endTime: daypart.endTime
+      }));
+      setLocalStartTime(daypart.startTime.substring(0, 5));
+      setLocalEndTime(daypart.endTime.substring(0, 5));
+    }
+    
+    // Fetch immediately when daypart changes
+    dispatch(fetchAudioSegments({ 
+      channelId, 
+      date: filters.date,
+      startTime: selectedDaypart === 'none' ? '' : daypart.startTime,
+      endTime: selectedDaypart === 'none' ? '' : daypart.endTime
+    }));
+  };
+
+  // Handle search with custom time
+  const handleSearchWithCustomTime = () => {
+    dispatch(setFilter({ 
+      startTime: localStartTime ? localStartTime + ':00' : '',
+      endTime: localEndTime ? localEndTime + ':00' : '',
+      daypart: 'none'
+    }));
+    
+    dispatch(fetchAudioSegments({ 
+      channelId, 
+      date: filters.date,
+      startTime: localStartTime ? localStartTime + ':00' : '',
+      endTime: localEndTime ? localEndTime + ':00' : ''
+    }));
   };
 
   // Initialize with URL params or defaults
@@ -57,38 +117,63 @@ const AudioSegmentsPage = () => {
       initialDate = new Date().toISOString().split('T')[0];
     }
 
-    // Change from 'all' to '0' as default
-    const initialHour = hour || '0';  // Changed from 'all' to '0'
-    
+    const initialStartTime = startTime || '';
+    const initialEndTime = endTime || '';
+    const initialDaypart = daypart || 'none';
+
     dispatch(setFilter({ 
       date: initialDate,
-      hour: initialHour  // This will now be '0' by default
+      startTime: initialStartTime,
+      endTime: initialEndTime,
+      daypart: initialDaypart
     }));
+    
+    setLocalStartTime(initialStartTime.substring(0, 5));
+    setLocalEndTime(initialEndTime.substring(0, 5));
     
     // Initial fetch
     dispatch(fetchAudioSegments({ 
       channelId, 
       date: initialDate,
-      hour: initialHour  // No need for conditional since we always want an hour now
+      startTime: initialStartTime,
+      endTime: initialEndTime
     }));
   }, [channelId]);
 
-  // Fetch data when filters change
+  // Fetch data when filters change (only for date and daypart)
   useEffect(() => {
-    if (filters.date) {
+    if (filters.date && (filters.daypart !== 'none' || (!localStartTime && !localEndTime))) {
       dispatch(fetchAudioSegments({ 
         channelId, 
         date: filters.date,
-        hour: filters.hour 
+        startTime: filters.startTime,
+        endTime: filters.endTime
       }));
       
       // Update URL params
       const params = {};
       if (filters.date) params.date = filters.date;
-      params.hour = filters.hour;
+      if (filters.startTime) params.startTime = filters.startTime;
+      if (filters.endTime) params.endTime = filters.endTime;
+      if (filters.daypart && filters.daypart !== 'none') params.daypart = filters.daypart;
+      
       setSearchParams(params);
     }
-  }, [filters.date, filters.hour, channelId]);
+  }, [filters.date, filters.daypart, channelId]);
+
+  // Format time display for header
+  const formatTimeDisplay = () => {
+    if (filters.daypart && filters.daypart !== 'none') {
+      const daypart = daypartOptions.find(opt => opt.value === filters.daypart);
+      return daypart.label.split('(')[1].replace(')', '');
+    }
+    
+    if (filters.startTime && filters.endTime) {
+      return `${filters.startTime.substring(0, 5)}–${filters.endTime.substring(0, 5)}`;
+    }
+    
+    return 'All day';
+  };
 
   // Filter segments (client-side filtering for status and recognition)
   const filteredSegments = segments.filter(segment => {
@@ -124,13 +209,11 @@ const AudioSegmentsPage = () => {
   });
 
   const formatDateForDisplay = (dateString) => {
-    // First, check if the date is already in ISO format (from filters.date)
     if (dateString.includes('-')) {
       const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
       return new Date(dateString).toLocaleDateString(undefined, options);
     }
     
-    // If it's in the YYYYMMDD format (from URL params)
     try {
       const year = dateString.substring(0, 4);
       const month = dateString.substring(4, 6);
@@ -162,23 +245,108 @@ const AudioSegmentsPage = () => {
     const today = new Date().toISOString().split('T')[0];
     dispatch(setFilter({
       date: today,
-      hour: '0',
+      startTime: '',
+      endTime: '',
+      daypart: 'none',
       status: 'all',
       recognition: 'all'
     }));
     
+    setLocalStartTime('');
+    setLocalEndTime('');
+    
     // Update URL params
     setSearchParams({ date: today });
+    
+    // Fetch with reset filters
+    dispatch(fetchAudioSegments({ 
+      channelId, 
+      date: today,
+      startTime: '',
+      endTime: ''
+    }));
   };
 
   const toggleFilters = () => {
     setIsFiltersExpanded(!isFiltersExpanded);
   };
 
-  if (loading) {
+  // Shimmer effect component
+  const SegmentShimmer = () => (
+    <div className="bg-white rounded-xl shadow-md overflow-hidden mb-6 p-6">
+      <div className="animate-pulse">
+        <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          {/* Left column shimmer */}
+          <div className="md:col-span-2 space-y-4">
+            <div className="h-6 bg-gray-200 rounded mb-4"></div>
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            </div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+          </div>
+          
+          {/* Middle column shimmer */}
+          <div className="md:col-span-7 space-y-4">
+            <div className="h-6 bg-gray-200 rounded mb-4"></div>
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+            </div>
+          </div>
+          
+          {/* Right column shimmer */}
+          <div className="md:col-span-3 space-y-4">
+            <div className="h-6 bg-gray-200 rounded mb-4"></div>
+            <div className="space-y-2">
+              <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (loading && segments.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="animate-pulse">
+              <div className="h-6 bg-gray-200 rounded w-1/3 mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+            </div>
+          </div>
+        </header>
+        
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 p-4">
+            <div className="animate-pulse">
+              <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                </div>
+                <div className="space-y-4">
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {[...Array(3)].map((_, i) => (
+            <SegmentShimmer key={i} />
+          ))}
+        </main>
       </div>
     );
   }
@@ -212,7 +380,7 @@ const AudioSegmentsPage = () => {
             <div>
               <h1 className="text-xl font-bold text-gray-900">{channelInfo?.channel_name || 'Channel'}</h1>
               <p className="text-xs text-gray-600 mt-1">
-                {formatDateForDisplay(filters.date)} • Hour: {filters.hour}:00
+                {formatDateForDisplay(filters.date)} • {formatTimeDisplay()}
               </p>
             </div>
           </div>
@@ -266,20 +434,59 @@ const AudioSegmentsPage = () => {
                     />
                   </div>
 
-                  {/* Hour Filter */}
+                  {/* Daypart Filter */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Hour</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Time of Day</label>
                     <select
-                      value={filters.hour}
-                      onChange={(e) => dispatch(setFilter({ hour: e.target.value }))}
+                      value={filters.daypart || 'none'}
+                      onChange={(e) => handleDaypartChange(e.target.value)}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     >
-                      {Array.from({ length: 24 }, (_, i) => i).map(hour => (
-                        <option key={hour} value={hour.toString()}>
-                          {hour.toString().padStart(2, '0')}:00
+                      {daypartOptions.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  {/* Manual Time Inputs */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                        <input
+                          type="time"
+                          value={localStartTime}
+                          onChange={(e) => setLocalStartTime(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          disabled={filters.daypart !== 'none'}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                        <input
+                          type="time"
+                          value={localEndTime}
+                          onChange={(e) => setLocalEndTime(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          disabled={filters.daypart !== 'none'}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Search Button for Custom Time */}
+                    <button
+                      onClick={handleSearchWithCustomTime}
+                      disabled={filters.daypart !== 'none'}
+                      className={`w-full p-3 rounded-lg font-medium ${
+                        filters.daypart !== 'none'
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      } transition-colors`}
+                    >
+                      Search with Custom Time
+                    </button>
                   </div>
                 </div>
 
@@ -355,6 +562,14 @@ const AudioSegmentsPage = () => {
           )}
         </div>
 
+        {/* Loading shimmer for segments */}
+        {loading && segments.length > 0 && (
+          <div className="mb-6">
+            <SegmentShimmer />
+            <SegmentShimmer />
+          </div>
+        )}
+
         {/* Audio Segments */}
         {filteredSegments.map((segment) => (
           <div 
@@ -368,11 +583,6 @@ const AudioSegmentsPage = () => {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold text-gray-900 flex items-center">
                     {segment.title || 'Untitled Report Item'}
-                    <button className="ml-2 text-gray-400 hover:text-gray-600">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </button>
                   </h2>
                   <div className="flex space-x-2">
                     <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
@@ -516,6 +726,9 @@ const AudioSegmentsPage = () => {
             ) : (
               // Compact layout for segments without summary or transcription
               <div className="p-4">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center">
+                    {segment.title || 'Untitled Report Item'}
+                </h2>
                 <div className="flex items-center justify-between">
                   {/* Left side - Audio play button and basic info */}
                   <div className="flex items-center space-x-4">
