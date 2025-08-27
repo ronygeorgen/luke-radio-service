@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setIsPlaying, setCurrentPlaying } from '../../store/slices/audioSegmentsSlice';
 
+
 const AudioPlayer = ({ segment, onClose }) => {
   const dispatch = useDispatch();
   const audioRef = useRef(null);
@@ -9,8 +10,9 @@ const AudioPlayer = ({ segment, onClose }) => {
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSeekable, setIsSeekable] = useState(true);
-  const [seekWarningDismissed, setSeekWarningDismissed] = useState(false);
   const [isPreloading, setIsPreloading] = useState(false);
+  const [isEnablingSeeking, setIsEnablingSeeking] = useState(false);
+
   const { isPlaying, currentPlayingId } = useSelector((state) => state.audioSegments);
   
   if (!segment) return null;
@@ -27,44 +29,42 @@ const AudioPlayer = ({ segment, onClose }) => {
     }
   };
 
-  // Preload the entire audio file to enable seeking
-  const enableSeekingWorkaround = async () => {
+  // Enable seeking for long audio files
+  const enableSeeking = async () => {
+    // Prevent multiple calls
+    if (isEnablingSeeking) return;
+    
     try {
+      setIsEnablingSeeking(true);
       setIsPreloading(true);
-      
-      // Pause audio if it's currently playing
-      if (isPlaying && currentPlayingId === segment.id) {
-        dispatch(setIsPlaying(false));
-      }
       
       const response = await fetch(fullSrc);
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       
-      // Store the current time before changing the source
-      const currentTime = audioRef.current.currentTime;
+      // Store current time and playing state before changing source
+      const currentTime = audioRef.current?.currentTime || 0;
+      const wasPlaying = !audioRef.current?.paused;
       
-      // Update the audio source
+      // Update audio source
       audioRef.current.src = blobUrl;
       setIsSeekable(true);
       setIsPreloading(false);
+      setIsEnablingSeeking(false);
       
-      // Reload the audio element and set the current time
+      // Reload and restore position
       audioRef.current.load();
       audioRef.current.currentTime = currentTime;
       
-      // Add event listener to ensure metadata is loaded
-      const handleLoad = () => {
-        setDuration(audioRef.current.duration);
-        audioRef.current.removeEventListener('loadedmetadata', handleLoad);
-      };
-      
-      audioRef.current.addEventListener('loadedmetadata', handleLoad);
+      // Don't auto-play after enabling seeking - let user control it
     } catch (error) {
-      console.error("Failed to preload audio:", error);
+      console.error("Failed to enable seeking:", error);
       setIsPreloading(false);
+      setIsEnablingSeeking(false);
     }
   };
+
+
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -76,20 +76,22 @@ const AudioPlayer = ({ segment, onClose }) => {
       setDuration(audio.duration);
       setIsLoading(false);
       
-      // Check if the audio is seekable
+      // Check if audio is actually seekable
       if (audio.seekable && audio.seekable.length > 0) {
         const seekableEnd = audio.seekable.end(audio.seekable.length - 1);
         const seekable = seekableEnd > 0 && !isNaN(seekableEnd);
         setIsSeekable(seekable);
         
-        if (!seekable) {
-          console.warn("Audio is not seekable. This could be due to:");
-          console.warn("1. Server not supporting range requests");
-          console.warn("2. Audio encoding issues");
-          console.warn("3. CORS restrictions on range requests");
+        // If not seekable and not already enabling seeking, automatically enable seeking in background
+        if (!seekable && !isEnablingSeeking) {
+          enableSeeking();
         }
       } else {
         setIsSeekable(false);
+        // Automatically enable seeking in background if not already doing so
+        if (!isEnablingSeeking) {
+          enableSeeking();
+        }
       }
     };
 
@@ -98,11 +100,17 @@ const AudioPlayer = ({ segment, onClose }) => {
     };
 
     const handlePlay = () => {
-      dispatch(setIsPlaying(true));
+      // Don't update Redux state during seeking process
+      if (!isEnablingSeeking) {
+        dispatch(setIsPlaying(true));
+      }
     };
 
     const handlePause = () => {
-      dispatch(setIsPlaying(false));
+      // Don't update Redux state during seeking process
+      if (!isEnablingSeeking) {
+        dispatch(setIsPlaying(false));
+      }
     };
 
     const handleEnded = () => {
@@ -124,25 +132,16 @@ const AudioPlayer = ({ segment, onClose }) => {
       console.log("Audio stalled, trying to recover...");
     };
 
-    // Check if server supports range requests
-    const checkRangeSupport = async () => {
-      try {
-        const response = await fetch(fullSrc, {
-          method: 'HEAD',
-          headers: {
-            'Range': 'bytes=0-1'
-          }
-        });
-        
-        const acceptsRanges = response.headers.get('accept-ranges') === 'bytes';
-        const contentRange = response.headers.get('content-range');
-        
-        if (!acceptsRanges && !contentRange) {
-          console.warn("Server does not support range requests");
-          setIsSeekable(false);
-        }
-      } catch (err) {
-        console.warn("Could not check range support:", err);
+    const handleSeeking = () => {
+      // Don't update Redux state during seeking
+      console.log("Seeking started");
+    };
+
+    const handleSeeked = () => {
+      console.log("Seeking completed");
+      // Ensure play state is maintained after seeking
+      if (isPlaying && currentPlayingId === segment.id && audio.paused && !isEnablingSeeking) {
+        audio.play().catch(err => console.error("Play after seeked failed:", err));
       }
     };
 
@@ -154,9 +153,8 @@ const AudioPlayer = ({ segment, onClose }) => {
     audio.addEventListener('error', handleError);
     audio.addEventListener('canplaythrough', handleCanPlayThrough);
     audio.addEventListener('stalled', handleStalled);
-
-    // Check range support when component mounts
-    checkRangeSupport();
+    audio.addEventListener('seeking', handleSeeking);
+    audio.addEventListener('seeked', handleSeeked);
 
     // Auto-play when component mounts if this is the current playing segment
     if (currentPlayingId === segment.id) {
@@ -179,6 +177,8 @@ const AudioPlayer = ({ segment, onClose }) => {
       audio.removeEventListener('error', handleError);
       audio.removeEventListener('canplaythrough', handleCanPlayThrough);
       audio.removeEventListener('stalled', handleStalled);
+      audio.removeEventListener('seeking', handleSeeking);
+      audio.removeEventListener('seeked', handleSeeked);
     };
   }, [segment.id, currentPlayingId, dispatch, fullSrc]);
 
@@ -216,8 +216,22 @@ const AudioPlayer = ({ segment, onClose }) => {
     
     const seekTime = parseFloat(e.target.value);
     if (audioRef.current) {
+      // Store current playing state
+      const wasPlaying = !audioRef.current.paused;
+      
+      // Set the time
       audioRef.current.currentTime = seekTime;
       setCurrentTime(seekTime);
+      
+      // If it was playing and we're the current segment, ensure it stays playing
+      if (wasPlaying && currentPlayingId === segment.id && !isEnablingSeeking) {
+        // Small delay to ensure the seek operation completes
+        setTimeout(() => {
+          if (audioRef.current && audioRef.current.paused && isPlaying) {
+            audioRef.current.play().catch(err => console.error("Play after seek failed:", err));
+          }
+        }, 50);
+      }
     }
   };
 
@@ -237,14 +251,30 @@ const AudioPlayer = ({ segment, onClose }) => {
   const progressMax = duration > 0 ? duration : (segment.duration_seconds || 0);
 
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
+    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 relative">
+      {/* Loading overlay */}
+      {(isLoading || isPreloading) && (
+        <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600 font-medium">
+              {isPreloading ? 'Enabling seeking...' : 'Loading audio...'}
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              {isPreloading ? 'Preloading audio file for better seeking' : 'Please wait while audio loads'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header with close button and external play/pause control */}
       <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-500 to-indigo-600">
         <div className="flex items-center space-x-4">
           <button 
             onClick={handleExternalPlayPause}
-            className="p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-colors duration-200"
+            className="p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-colors duration-200 disabled:bg-opacity-10 disabled:cursor-not-allowed"
             aria-label={isPlaying && currentPlayingId === segment.id ? 'Pause' : 'Play'}
+            disabled={isLoading}
           >
             {(isPlaying && currentPlayingId === segment.id) ? (
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -303,35 +333,7 @@ const AudioPlayer = ({ segment, onClose }) => {
           <span className="text-xs text-gray-500 w-10">{formatTime(progressMax)}</span>
         </div>
         
-        {!isSeekable && !seekWarningDismissed && (
-          <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded-md flex justify-between items-center">
-            <div>
-              <strong>Seeking is not available for this audio file</strong>
-              <p className="mt-1">This is usually a server configuration issue.</p>
-            </div>
-            <button 
-              onClick={() => setSeekWarningDismissed(true)}
-              className="ml-2 text-amber-800 hover:text-amber-900"
-              aria-label="Dismiss warning"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        )}
-        
-        {!isSeekable && (
-          <div className="preload-section">
-            <button 
-              onClick={enableSeekingWorkaround}
-              disabled={isPreloading}
-              className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors duration-200"
-            >
-              {isPreloading ? 'Loading...' : 'Preload Audio for Seeking'}
-            </button>
-          </div>
-        )}
+
         
         {/* Browser audio element (hidden but functional) */}
         <audio 
@@ -348,8 +350,9 @@ const AudioPlayer = ({ segment, onClose }) => {
           <div className="flex items-center space-x-4">
             <button 
               onClick={handleExternalPlayPause}
-              className="p-2 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors duration-200"
+              className="p-2 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
               aria-label={isPlaying && currentPlayingId === segment.id ? 'Pause' : 'Play'}
+              disabled={isLoading}
             >
               {(isPlaying && currentPlayingId === segment.id) ? (
                 <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -363,8 +366,9 @@ const AudioPlayer = ({ segment, onClose }) => {
             </button>
             
             <span className="text-sm text-gray-600">
-              {isLoading ? 'Loading...' : 
-                (isPlaying && currentPlayingId === segment.id) ? 'Playing' : 'Paused'} • {formatTime(currentTime)} / {formatTime(progressMax)}
+              {isLoading ? 'Loading audio...' : 
+               isPreloading ? 'Enabling seeking...' :
+               (isPlaying && currentPlayingId === segment.id) ? 'Playing' : 'Paused'} • {formatTime(currentTime)} / {formatTime(progressMax)}
             </span>
           </div>
           
