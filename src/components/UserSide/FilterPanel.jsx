@@ -1,0 +1,191 @@
+import React, { useState } from 'react';
+import { ChevronDown, ChevronUp, Search, Calendar, Filter, RotateCcw, X } from 'lucide-react';
+
+const FilterPanel = ({ 
+  filters, 
+  dispatch, 
+  segments, 
+  channelId, 
+  fetchAudioSegments, 
+  handleDaypartChange, 
+  handleSearchWithCustomTime,
+  localStartTime,
+  localEndTime,
+  setLocalStartTime,
+  setLocalEndTime,
+  handleResetFilters 
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const daypartOptions = [
+    { value: 'none', label: 'None', startTime: '', endTime: '' },
+    { value: 'morning', label: 'Morning (06:00–10:00)', startTime: '06:00:00', endTime: '10:00:00' },
+    { value: 'midday', label: 'Midday (10:00–15:00)', startTime: '10:00:00', endTime: '15:00:00' },
+    { value: 'afternoon', label: 'Afternoon (15:00–19:00)', startTime: '15:00:00', endTime: '19:00:00' },
+    { value: 'evening', label: 'Evening (19:00–00:00)', startTime: '19:00:00', endTime: '23:59:59' },
+    { value: 'overnight', label: 'Overnight (00:00–06:00)', startTime: '00:00:00', endTime: '06:00:00' },
+    { value: 'weekend', label: 'Weekend (Saturday & Sunday full day)', startTime: '00:00:00', endTime: '23:59:59' }
+  ];
+
+  const toggleFilters = () => setIsExpanded(!isExpanded);
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+      <div 
+        className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+        onClick={toggleFilters}
+      >
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+            <Search className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-lg font-semibold text-blue-600">Filter Parameters</h2>
+        </div>
+        {isExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+      </div>
+
+      {isExpanded && (
+        <div className="border-t border-gray-200 p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Date & Time Section */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                  <Calendar className="w-4 h-4 text-white" />
+                </div>
+                <h3 className="font-semibold text-gray-900">Date & Time</h3>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                <input
+                  type="date"
+                  value={filters.date}
+                  onChange={(e) => dispatch(setFilter({ date: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  max={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Time of Day</label>
+                <select
+                  value={filters.daypart || 'none'}
+                  onChange={(e) => handleDaypartChange(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  {daypartOptions.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                    <input
+                      type="time"
+                      value={localStartTime}
+                      onChange={(e) => setLocalStartTime(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      disabled={filters.daypart !== 'none'}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                    <input
+                      type="time"
+                      value={localEndTime}
+                      onChange={(e) => setLocalEndTime(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      disabled={filters.daypart !== 'none'}
+                    />
+                  </div>
+                </div>
+                
+                <button
+                  onClick={handleSearchWithCustomTime}
+                  disabled={filters.daypart !== 'none'}
+                  className={`w-full p-3 rounded-lg font-medium ${
+                    filters.daypart !== 'none'
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  } transition-colors`}
+                >
+                  Search with Custom Time
+                </button>
+              </div>
+            </div>
+
+            {/* Status & Recognition Section */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                  <Filter className="w-4 h-4 text-white" />
+                </div>
+                <h3 className="font-semibold text-gray-900">Content Filters</h3>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Status Filter</label>
+                <select
+                  value={filters.status || 'all'}
+                  onChange={(e) => dispatch(setFilter({ status: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  <option value="all">All Status ({segments.length})</option>
+                  <option value="active">Active ({segments.filter(s => s.is_active).length})</option>
+                  <option value="inactive">Inactive ({segments.filter(s => !s.is_active).length})</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Recognition Filter</label>
+                <select
+                  value={filters.recognition || 'all'}
+                  onChange={(e) => dispatch(setFilter({ recognition: e.target.value }))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  <option value="all">All Recognition ({segments.length})</option>
+                  <option value="recognized">Recognized ({segments.filter(s => s.is_recognized).length})</option>
+                  <option value="unrecognized">Unrecognized ({segments.filter(s => !s.is_recognized).length})</option>
+                  <option value="unrecognized_with_content">
+                    Unrecognized with Content ({
+                      segments.filter(s => !s.is_recognized && (s.analysis?.summary || s.transcription?.transcript)).length
+                    })
+                  </option>
+                  <option value="unrecognized_without_content">
+                    Unrecognized without Content ({
+                      segments.filter(s => !s.is_recognized && !s.analysis?.summary && !s.transcription?.transcript).length
+                    })
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center mt-8 pt-6 border-t border-gray-200">
+            <button
+              onClick={handleResetFilters}
+              className="flex items-center px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-all duration-200 mr-4"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset Filters
+            </button>
+
+            <button
+              onClick={toggleFilters}
+              className="flex items-center px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all duration-200"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Close Filter
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default FilterPanel;
