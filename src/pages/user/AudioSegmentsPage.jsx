@@ -221,7 +221,7 @@ const AudioSegmentsPage = () => {
           handleResetFilters={handleResetFilters}
         />
         
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-32"> {/* Added pt-32 to account for fixed header height */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-32 mt-28"> {/* Added pt-32 to account for fixed header height */}
           {[...Array(3)].map((_, i) => (
             <SegmentShimmer key={i} />
           ))}

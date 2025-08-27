@@ -46,6 +46,12 @@ const FilterPanel = ({
 
   const toggleFilters = () => setIsExpanded(!isExpanded);
 
+  // Calculate counts for recognition filters
+  const recognizedCount = segments.filter(s => s.is_recognized).length;
+  const unrecognizedCount = segments.filter(s => !s.is_recognized).length;
+  const unrecognizedWithContentCount = segments.filter(s => !s.is_recognized && (s.analysis?.summary || s.transcription?.transcript)).length;
+  const unrecognizedWithoutContentCount = segments.filter(s => !s.is_recognized && !s.analysis?.summary && !s.transcription?.transcript).length;
+
   // Compact version for header
   if (isInHeader) {
     return (
@@ -57,11 +63,6 @@ const FilterPanel = ({
           <div className="flex items-center space-x-2">
             <Filter className="w-4 h-4 text-blue-500" />
             <span className="text-sm font-medium text-gray-700">Filters</span>
-            {filters.status !== 'all' || filters.recognition !== 'all' ? (
-              <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-blue-500 rounded-full">
-                Active
-              </span>
-            ) : null}
           </div>
           {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
         </div>
@@ -120,8 +121,14 @@ const FilterPanel = ({
                   className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="all">All Recognition</option>
-                  <option value="recognized">Recognized</option>
-                  <option value="unrecognized">Unrecognized</option>
+                  <option value="recognized">Recognized ({recognizedCount})</option>
+                  <option value="unrecognized">Unrecognized ({unrecognizedCount})</option>
+                  <option value="unrecognized_with_content">
+                    Unrecognized with Content ({unrecognizedWithContentCount})
+                  </option>
+                  <option value="unrecognized_without_content">
+                    Unrecognized without Content ({unrecognizedWithoutContentCount})
+                  </option>
                 </select>
               </div>
             </div>
@@ -302,17 +309,13 @@ const FilterPanel = ({
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 >
                   <option value="all">All Recognition ({segments.length})</option>
-                  <option value="recognized">Recognized ({segments.filter(s => s.is_recognized).length})</option>
-                  <option value="unrecognized">Unrecognized ({segments.filter(s => !s.is_recognized).length})</option>
+                  <option value="recognized">Recognized ({recognizedCount})</option>
+                  <option value="unrecognized">Unrecognized ({unrecognizedCount})</option>
                   <option value="unrecognized_with_content">
-                    Unrecognized with Content ({
-                      segments.filter(s => !s.is_recognized && (s.analysis?.summary || s.transcription?.transcript)).length
-                    })
+                    Unrecognized with Content ({unrecognizedWithContentCount})
                   </option>
                   <option value="unrecognized_without_content">
-                    Unrecognized without Content ({
-                      segments.filter(s => !s.is_recognized && !s.analysis?.summary && !s.transcription?.transcript).length
-                    })
+                    Unrecognized without Content ({unrecognizedWithoutContentCount})
                   </option>
                 </select>
               </div>
