@@ -11,6 +11,9 @@ const AudioPlayer = ({ segment, onClose }) => {
   const [isSeekable, setIsSeekable] = useState(true);
   const [seekWarningDismissed, setSeekWarningDismissed] = useState(false);
   const [isPreloading, setIsPreloading] = useState(false);
+  const [preloadedUrls, setPreloadedUrls] = useState({});
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const { isPlaying, currentPlayingId } = useSelector((state) => state.audioSegments);
   
   if (!segment) return null;
@@ -31,15 +34,34 @@ const AudioPlayer = ({ segment, onClose }) => {
   const enableSeekingWorkaround = async () => {
     try {
       setIsPreloading(true);
+      setHasError(false);
       
-      // Pause audio if it's currently playing
-      if (isPlaying && currentPlayingId === segment.id) {
-        dispatch(setIsPlaying(false));
+      // Check if we've already preloaded this audio
+      if (preloadedUrls[segment.id]) {
+        audioRef.current.src = preloadedUrls[segment.id];
+        setIsSeekable(true);
+        setIsPreloading(false);
+        
+        // If audio was playing, resume playback
+        if (isPlaying && currentPlayingId === segment.id) {
+          audioRef.current.play().catch(err => {
+            console.error("Play failed after preload:", err);
+            setHasError(true);
+            setErrorMessage("Failed to play audio after preloading");
+          });
+        }
+        return;
       }
       
       const response = await fetch(fullSrc);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
+      
+      // Store the preloaded URL for future use
+      setPreloadedUrls(prev => ({ ...prev, [segment.id]: blobUrl }));
       
       // Store the current time before changing the source
       const currentTime = audioRef.current.currentTime;
@@ -57,12 +79,40 @@ const AudioPlayer = ({ segment, onClose }) => {
       const handleLoad = () => {
         setDuration(audioRef.current.duration);
         audioRef.current.removeEventListener('loadedmetadata', handleLoad);
+        
+        // If audio was playing, resume playback
+        if (isPlaying && currentPlayingId === segment.id) {
+          audioRef.current.play().catch(err => {
+            console.error("Play failed after preload:", err);
+            setHasError(true);
+            setErrorMessage("Failed to play audio after preloading");
+          });
+        }
       };
       
       audioRef.current.addEventListener('loadedmetadata', handleLoad);
     } catch (error) {
       console.error("Failed to preload audio:", error);
       setIsPreloading(false);
+      setHasError(true);
+      setErrorMessage("Failed to load audio. The file may be corrupted or unavailable.");
+    }
+  };
+
+  // Try to play audio with error handling
+  const tryPlayAudio = async (audioElement) => {
+    try {
+      await audioElement.play();
+      setHasError(false);
+    } catch (err) {
+      console.error("Play failed:", err);
+      setHasError(true);
+      setErrorMessage("Failed to play audio. The file format may not be supported.");
+      
+      // If play failed due to seeking issues, try preloading
+      if (!isSeekable) {
+        enableSeekingWorkaround();
+      }
     }
   };
 
@@ -75,6 +125,7 @@ const AudioPlayer = ({ segment, onClose }) => {
       console.log("Loaded metadata, duration:", audio.duration);
       setDuration(audio.duration);
       setIsLoading(false);
+      setHasError(false);
       
       // Check if the audio is seekable
       if (audio.seekable && audio.seekable.length > 0) {
@@ -83,13 +134,15 @@ const AudioPlayer = ({ segment, onClose }) => {
         setIsSeekable(seekable);
         
         if (!seekable) {
-          console.warn("Audio is not seekable. This could be due to:");
-          console.warn("1. Server not supporting range requests");
-          console.warn("2. Audio encoding issues");
-          console.warn("3. CORS restrictions on range requests");
+          console.warn("Audio is not seekable. Auto-preloading...");
+          // Automatically preload if not seekable
+          enableSeekingWorkaround();
         }
       } else {
         setIsSeekable(false);
+        console.warn("Audio is not seekable. Auto-preloading...");
+        // Automatically preload if not seekable
+        enableSeekingWorkaround();
       }
     };
 
@@ -99,6 +152,7 @@ const AudioPlayer = ({ segment, onClose }) => {
 
     const handlePlay = () => {
       dispatch(setIsPlaying(true));
+      setHasError(false);
     };
 
     const handlePause = () => {
@@ -114,10 +168,16 @@ const AudioPlayer = ({ segment, onClose }) => {
       setIsLoading(false);
       console.error("Error loading audio:", e);
       setIsSeekable(false);
+      setHasError(true);
+      setErrorMessage("Failed to load audio. The file may be corrupted or unavailable.");
+      
+      // Try to preload as a fallback
+      enableSeekingWorkaround();
     };
 
     const handleCanPlayThrough = () => {
       setIsLoading(false);
+      setHasError(false);
     };
 
     const handleStalled = () => {
@@ -160,14 +220,7 @@ const AudioPlayer = ({ segment, onClose }) => {
 
     // Auto-play when component mounts if this is the current playing segment
     if (currentPlayingId === segment.id) {
-      const playAudio = async () => {
-        try {
-          await audio.play();
-        } catch (err) {
-          console.error("Auto-play failed:", err);
-        }
-      };
-      playAudio();
+      tryPlayAudio(audio);
     }
 
     return () => {
@@ -190,7 +243,7 @@ const AudioPlayer = ({ segment, onClose }) => {
     // Only control audio if this is the current playing segment
     if (currentPlayingId === segment.id) {
       if (isPlaying && audio.paused) {
-        audio.play().catch(err => console.error("Play failed:", err));
+        tryPlayAudio(audio);
       } else if (!isPlaying && !audio.paused) {
         audio.pause();
       }
@@ -233,6 +286,23 @@ const AudioPlayer = ({ segment, onClose }) => {
     window.open(fullSrc, '_blank');
   };
 
+  // Retry loading the audio
+  const handleRetry = () => {
+    setHasError(false);
+    setIsLoading(true);
+    
+    // Reset the audio element
+    if (audioRef.current) {
+      audioRef.current.src = fullSrc;
+      audioRef.current.load();
+      
+      // Try to play if it's the current playing segment
+      if (currentPlayingId === segment.id && isPlaying) {
+        setTimeout(() => tryPlayAudio(audioRef.current), 100);
+      }
+    }
+  };
+
   // Calculate the max value for the progress bar
   const progressMax = duration > 0 ? duration : (segment.duration_seconds || 0);
 
@@ -245,8 +315,13 @@ const AudioPlayer = ({ segment, onClose }) => {
             onClick={handleExternalPlayPause}
             className="p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-colors duration-200"
             aria-label={isPlaying && currentPlayingId === segment.id ? 'Pause' : 'Play'}
+            disabled={isPreloading || hasError}
           >
-            {(isPlaying && currentPlayingId === segment.id) ? (
+            {isPreloading ? (
+              <svg className="w-6 h-6 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            ) : (isPlaying && currentPlayingId === segment.id) ? (
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
               </svg>
@@ -258,17 +333,28 @@ const AudioPlayer = ({ segment, onClose }) => {
           </button>
           <div className="min-w-0">
             <h3 className="font-semibold text-white text-lg truncate">
-              {segment.title || 'Untitled Audio'}
+              {segment.title ? (
+                segment.title
+              ) : (
+                `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
+                  segment.title_before && segment.title_after ? " - " : ""
+                }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() || 
+                "Untitled Report Item"
+              )}
+              <p className="text-sm text-blue-100">
+                Duration: {formatTime(segment.duration_seconds)} • 
+                Start: {formatHeaderTime(segment.start_time)} • 
+                End: {formatHeaderTime(segment.end_time)}
+              </p>
+
             </h3>
-            <p className="text-sm text-blue-100">
-              {formatTime(segment.duration_seconds)} • {formatHeaderTime(segment.start_time)}
-            </p>
           </div>
         </div>
         <button 
           onClick={onClose}
           className="p-1 rounded-full hover:bg-blue-400 transition-colors duration-200"
           aria-label="Close audio player"
+          disabled={isPreloading}
         >
           <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -287,13 +373,13 @@ const AudioPlayer = ({ segment, onClose }) => {
             max={progressMax}
             value={currentTime}
             onChange={handleSeek}
-            disabled={!isSeekable}
+            disabled={!isSeekable || isPreloading || hasError}
             className={`flex-1 h-2 rounded-lg appearance-none cursor-pointer 
               [&::-webkit-slider-thumb]:appearance-none 
               [&::-webkit-slider-thumb]:h-4 
               [&::-webkit-slider-thumb]:w-4 
               [&::-webkit-slider-thumb]:rounded-full 
-              ${isSeekable 
+              ${isSeekable && !isPreloading && !hasError
                 ? 'bg-gray-200 [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:cursor-pointer' 
                 : 'bg-gray-100 [&::-webkit-slider-thumb]:bg-gray-400 [&::-webkit-slider-thumb]:cursor-not-allowed'}`}
             style={{
@@ -303,33 +389,31 @@ const AudioPlayer = ({ segment, onClose }) => {
           <span className="text-xs text-gray-500 w-10">{formatTime(progressMax)}</span>
         </div>
         
-        {!isSeekable && !seekWarningDismissed && (
-          <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded-md flex justify-between items-center">
-            <div>
-              <strong>Seeking is not available for this audio file</strong>
-              <p className="mt-1">This is usually a server configuration issue.</p>
-            </div>
-            <button 
-              onClick={() => setSeekWarningDismissed(true)}
-              className="ml-2 text-amber-800 hover:text-amber-900"
-              aria-label="Dismiss warning"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        {isPreloading && (
+          <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded-md">
+            <div className="flex items-center">
+              <svg className="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-            </button>
+              <span>Preloading audio for seeking functionality...</span>
+            </div>
           </div>
         )}
         
-        {!isSeekable && (
-          <div className="preload-section">
-            <button 
-              onClick={enableSeekingWorkaround}
-              disabled={isPreloading}
-              className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors duration-200"
-            >
-              {isPreloading ? 'Loading...' : 'Preload Audio for Seeking'}
-            </button>
+        {hasError && (
+          <div className="text-xs text-red-600 bg-red-50 p-3 rounded-md">
+            <div className="flex justify-between items-start">
+              <div>
+                <strong>Error playing audio</strong>
+                <p className="mt-1">{errorMessage}</p>
+              </div>
+              <button 
+                onClick={handleRetry}
+                className="ml-2 px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm font-medium transition-colors duration-200"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         )}
         
@@ -350,8 +434,13 @@ const AudioPlayer = ({ segment, onClose }) => {
               onClick={handleExternalPlayPause}
               className="p-2 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors duration-200"
               aria-label={isPlaying && currentPlayingId === segment.id ? 'Pause' : 'Play'}
+              disabled={isPreloading || hasError}
             >
-              {(isPlaying && currentPlayingId === segment.id) ? (
+              {isPreloading ? (
+                <svg className="w-5 h-5 text-blue-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              ) : (isPlaying && currentPlayingId === segment.id) ? (
                 <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
                 </svg>
@@ -363,7 +452,9 @@ const AudioPlayer = ({ segment, onClose }) => {
             </button>
             
             <span className="text-sm text-gray-600">
-              {isLoading ? 'Loading...' : 
+              {hasError ? 'Error' : 
+                isPreloading ? 'Preloading...' : 
+                isLoading ? 'Loading...' : 
                 (isPlaying && currentPlayingId === segment.id) ? 'Playing' : 'Paused'} • {formatTime(currentTime)} / {formatTime(progressMax)}
             </span>
           </div>
@@ -371,7 +462,7 @@ const AudioPlayer = ({ segment, onClose }) => {
           <button 
             onClick={handleDownload}
             className="flex items-center px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors duration-200"
-            disabled={isLoading}
+            disabled={isLoading || isPreloading || hasError}
           >
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

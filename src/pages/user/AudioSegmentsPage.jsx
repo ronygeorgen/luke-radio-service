@@ -44,7 +44,7 @@ const AudioSegmentsPage = () => {
     { value: 'afternoon', label: 'Afternoon (15:00–19:00)', startTime: '15:00:00', endTime: '19:00:00' },
     { value: 'evening', label: 'Evening (19:00–00:00)', startTime: '19:00:00', endTime: '23:59:59' },
     { value: 'overnight', label: 'Overnight (00:00–06:00)', startTime: '00:00:00', endTime: '06:00:00' },
-    { value: 'weekend', label: 'Weekend (Saturday & Sunday full day)', startTime: '00:00:00', endTime: '23:59:59' }
+    { value: 'weekend', label: 'Weekend (Saturday & Sunday)', startTime: '00:00:00', endTime: '23:59:59' }
   ];
 
   // Initialize with URL params or defaults
@@ -82,7 +82,8 @@ const AudioSegmentsPage = () => {
       channelId, 
       date: initialDate,
       startTime: initialStartTime,
-      endTime: initialEndTime
+      endTime: initialEndTime,
+      daypart: initialDaypart
     }));
   }, [channelId]);
 
@@ -94,7 +95,8 @@ const AudioSegmentsPage = () => {
         channelId, 
         date: filters.date,
         startTime: filters.startTime,
-        endTime: filters.endTime
+        endTime: filters.endTime,
+        daypart: filters.daypart
       }));
       
       // Update URL params
@@ -188,7 +190,7 @@ const AudioSegmentsPage = () => {
     setLocalStartTime('');
     setLocalEndTime('');
     setSearchParams({ date: today });
-    dispatch(fetchAudioSegments({ channelId, date: today, startTime: '', endTime: '' }));
+    dispatch(fetchAudioSegments({ channelId, date: today, startTime: '', endTime: '', daypart: 'none' }));
   };
 
   const handleSummaryClick = (segment) => {

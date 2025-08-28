@@ -1,20 +1,44 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { axiosInstance } from '../../services/api';
+import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 
+// audioSegmentsSlice.js
 export const fetchAudioSegments = createAsyncThunk(
   'audioSegments/fetchAudioSegments',
-  async ({ channelId, date, startTime, endTime }, { rejectWithValue }) => {
+  async ({ channelId, date, startTime, endTime, daypart }, { rejectWithValue }) => {
     try {
+      let startDatetime = null;
+      let endDatetime = null;
+      
+      if (date) {
+        if (daypart === 'weekend') {
+          // Special handling for weekend - you might need to adjust this
+          // based on how your backend expects weekend queries
+          const dateObj = new Date(date);
+          const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Saturday
+          
+          if (dayOfWeek === 0 || dayOfWeek === 6) {
+            // It's a weekend day
+            startDatetime = convertLocalToUTC(date, '00:00:00');
+            endDatetime = convertLocalToUTC(date, '23:59:59');
+          }
+        } else if (startTime && endTime) {
+          startDatetime = convertLocalToUTC(date, startTime);
+          endDatetime = convertLocalToUTC(date, endTime);
+        } else {
+          startDatetime = convertLocalToUTC(date, '00:00:00');
+          endDatetime = convertLocalToUTC(date, '23:59:59');
+        }
+      }
+      
       const params = { 
-        channel_id: channelId, 
-        date 
+        channel_id: channelId
       };
       
-      // Only add time params if they exist
-      if (startTime) params.start_time = startTime;
-      if (endTime) params.end_time = endTime;
+      if (startDatetime) params.start_datetime = startDatetime;
+      if (endDatetime) params.end_datetime = endDatetime;
       
-      const response = await axiosInstance.get('/audio_segments_with_transcription', {
+      const response = await axiosInstance.get('/audio_segments', {
         params
       });
       return response.data;

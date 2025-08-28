@@ -1,3 +1,4 @@
+// utils/formatters.js
 export const formatDateForDisplay = (dateString) => {
   if (dateString.includes('-')) {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -20,12 +21,10 @@ export const formatDateForDisplay = (dateString) => {
 export const formatTimeDisplay = (filters, daypartOptions) => {
   if (filters.daypart && filters.daypart !== 'none') {
     const daypart = daypartOptions.find(opt => opt.value === filters.daypart);
-    return daypart.label.split('(')[1].replace(')', '');
+    return `${filters.date} (${daypart.label})`;
+  } else if (filters.startTime && filters.endTime) {
+    return `${filters.date} ${filters.startTime.substring(0, 5)}-${filters.endTime.substring(0, 5)}`;
+  } else {
+    return filters.date;
   }
-  
-  if (filters.startTime && filters.endTime) {
-    return `${filters.startTime.substring(0, 5)}–${filters.endTime.substring(0, 5)}`;
-  }
-  
-  return 'All day';
 };

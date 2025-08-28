@@ -4,11 +4,19 @@ import { Play, Pause } from "lucide-react"; // Import icons
 const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseAudio }) => {
   return (
     <div className="p-4">
-      <h2 className="text-lg font-bold text-gray-900 flex items-center">
-        {segment.title || "Untitled Report Item"}
+     <h2 className="text-lg font-bold text-gray-900 flex items-center">
+        {segment.title ? (
+          segment.title
+        ) : (
+          `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
+            segment.title_before && segment.title_after ? " - " : ""
+          }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() || 
+          "Untitled Report Item"
+        )}
       </h2>
 
-      <div className="flex items-center justify-between">
+
+      <div className="flex items-center justify-between mt-4">
         <div className="flex items-center space-x-4">
           <button
             onClick={() => handlePlayPauseAudio(segment.id)}
@@ -26,6 +34,7 @@ const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseA
           </button>
 
           <div className="flex flex-col">
+            <span className="text-xs font-medium text-gray-500">Start Time</span>
             <span className="text-sm text-gray-900">
               {new Date(segment.start_time).toLocaleDateString()}
             </span>
@@ -34,30 +43,18 @@ const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseA
             </span>
           </div>
 
-          <div className="text-sm text-gray-700">{segment.duration_seconds}s</div>
-
-          <div className="flex items-center">
-            <span className="text-sm text-gray-700 mr-1">Sentiment:</span>
-            {segment.analysis?.sentiment ? (
-              <span
-                className={`px-2 py-0.5 text-xs rounded-full ${
-                  segment.analysis.sentiment >= 70
-                    ? "bg-green-100 text-green-800"
-                    : segment.analysis.sentiment >= 40
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
-                {segment.analysis.sentiment >= 70
-                  ? "Positive"
-                  : segment.analysis.sentiment >= 40
-                  ? "Neutral"
-                  : "Negative"}
-              </span>
-            ) : (
-              <span className="text-xs text-gray-500">N/A</span>
-            )}
+          <div className="flex flex-col">
+            <span className="text-xs font-medium text-gray-500">End Time</span>
+            <span className="text-sm text-gray-900">
+              {new Date(segment.end_time).toLocaleDateString()}
+            </span>
+            <span className="text-xs text-gray-500">
+              {new Date(segment.end_time).toLocaleTimeString()}
+            </span>
           </div>
+
+
+          <div className="text-sm text-gray-700">{segment.duration_seconds}s</div>
         </div>
 
         <div className="text-sm text-gray-400 italic">No content available</div>

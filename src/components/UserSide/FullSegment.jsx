@@ -11,8 +11,15 @@ const FullSegment = ({
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-gray-900 flex items-center">
-          {segment.title || 'Untitled Report Item'}
+        <h2 className="text-lg font-bold text-gray-900 flex items-center">
+          {segment.title ? (
+            segment.title
+          ) : (
+            `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
+              segment.title_before && segment.title_after ? " - " : ""
+            }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() || 
+            "Untitled Report Item"
+          )}
         </h2>
         <div className="flex space-x-2">
           <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
@@ -28,9 +35,21 @@ const FullSegment = ({
             Details
           </h3>
           <div>
-            <label className="block text-sm font-medium text-gray-500">Date</label>
-            <p className="text-gray-900 text-sm">{new Date(segment.start_time).toLocaleString()}</p>
+            <label className="block text-sm font-medium text-gray-500 mb-1">
+              Date
+            </label>
+            <div className="space-y-1">
+              <p className="text-sm text-gray-600">
+                <span className="font-medium text-gray-800">Start:</span>{" "}
+                {new Date(segment.start_time).toLocaleString()}
+              </p>
+              <p className="text-sm text-gray-600">
+                <span className="font-medium text-gray-800">End:</span>{" "}
+                {new Date(segment.end_time).toLocaleString()}
+              </p>
+            </div>
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-500">Duration</label>
             <p className="text-gray-900 text-sm">{segment.duration_seconds} seconds</p>
@@ -90,12 +109,12 @@ const FullSegment = ({
             Metadata
           </h3>
           
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-gray-500">Topics</label>
             <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
-              {segment.analysis?.general_topics?.split('\n').length || 0} topics
+              {segment.analysis?.bucket_prompt?.split('\n').length || 0} topics
             </span>
-          </div>
+          </div> */}
           
           {segment.analysis && (
             <>
@@ -110,7 +129,7 @@ const FullSegment = ({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-500">Category</label>
+                  <label className="block text-sm font-medium text-gray-500">Bucket Prompt</label>
                   <div className="mt-1 bg-gray-50 p-2 rounded">
                     <div className="text-sm text-gray-700">
                       {segment.analysis.bucket_prompt !== 'Undefined, N/A' 
@@ -124,7 +143,7 @@ const FullSegment = ({
               <div>
                 <label className="block text-sm font-medium text-gray-500">IAB Topics</label>
                 <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
-                  {segment.analysis?.iab_topics === 'Empty_RESULT' ? 0 : 1} topics
+                  {segment.analysis?.iab_topics}
                 </span>
               </div>
             </>

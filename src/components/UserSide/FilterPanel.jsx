@@ -27,7 +27,7 @@ const FilterPanel = ({
     { value: 'afternoon', label: 'Afternoon (15:00–19:00)', startTime: '15:00:00', endTime: '19:00:00' },
     { value: 'evening', label: 'Evening (19:00–00:00)', startTime: '19:00:00', endTime: '23:59:59' },
     { value: 'overnight', label: 'Overnight (00:00–06:00)', startTime: '00:00:00', endTime: '06:00:00' },
-    { value: 'weekend', label: 'Weekend (Saturday & Sunday full day)', startTime: '00:00:00', endTime: '23:59:59' }
+    { value: 'weekend', label: 'Weekend (Saturday & Sunday)', startTime: '00:00:00', endTime: '23:59:59' }
   ];
 
   // Close filter when clicking outside
