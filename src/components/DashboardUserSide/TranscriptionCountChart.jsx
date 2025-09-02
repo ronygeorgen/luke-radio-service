@@ -1,5 +1,5 @@
 import { Users } from 'lucide-react';
-import { transcriptionCountByShift } from '../../data/DashboardData';
+import { transcriptionCountByShift } from '../../data/dashboardData';
 
 const TranscriptionCountChart = () => {
   const total = transcriptionCountByShift.reduce((sum, item) => sum + item.count, 0);

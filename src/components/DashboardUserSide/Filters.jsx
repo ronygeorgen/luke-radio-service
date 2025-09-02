@@ -1,5 +1,5 @@
 import { Filter, Calendar, TrendingUp, RotateCcw } from 'lucide-react';
-import { filters } from '../../data/DashboardData';
+import { filters } from '../../data/dashboardData';
 
 
 const Filters = () => {

@@ -1,5 +1,5 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { topTopicsRanking } from '../../data/DashboardData';
+import { topTopicsRanking } from '../../data/dashboardData';
 
 
 const TopTopicsTable = () => {

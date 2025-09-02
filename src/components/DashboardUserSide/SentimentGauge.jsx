@@ -1,4 +1,4 @@
-import { dashboardStats } from "../../data/DashboardData";
+import { dashboardStats } from "../../data/dashboardData";
 
 const SentimentGauge = () => {
   const sentimentValue = dashboardStats.avgSentimentScore;

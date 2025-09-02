@@ -1,5 +1,5 @@
 import { BarChart } from 'lucide-react';
-import { topicsDistribution } from '../../data/DashboardData';
+import { topicsDistribution } from '../../data/dashboardData';
 
 
 const TopicsDistribution = () => {

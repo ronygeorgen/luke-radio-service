@@ -1,5 +1,5 @@
 import { TrendingUp } from 'lucide-react';
-import { sentimentByShift } from '../../data/DashboardData';
+import { sentimentByShift } from '../../data/dashboardData';
 
 const SentimentByShiftChart = () => {
   const maxValue = Math.max(...sentimentByShift.map(d => d.value));

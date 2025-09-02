@@ -1,5 +1,5 @@
 import { Clock } from 'lucide-react';
-import { shiftData } from '../../data/DashboardData';
+import { shiftData } from '../../data/dashboardData';
 
 const ShiftCards = () => {
   const shifts = [

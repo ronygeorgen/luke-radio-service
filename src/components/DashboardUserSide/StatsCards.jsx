@@ -1,5 +1,5 @@
 import { MessageSquare, TrendingUp, Users, Clock } from 'lucide-react';
-import { dashboardStats } from '../../data/DashboardData';
+import { dashboardStats } from '../../data/dashboardData';
 
 
 const StatsCards = () => {

@@ -1,5 +1,5 @@
 import { FileText } from 'lucide-react';
-import { recentTranscriptions } from '../../data/DashboardData';
+import { recentTranscriptions } from '../../data/dashboardData';
 
 
 const TranscriptionSummaries = () => {

@@ -1,5 +1,5 @@
 import { Users } from 'lucide-react';
-import { topTopicsByShift } from '../../data/DashboardData';
+import { topTopicsByShift } from '../../data/dashboardData';
 
 const TopTopicsByShift = () => {
   return (
