@@ -1,6 +1,7 @@
 import { BarChart } from 'lucide-react';
 import { topicsDistribution } from '../../data/DashboardData';
 
+
 const TopicsDistribution = () => {
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-8">
