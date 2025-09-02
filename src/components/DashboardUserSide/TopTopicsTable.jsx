@@ -1,6 +1,7 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { topTopicsRanking } from '../../data/DashboardData';
 
+
 const TopTopicsTable = () => {
   const getTrendIcon = (trend) => {
     switch (trend) {

@@ -1,6 +1,7 @@
 import { FileText } from 'lucide-react';
 import { recentTranscriptions } from '../../data/DashboardData';
 
+
 const TranscriptionSummaries = () => {
   const getSentimentColor = (sentiment) => {
     switch (sentiment.toLowerCase()) {
