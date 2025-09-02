@@ -5,6 +5,7 @@ export const dashboardStats = {
   activeShifts: 3
 };
 
+
 export const sentimentData = [
   { date: '01/01/2024', sentiment: 68 },
   { date: '02/01/2024', sentiment: 72 },
