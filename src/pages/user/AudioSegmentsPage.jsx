@@ -18,6 +18,16 @@ const AudioSegmentsPage = () => {
   const startTime = searchParams.get('startTime');
   const endTime = searchParams.get('endTime');
   const daypart = searchParams.get('daypart');
+
+  const channelName = searchParams.get("name"); 
+  console.log('channel name ====', channelName);
+  useEffect(() => {
+    if (channelName) {
+      localStorage.setItem("channelName", channelName);
+      console.log("Channel name saved:", channelName);
+    }
+  }, [channelName]);
+  
   
   const dispatch = useDispatch();
   
@@ -208,6 +218,7 @@ const AudioSegmentsPage = () => {
       <div className="min-h-screen bg-gray-50">
         <Header 
           channelInfo={channelInfo} 
+          channelName={channelName}
           filters={filters} 
           formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)}
           dispatch={dispatch}
@@ -244,6 +255,7 @@ const AudioSegmentsPage = () => {
     <div className="min-h-screen bg-gray-50">
       <Header 
         channelInfo={channelInfo} 
+        channelName={channelName}
         filters={filters} 
         formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)}
         dispatch={dispatch}

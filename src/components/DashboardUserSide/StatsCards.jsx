@@ -1,33 +1,34 @@
 import { MessageSquare, TrendingUp, Users, Clock } from 'lucide-react';
-import { dashboardStats } from '../../data/dashboardData';
-
+import { useDashboard } from '../../hooks/useDashboard';
 
 const StatsCards = () => {
-  const stats = [
+  const { stats = {}, loading } = useDashboard();
+
+  const statsData = [
     {
       title: 'Total Transcriptions',
-      value: dashboardStats.totalTranscriptions.toLocaleString(),
+      value: loading ? '...' : (stats.totalTranscriptions || 0).toLocaleString(),
       icon: MessageSquare,
       bgColor: 'bg-blue-500',
       textColor: 'text-white'
     },
     {
       title: 'Avg Sentiment Score',
-      value: dashboardStats.avgSentimentScore,
+      value: loading ? '...' : stats.avgSentimentScore || 0,
       icon: TrendingUp,
       bgColor: 'bg-green-500',
       textColor: 'text-white'
     },
     {
       title: 'Unique Topics',
-      value: dashboardStats.uniqueTopics,
+      value: loading ? '...' : stats.uniqueTopics || 0,
       icon: Users,
       bgColor: 'bg-purple-500',
       textColor: 'text-white'
     },
     {
       title: 'Active Shifts',
-      value: dashboardStats.activeShifts,
+      value: loading ? '...' : stats.activeShifts || 0,
       icon: Clock,
       bgColor: 'bg-orange-500',
       textColor: 'text-white'
@@ -36,7 +37,7 @@ const StatsCards = () => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      {stats.map((stat, index) => {
+      {statsData.map((stat, index) => {
         const IconComponent = stat.icon;
         return (
           <div

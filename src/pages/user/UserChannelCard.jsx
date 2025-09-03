@@ -5,9 +5,11 @@ const UserChannelCard = ({ channel }) => {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
-    navigate(`/channels/${channel.id}/segments?date=${today}&hour=0`);
-  };
+      const today = new Date().toISOString().split("T")[0].replace(/-/g, "");
+      navigate(
+        `/channels/${channel.id}/segments?date=${today}&hour=0&name=${encodeURIComponent(channel.name)}`
+      );
+    };
 
   return (
     <div

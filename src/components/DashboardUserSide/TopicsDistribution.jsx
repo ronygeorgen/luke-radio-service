@@ -1,47 +1,101 @@
-import { BarChart } from 'lucide-react';
-import { topicsDistribution } from '../../data/dashboardData';
-
+import { BarChart } from "lucide-react";
+import { useDashboard } from "../../hooks/useDashboard";
+import { useState } from "react";
 
 const TopicsDistribution = () => {
+  const { topicsDistribution, loading } = useDashboard();
+  const [hoveredTopic, setHoveredTopic] = useState(null);
+  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-8">
+        <div className="flex items-center space-x-2 mb-6">
+          <BarChart className="w-5 h-5 text-purple-500" />
+          <h3 className="text-lg font-semibold text-gray-800">
+            Top Topics Distribution
+          </h3>
+        </div>
+        <div className="space-y-3">
+          {[...Array(5)].map((_, index) => (
+            <div key={index} className="flex items-center">
+              <div className="w-32 h-4 bg-gray-200 rounded animate-pulse mr-4"></div>
+              <div className="flex-1 h-6 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!topicsDistribution || topicsDistribution.length === 0) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-8">
+        <div className="flex items-center space-x-2 mb-6">
+          <BarChart className="w-5 h-5 text-purple-500" />
+          <h3 className="text-lg font-semibold text-gray-800">
+            Top Topics Distribution
+          </h3>
+        </div>
+        <div className="text-center text-gray-500 py-8">
+          No topics data available
+        </div>
+      </div>
+    );
+  }
+
+  const maxValue = Math.max(...topicsDistribution.map((t) => t.value));
+  const normalizedData = topicsDistribution.map((topic) => ({
+    ...topic,
+    normalizedValue: topic.value / maxValue,
+  }));
+
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-8">
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-8 relative">
       <div className="flex items-center space-x-2 mb-6">
         <BarChart className="w-5 h-5 text-purple-500" />
-        <h3 className="text-lg font-semibold text-gray-800">Top Topics Distribution</h3>
+        <h3 className="text-lg font-semibold text-gray-800">
+          Top Topics Distribution
+        </h3>
       </div>
 
       <div className="space-y-3">
-        {topicsDistribution.map((topic, index) => (
+        {normalizedData.slice(0, 10).map((topic, index) => (
           <div key={index} className="flex items-center">
-            <div className="w-32 text-sm text-gray-600 text-right pr-4">
+            <div className="w-32 text-sm text-gray-600 text-right pr-4 truncate">
               {topic.topic}
             </div>
             <div className="flex-1 relative">
               <div className="bg-gray-200 h-6 rounded-r">
-                <div 
-                  className="bg-gray-400 h-6 rounded-r transition-all duration-1000 flex items-center justify-end pr-2"
-                  style={{ width: `${topic.value * 100}%` }}
-                >
-                  {index === 0 && (
-                    <div className="bg-white rounded px-2 py-1 text-xs shadow-lg">
-                      <div className="font-semibold">1</div>
-                      <div className="text-blue-500">Count: 140</div>
-                    </div>
-                  )}
-                </div>
+                <div
+                  className="bg-blue-400 h-6 rounded-r transition-all duration-1000"
+                  style={{ width: `${topic.normalizedValue * 100}%` }}
+                  onMouseEnter={() => setHoveredTopic(topic)}
+                  onMouseMove={(e) => {
+                    setCursorPos({ x: e.clientX, y: e.clientY });
+                  }}
+                  onMouseLeave={() => setHoveredTopic(null)}
+                />
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="flex justify-between text-xs text-gray-500 mt-4">
-        <span>0</span>
-        <span>0.25</span>
-        <span>0.5</span>
-        <span>0.75</span>
-        <span>1</span>
-      </div>
+      {/* Tooltip */}
+      {hoveredTopic && (
+        <div
+          className="fixed bg-white text-gray-700 text-xs px-3 py-2 rounded shadow-lg border border-gray-200 z-50"
+          style={{
+            left: cursorPos.x + 12, // small offset to the right
+            top: cursorPos.y + 12, // small offset below
+            pointerEvents: "none",
+          }}
+        >
+          <div className="font-medium">{hoveredTopic.topic}</div>
+          <div>Count: {hoveredTopic.value}</div>
+        </div>
+      )}
     </div>
   );
 };
