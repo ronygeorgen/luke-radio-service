@@ -2,21 +2,46 @@ import React from "react";
 import { Play, Pause } from "lucide-react"; // Import icons
 
 const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseAudio }) => {
+  // Check if this is a music segment and extract artist names
+  const isMusicSegment = segment.metadata_json?.source === 'music';
+  const artistNames = isMusicSegment 
+    ? segment.metadata_json.artists?.map(artist => artist.name).join(', ') 
+    : null;
+
   return (
     <div className="p-4">
-     <h2 className="text-lg font-bold text-gray-900 flex items-center">
-        {segment.title ? (
-          segment.title
-        ) : (
-          `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
-            segment.title_before && segment.title_after ? " - " : ""
-          }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() || 
-          "Untitled Report Item"
-        )}
-      </h2>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-lg font-bold text-gray-900 flex items-center">
+          {segment.title ? (
+            segment.title
+          ) : (
+            `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
+              segment.title_before && segment.title_after ? " - " : ""
+            }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() || 
+            "Untitled Report Item"
+          )}
+        </h2>
+        <div className="flex space-x-2">
+          <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
+            {segment.duration_seconds}s
+          </span>
+          {isMusicSegment && (
+            <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">
+              Music
+            </span>
+          )}
+        </div>
+      </div>
 
+      {/* Artist name display for music segments */}
+      {isMusicSegment && artistNames && (
+        <div className="mb-2">
+          <span className="text-sm font-medium text-gray-700">Artist: </span>
+          <span className="text-sm text-gray-900">{artistNames}</span>
+        </div>
+      )}
 
-      <div className="flex items-center justify-between mt-4">
+      <div className="flex items-center justify-between mt-2">
         <div className="flex items-center space-x-4">
           <button
             onClick={() => handlePlayPauseAudio(segment.id)}
@@ -52,7 +77,6 @@ const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseA
               {new Date(segment.end_time).toLocaleTimeString()}
             </span>
           </div>
-
 
           <div className="text-sm text-gray-700">{segment.duration_seconds}s</div>
         </div>

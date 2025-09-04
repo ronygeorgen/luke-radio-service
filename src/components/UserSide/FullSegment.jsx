@@ -8,6 +8,12 @@ const FullSegment = ({
   handleSummaryClick, 
   handleTranscriptionClick 
 }) => {
+  // Check if this is a music segment and extract artist names
+  const isMusicSegment = segment.metadata_json?.source === 'music';
+  const artistNames = isMusicSegment 
+    ? segment.metadata_json.artists?.map(artist => artist.name).join(', ') 
+    : null;
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-4">
@@ -25,6 +31,11 @@ const FullSegment = ({
           <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
             {segment.duration_seconds}s
           </span>
+          {isMusicSegment && (
+            <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">
+              Music
+            </span>
+          )}
         </div>
       </div>
 
@@ -34,6 +45,17 @@ const FullSegment = ({
           <h3 className="font-bold text-center text-white bg-gradient-to-r from-blue-500 to-blue-600 py-2 px-4 rounded-md mb-4">
             Details
           </h3>
+          
+          {/* Artist information for music segments */}
+          {isMusicSegment && artistNames && (
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">
+                Artist
+              </label>
+              <p className="text-sm text-gray-900 font-medium">{artistNames}</p>
+            </div>
+          )}
+          
           <div>
             <label className="block text-sm font-medium text-gray-500 mb-1">
               Date
@@ -109,12 +131,24 @@ const FullSegment = ({
             Metadata
           </h3>
           
-          {/* <div>
-            <label className="block text-sm font-medium text-gray-500">Topics</label>
-            <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
-              {segment.analysis?.bucket_prompt?.split('\n').length || 0} topics
-            </span>
-          </div> */}
+          {/* Additional music metadata for music segments */}
+          {isMusicSegment && segment.metadata_json && (
+            <div className="space-y-3">
+              {segment.metadata_json.external_ids?.isrc && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">ISRC</label>
+                  <p className="text-sm text-gray-700">{segment.metadata_json.external_ids.isrc[0]}</p>
+                </div>
+              )}
+              
+              {segment.metadata_json.external_ids?.upc && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">UPC</label>
+                  <p className="text-sm text-gray-700">{segment.metadata_json.external_ids.upc[0]}</p>
+                </div>
+              )}
+            </div>
+          )}
           
           {segment.analysis && (
             <>
