@@ -105,7 +105,7 @@ const FullSegment = ({
 
         {/* Right column - Metadata */}
         <div className="md:col-span-3 space-y-4">
-          <h3 className="font-bold text-center text-white bg-gradient-to-r from-purple-500 to-purple-600 py-2 px-4 rounded-md mb-4">
+          <h3 className="font-bold text-center text-white bg-gradient-to-r from-blue-500 to-blue-600 py-2 px-4 rounded-md mb-4">
             Metadata
           </h3>
           

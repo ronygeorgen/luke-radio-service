@@ -1,4 +1,5 @@
 import { BarChart3, RefreshCw } from 'lucide-react';
+import { Link } from 'react-router-dom'
 
 const Hero = () => {
   return (
@@ -16,8 +17,7 @@ const Hero = () => {
           </div>
         </div>
         <button className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2">
-          <RefreshCw className="w-4 h-4" />
-          <span>Refresh Data</span>
+           <Link to='/user-channels'><span>Switch to Channels</span> </Link>
         </button>
       </div>
     </div>

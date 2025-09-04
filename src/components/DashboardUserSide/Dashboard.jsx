@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import Hero from './Hero';
 import Filters from './Filters';
 import StatsCards from './StatsCards';
@@ -15,20 +15,34 @@ import TopTopicsTable from './TopTopicsTable';
 import TopTopicsByShift from './TopTopicsByShift';
 import TranscriptionSummaries from './TranscriptionSummaries';
 import { useDashboard } from '../../hooks/useDashboard';
+import { fetchShiftAnalytics } from '../../store/slices/shiftAnalyticsSlice';
 import ErrorBoundary from '../ErrorBoundary';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('main');
   const { loadDashboardData, loading, error } = useDashboard();
+  const dispatch = useDispatch();
+  
+  // Get shift analytics data from Redux store
+  const shiftAnalytics = useSelector((state) => state.shiftAnalytics);
   
   useEffect(() => {
     // Load data for today only
     const today = new Date().toISOString().split('T')[0];
     console.log('Loading dashboard data for today:', today);
+    
+    // Load both dashboard and shift analytics data
     loadDashboardData(today, today);
-  }, [loadDashboardData]);
+    dispatch(fetchShiftAnalytics({ startDate: today, endDate: today }));
+  }, [loadDashboardData, dispatch]);
 
-  if (loading) {
+  // Handle loading state for both dashboard and shift analytics
+  const isLoading = loading || (activeTab === 'shift' && shiftAnalytics.loading);
+  
+  // Handle error state for both dashboard and shift analytics
+  const hasError = error || (activeTab === 'shift' && shiftAnalytics.error);
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
         <div className="text-center">
@@ -39,11 +53,12 @@ function Dashboard() {
     );
   }
 
-  if (error) {
+  if (hasError) {
+    const errorMessage = error || shiftAnalytics.error;
     return (
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          <strong>Error:</strong> {error}
+          <strong>Error:</strong> {errorMessage}
         </div>
       </div>
     );
@@ -54,23 +69,19 @@ function Dashboard() {
       <Hero />
       <Filters />
       
-      {activeTab === 'main' ? <ErrorBoundary><StatsCards /></ErrorBoundary> : <ShiftCards />}
+      <ErrorBoundary><StatsCards /></ErrorBoundary>
       
       <AnalyticsTabs activeTab={activeTab} setActiveTab={setActiveTab}>
         {activeTab === 'main' ? (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
-              {/* Gauge takes 1 column */}
               <ErrorBoundary>
                 <SentimentGauge />
               </ErrorBoundary>
-
-              {/* Chart takes 2 columns */}
               <div className="lg:col-span-2">
                 <SentimentChart />
               </div>
             </div>
-
             
             <TopicsDistribution />
 
@@ -79,16 +90,25 @@ function Dashboard() {
               <TopTopicsTable />
             </div>
 
-            <TranscriptionSummaries />
+            {/* <TranscriptionSummaries /> */}
           </>
         ) : (
           <>
+            <ErrorBoundary>
+              <ShiftCards />
+            </ErrorBoundary>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              <SentimentByShiftChart />
-              <TranscriptionCountChart />
+              <ErrorBoundary>
+                <SentimentByShiftChart />
+              </ErrorBoundary>
+              <ErrorBoundary>
+                <TranscriptionCountChart />
+              </ErrorBoundary>
             </div>
             
-            <TopTopicsByShift />
+            <ErrorBoundary>
+              <TopTopicsByShift />
+            </ErrorBoundary>
           </>
         )}
       </AnalyticsTabs>

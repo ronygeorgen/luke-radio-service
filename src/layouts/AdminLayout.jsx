@@ -1,8 +1,11 @@
 import { Outlet } from 'react-router-dom';
 import { Settings, Layers } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 
 const AdminLayout = () => {
+    const navigate = useNavigate();
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm border-b border-gray-200">
@@ -12,6 +15,16 @@ const AdminLayout = () => {
               <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
               <p className="text-gray-600 mt-1">Manage your channels and system settings</p>
             </div>
+              <button
+                onClick={() => navigate("/user-channels")}
+                className="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 
+                          text-white rounded-lg font-medium shadow-md 
+                          hover:from-blue-600 hover:to-blue-700 
+                          focus:outline-none focus:ring-2 focus:ring-offset-1 
+                          focus:ring-blue-500 transition"
+              >
+                Switch to Channels
+            </button>
           </div>
           
           <div className="flex space-x-8 border-b border-gray-200">

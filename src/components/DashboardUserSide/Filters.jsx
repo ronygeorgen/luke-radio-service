@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { Filter, Calendar, TrendingUp, RotateCcw } from "lucide-react";
 import { useDashboard } from "../../hooks/useDashboard";
+import { useDispatch } from "react-redux";
+import { fetchShiftAnalytics } from "../../store/slices/shiftAnalyticsSlice";
 
 const Filters = () => {
   const { dateRange = {}, loadDashboardData } = useDashboard();
+  const dispatch = useDispatch(); // Add this
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempStartDate, setTempStartDate] = useState(dateRange.startDate || "");
@@ -21,6 +24,7 @@ const Filters = () => {
 
   const handleApply = () => {
     loadDashboardData(tempStartDate, tempEndDate);
+    dispatch(fetchShiftAnalytics({ startDate: tempStartDate, endDate: tempEndDate })); // Add this
     setShowDatePicker(false);
   };
 
@@ -29,6 +33,7 @@ const Filters = () => {
     setTempStartDate(today);
     setTempEndDate(today);
     loadDashboardData(today, today);
+    dispatch(fetchShiftAnalytics({ startDate: today, endDate: today })); // Add this
   };
 
   const isTodaySelected = () => {
@@ -120,11 +125,11 @@ const Filters = () => {
           </div>
 
           {/* Sentiment */}
-          <div className="flex items-center space-x-2">
+          {/* <div className="flex items-center space-x-2">
             <TrendingUp className="w-4 h-4 text-gray-500" />
             <span className="text-sm text-gray-600">Sentiment:</span>
             <span className="font-medium text-gray-900">0 to 100</span>
-          </div>
+          </div> */}
         </div>
 
         {/* Reset Button */}

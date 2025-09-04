@@ -1,8 +1,15 @@
 import { TrendingUp } from 'lucide-react';
-import { sentimentByShift } from '../../data/dashboardData';
+import { useSelector } from 'react-redux';
 
 const SentimentByShiftChart = () => {
-  const maxValue = Math.max(...sentimentByShift.map(d => d.value));
+  const shiftAnalytics = useSelector((state) => state.shiftAnalytics.data);
+  
+  if (!shiftAnalytics || !shiftAnalytics.sentimentByShift) {
+    return <div>Loading sentiment data...</div>;
+  }
+
+  const sentimentData = shiftAnalytics.sentimentByShift;
+  const maxValue = Math.max(...sentimentData.map(d => d.value));
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -28,7 +35,7 @@ const SentimentByShiftChart = () => {
           <text x="10" y="170" className="text-xs fill-gray-500">0</text>
 
           {/* Bars */}
-          {sentimentByShift.map((item, index) => {
+          {sentimentData.map((item, index) => {
             const barHeight = (item.value / maxValue) * 140;
             const barWidth = 60;
             const x = 60 + (index * 100);
@@ -60,7 +67,7 @@ const SentimentByShiftChart = () => {
 
         {/* X-axis labels */}
         <div className="flex justify-center space-x-8 mt-4">
-          {sentimentByShift.map((item, index) => (
+          {sentimentData.map((item, index) => (
             <span key={index} className="text-xs text-gray-500 transform -rotate-45 origin-center">
               {item.shift}
             </span>

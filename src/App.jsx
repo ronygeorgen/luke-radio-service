@@ -8,7 +8,6 @@ import ChannelsPage from './pages/admin/ChannelsPage';
 import SettingsPage from './pages/admin/SettingsPage';
 import UserChannelsPage from './pages/user/UserChannelsPage';
 import UserAudioSegmentsPage from './pages/user/AudioSegmentsPage';
-import LandingPage from './pages/user/LandingPage';
 import Dashboard from './components/DashboardUserSide/Dashboard';
 
 function App() {
@@ -17,8 +16,8 @@ function App() {
       <Router>
         <div className="min-h-screen bg-gray-50">
           <Routes>
-            {/* Landing Page */}
-            <Route path="/" element={<LandingPage />} />
+            {/* Landing Page → Now UserChannelsPage */}
+            <Route path="/" element={<UserChannelsPage />} />
 
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminLayout />}>

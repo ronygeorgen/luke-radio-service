@@ -1,12 +1,19 @@
 import { Users } from 'lucide-react';
-import { transcriptionCountByShift } from '../../data/dashboardData';
+import { useSelector } from 'react-redux';
 
 const TranscriptionCountChart = () => {
-  const total = transcriptionCountByShift.reduce((sum, item) => sum + item.count, 0);
+  const shiftAnalytics = useSelector((state) => state.shiftAnalytics.data);
+  
+  if (!shiftAnalytics || !shiftAnalytics.transcriptionCountByShift) {
+    return <div>Loading transcription data...</div>;
+  }
+
+  const transcriptionData = shiftAnalytics.transcriptionCountByShift;
+  const total = transcriptionData.reduce((sum, item) => sum + item.count, 0);
 
   // Calculate angles for pie chart
   let currentAngle = 0;
-  const segments = transcriptionCountByShift.map((item) => {
+  const segments = transcriptionData.map((item) => {
     const percentage = (item.count / total) * 100;
     const angle = (item.count / total) * 360;
     const startAngle = currentAngle;

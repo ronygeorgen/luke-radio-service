@@ -1,22 +1,30 @@
 import { Clock } from 'lucide-react';
-import { shiftData } from '../../data/dashboardData';
+import { useSelector } from 'react-redux';
 
 const ShiftCards = () => {
+  const shiftAnalytics = useSelector((state) => state.shiftAnalytics.data);
+  
+  if (!shiftAnalytics || !shiftAnalytics.shiftData) {
+    return <div>Loading shift data...</div>;
+  }
+
+  const { morning, afternoon, night } = shiftAnalytics.shiftData;
+
   const shifts = [
     {
-      ...shiftData.morning,
+      ...morning,
       icon: Clock,
       bgColor: 'bg-white',
       borderColor: 'border-gray-200'
     },
     {
-      ...shiftData.afternoon,
+      ...afternoon,
       icon: Clock,
       bgColor: 'bg-white',
       borderColor: 'border-gray-200'
     },
     {
-      ...shiftData.night,
+      ...night,
       icon: Clock,
       bgColor: 'bg-white',
       borderColor: 'border-gray-200'

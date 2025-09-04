@@ -1,7 +1,15 @@
 import { Users } from 'lucide-react';
-import { topTopicsByShift } from '../../data/dashboardData';
+import { useSelector } from 'react-redux';
 
 const TopTopicsByShift = () => {
+  const shiftAnalytics = useSelector((state) => state.shiftAnalytics.data);
+  
+  if (!shiftAnalytics || !shiftAnalytics.topTopicsByShift) {
+    return <div>Loading topics data...</div>;
+  }
+
+  const { morning, afternoon, night } = shiftAnalytics.topTopicsByShift;
+
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
       <div className="flex items-center space-x-2 mb-6">
@@ -14,15 +22,19 @@ const TopTopicsByShift = () => {
         <div>
           <h4 className="font-semibold text-gray-700 mb-4 text-center">Morning Shift (6AM-2PM)</h4>
           <div className="space-y-3">
-            {topTopicsByShift.morning.map((item) => (
-              <div key={item.rank} className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-500">{item.rank}.</span>
-                  <span className="text-sm text-gray-900">{item.topic}</span>
+            {morning && morning.length > 0 ? (
+              morning.map((item) => (
+                <div key={item.rank} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-500">{item.rank}.</span>
+                    <span className="text-sm text-gray-900">{item.topic}</span>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700">{item.count}</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-700">{item.count}</span>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 text-center">No data available</p>
+            )}
           </div>
         </div>
 
@@ -30,15 +42,19 @@ const TopTopicsByShift = () => {
         <div>
           <h4 className="font-semibold text-gray-700 mb-4 text-center">Afternoon Shift (2PM-10PM)</h4>
           <div className="space-y-3">
-            {topTopicsByShift.afternoon.map((item) => (
-              <div key={item.rank} className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-500">{item.rank}.</span>
-                  <span className="text-sm text-gray-900">{item.topic}</span>
+            {afternoon && afternoon.length > 0 ? (
+              afternoon.map((item) => (
+                <div key={item.rank} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-500">{item.rank}.</span>
+                    <span className="text-sm text-gray-900">{item.topic}</span>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700">{item.count}</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-700">{item.count}</span>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 text-center">No data available</p>
+            )}
           </div>
         </div>
 
@@ -46,15 +62,19 @@ const TopTopicsByShift = () => {
         <div>
           <h4 className="font-semibold text-gray-700 mb-4 text-center">Night Shift (10PM-6AM)</h4>
           <div className="space-y-3">
-            {topTopicsByShift.night.map((item) => (
-              <div key={item.rank} className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-500">{item.rank}.</span>
-                  <span className="text-sm text-gray-900">{item.topic}</span>
+            {night && night.length > 0 ? (
+              night.map((item) => (
+                <div key={item.rank} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-500">{item.rank}.</span>
+                    <span className="text-sm text-gray-900">{item.topic}</span>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700">{item.count}</span>
                 </div>
-                <span className="text-sm font-semibold text-gray-700">{item.count}</span>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-gray-500 text-center">No data available</p>
+            )}
           </div>
         </div>
       </div>
