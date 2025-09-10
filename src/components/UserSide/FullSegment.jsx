@@ -106,14 +106,14 @@ const FullSegment = ({
             Content
           </h3>
           
-          {segment.analysis?.summary && (
+          {segment.analysis?.summary && segment.analysis.summary !== "Empty" && (
             <div className="cursor-pointer" onClick={() => handleSummaryClick(segment)}>
               <h4 className="font-bold text-gray-900 text-sm">Summary</h4>
               <p className="text-gray-700 text-sm line-clamp-3">{segment.analysis.summary}</p>
             </div>
           )}
-          
-          {segment.transcription?.transcript && (
+
+          {segment.transcription?.transcript && segment.transcription.transcript !== "Empty" && (
             <div className="cursor-pointer" onClick={() => handleTranscriptionClick(segment)}>
               <h4 className="font-bold text-gray-900 text-sm">Transcription</h4>
               <div className="text-gray-700 text-sm line-clamp-3">

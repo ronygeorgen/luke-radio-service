@@ -1,8 +1,9 @@
+// components/UserSide/CompactSegment.jsx
 import React from "react";
-import { Play, Pause } from "lucide-react"; // Import icons
+import { Play, Pause } from "lucide-react";
+import TranscribeButton from "./TranscribeButton";
 
 const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseAudio }) => {
-  // Check if this is a music segment and extract artist names
   const isMusicSegment = segment.metadata_json?.source === 'music';
   const artistNames = isMusicSegment 
     ? segment.metadata_json.artists?.map(artist => artist.name).join(', ') 
@@ -33,7 +34,6 @@ const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseA
         </div>
       </div>
 
-      {/* Artist name display for music segments */}
       {isMusicSegment && artistNames && (
         <div className="mb-2">
           <span className="text-sm font-medium text-gray-700">Artist: </span>
@@ -52,9 +52,9 @@ const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseA
             } text-white p-2 rounded-full flex items-center justify-center`}
           >
             {currentPlayingId === segment.id && isPlaying ? (
-              <Pause className="w-5 h-5" /> // Pause Icon
+              <Pause className="w-5 h-5" />
             ) : (
-              <Play className="w-5 h-5" /> // Play Icon
+              <Play className="w-5 h-5" />
             )}
           </button>
 
@@ -83,6 +83,9 @@ const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseA
 
         <div className="text-sm text-gray-400 italic">No content available</div>
       </div>
+
+      {/* Transcription Button */}
+      <TranscribeButton segmentId={segment.id} />
     </div>
   );
 };

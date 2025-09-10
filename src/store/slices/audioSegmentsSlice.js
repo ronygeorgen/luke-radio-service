@@ -48,6 +48,20 @@ export const fetchAudioSegments = createAsyncThunk(
   }
 );
 
+export const transcribeAudioSegment = createAsyncThunk(
+  'audioSegments/transcribeAudioSegment',
+  async (segmentId, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post('/transcribe_and_analyze', {
+        segment_id: segmentId
+      });
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  }
+);
+
 // audioSegmentsSlice.js
 const audioSegmentsSlice = createSlice({
   name: 'audioSegments',
@@ -66,7 +80,10 @@ const audioSegmentsSlice = createSlice({
       startTime: '',
       endTime: '',
       daypart: 'none'
-    }
+    },
+    transcriptionLoading: {}, // Track loading state per segment
+    transcriptionErrors: {}, // Track errors per segment
+    transcriptionStatus: {} // Track status per segment
   },
   reducers: {
     setCurrentPlaying: (state, action) => {
@@ -80,6 +97,16 @@ const audioSegmentsSlice = createSlice({
     },
     clearError: (state) => {
       state.error = null;
+    },
+    clearTranscriptionError: (state, action) => {
+      const segmentId = action.payload;
+      delete state.transcriptionErrors[segmentId];
+    },
+    resetTranscriptionState: (state, action) => {
+      const segmentId = action.payload;
+      delete state.transcriptionLoading[segmentId];
+      delete state.transcriptionErrors[segmentId];
+      delete state.transcriptionStatus[segmentId];
     }
   },
   extraReducers: (builder) => {
@@ -112,9 +139,70 @@ const audioSegmentsSlice = createSlice({
       .addCase(fetchAudioSegments.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || 'Failed to fetch audio segments';
+      })
+      // Transcription cases
+      .addCase(transcribeAudioSegment.pending, (state, action) => {
+        const segmentId = action.meta.arg;
+        state.transcriptionLoading[segmentId] = true;
+        state.transcriptionErrors[segmentId] = null;
+      })
+      .addCase(transcribeAudioSegment.fulfilled, (state, action) => {
+        const segmentId = action.meta.arg;
+        state.transcriptionLoading[segmentId] = false;
+        
+        if (action.payload.success) {
+          if (action.payload.data?.transcription || action.payload.data?.analysis) {
+            // Update the segment with new data - FIXED STRUCTURE
+            const segmentIndex = state.segments.findIndex(s => s.id === segmentId);
+            if (segmentIndex !== -1) {
+              const updatedSegment = { ...state.segments[segmentIndex] };
+              
+              // Update transcription if available
+              if (action.payload.data.transcription) {
+                updatedSegment.transcription = {
+                  id: action.payload.data.transcription.id,
+                  transcript: action.payload.data.transcription.transcript,
+                  created_at: action.payload.data.transcription.created_at,
+                  rev_job_id: action.payload.data.transcription.rev_job_id
+                };
+              }
+              
+              // Update analysis if available
+              if (action.payload.data.analysis) {
+                updatedSegment.analysis = {
+                  summary: action.payload.data.analysis.summary,
+                  sentiment: action.payload.data.analysis.sentiment,
+                  general_topics: action.payload.data.analysis.general_topics,
+                  iab_topics: action.payload.data.analysis.iab_topics,
+                  bucket_prompt: action.payload.data.analysis.bucket_prompt,
+                  created_at: action.payload.data.analysis.created_at
+                };
+              }
+              
+              state.segments[segmentIndex] = updatedSegment;
+            }
+          } else {
+            // Queue message
+            state.transcriptionStatus[segmentId] = action.payload.message;
+          }
+        } else {
+          state.transcriptionErrors[segmentId] = action.payload.error;
+        }
+      })
+      .addCase(transcribeAudioSegment.rejected, (state, action) => {
+        const segmentId = action.meta.arg;
+        state.transcriptionLoading[segmentId] = false;
+        state.transcriptionErrors[segmentId] = action.payload?.error || 'Failed to transcribe audio';
       });
   }
 });
 
-export const { setCurrentPlaying, setIsPlaying, setFilter, clearError } = audioSegmentsSlice.actions;
+export const { 
+  setCurrentPlaying, 
+  setIsPlaying, 
+  setFilter, 
+  clearError, 
+  clearTranscriptionError,
+  resetTranscriptionState 
+} = audioSegmentsSlice.actions;
 export default audioSegmentsSlice.reducer;

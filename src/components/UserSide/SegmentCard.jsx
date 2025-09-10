@@ -1,6 +1,8 @@
+// components/UserSide/SegmentCard.jsx
 import React from 'react';
 import CompactSegment from './CompactSegment';
 import FullSegment from './FullSegment';
+import { useSelector } from 'react-redux';
 
 const SegmentCard = ({ 
   segment, 
@@ -10,7 +12,14 @@ const SegmentCard = ({
   handleSummaryClick, 
   handleTranscriptionClick 
 }) => {
-  const hasContent = segment.analysis?.summary || segment.transcription?.transcript;
+  const { transcriptionStatus } = useSelector((state) => state.audioSegments);
+  
+  // Check if content is available - updated to handle "Empty" values
+  const hasContent = 
+    (segment.transcription?.transcript && segment.transcription.transcript !== "Empty") ||
+    (segment.analysis?.summary && segment.analysis.summary !== "Empty");
+  
+  const isTranscribing = transcriptionStatus[segment.id];
 
   return (
     <div className={`bg-white rounded-xl shadow-md overflow-hidden mb-6 ${!segment.is_active ? 'opacity-70' : ''}`}>
