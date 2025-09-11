@@ -9,12 +9,14 @@ import SettingsPage from './pages/admin/SettingsPage';
 import UserChannelsPage from './pages/user/UserChannelsPage';
 import UserAudioSegmentsPage from './pages/user/AudioSegmentsPage';
 import Dashboard from './components/DashboardUserSide/Dashboard';
+import AppStateHydrator from './components/AppStateHydrator';
 
 function App() {
   return (
     <Provider store={store}>
       <Router>
         <div className="min-h-screen bg-gray-50">
+          <AppStateHydrator /> {/* Move AppStateHydrator here */}
           <Routes>
             {/* Landing Page → Now UserChannelsPage */}
             <Route path="/" element={<UserChannelsPage />} />

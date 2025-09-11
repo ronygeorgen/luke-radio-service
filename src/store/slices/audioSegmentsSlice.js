@@ -83,7 +83,9 @@ const audioSegmentsSlice = createSlice({
     },
     transcriptionLoading: {}, // Track loading state per segment
     transcriptionErrors: {}, // Track errors per segment
-    transcriptionStatus: {} // Track status per segment
+    transcriptionStatus: {}, // Track status per segment
+    transcriptionPolling: {}, 
+    nextPollTime: {} 
   },
   reducers: {
     setCurrentPlaying: (state, action) => {
@@ -107,6 +109,26 @@ const audioSegmentsSlice = createSlice({
       delete state.transcriptionLoading[segmentId];
       delete state.transcriptionErrors[segmentId];
       delete state.transcriptionStatus[segmentId];
+    },
+    startTranscriptionPolling: (state, action) => {
+      const { segmentId, nextPollSeconds = 15 } = action.payload;
+      state.transcriptionPolling[segmentId] = true;
+      state.nextPollTime[segmentId] = Date.now() + (nextPollSeconds * 1000);
+    },
+    stopTranscriptionPolling: (state, action) => {
+      const segmentId = action.payload;
+      delete state.transcriptionPolling[segmentId];
+      delete state.nextPollTime[segmentId];
+    },
+    updatePollingCountdown: (state, action) => {
+      const { segmentId, secondsRemaining } = action.payload;
+      if (state.nextPollTime[segmentId]) {
+        state.nextPollTime[segmentId] = Date.now() + (secondsRemaining * 1000);
+      }
+    },
+    clearAllPolling: (state) => {
+      state.transcriptionPolling = {};
+      state.nextPollTime = {};
     }
   },
   extraReducers: (builder) => {
@@ -152,12 +174,11 @@ const audioSegmentsSlice = createSlice({
         
         if (action.payload.success) {
           if (action.payload.data?.transcription || action.payload.data?.analysis) {
-            // Update the segment with new data - FIXED STRUCTURE
+            // Update the segment with new data
             const segmentIndex = state.segments.findIndex(s => s.id === segmentId);
             if (segmentIndex !== -1) {
               const updatedSegment = { ...state.segments[segmentIndex] };
               
-              // Update transcription if available
               if (action.payload.data.transcription) {
                 updatedSegment.transcription = {
                   id: action.payload.data.transcription.id,
@@ -167,7 +188,6 @@ const audioSegmentsSlice = createSlice({
                 };
               }
               
-              // Update analysis if available
               if (action.payload.data.analysis) {
                 updatedSegment.analysis = {
                   summary: action.payload.data.analysis.summary,
@@ -180,20 +200,34 @@ const audioSegmentsSlice = createSlice({
               }
               
               state.segments[segmentIndex] = updatedSegment;
+              // Stop polling since we got the data
+              delete state.transcriptionPolling[segmentId];
+              delete state.nextPollTime[segmentId];
             }
+          } else if (action.payload.data?.status === 'queued' || action.payload.data?.status === 'recently_queued') {
+            // Start polling for queued segments
+            const secondsRemaining = action.payload.data.seconds_remaining || action.payload.seconds_remaining || 15;
+            state.transcriptionStatus[segmentId] = action.payload.message;
+            state.transcriptionPolling[segmentId] = true;
+            state.nextPollTime[segmentId] = Date.now() + (secondsRemaining * 1000);
           } else {
-            // Queue message
+            // Other success messages
             state.transcriptionStatus[segmentId] = action.payload.message;
           }
         } else {
           state.transcriptionErrors[segmentId] = action.payload.error;
+          if (action.payload.seconds_remaining) {
+            // Start polling for rate-limited requests
+            state.transcriptionPolling[segmentId] = true;
+            state.nextPollTime[segmentId] = Date.now() + (action.payload.seconds_remaining * 1000);
+          }
         }
       })
       .addCase(transcribeAudioSegment.rejected, (state, action) => {
         const segmentId = action.meta.arg;
         state.transcriptionLoading[segmentId] = false;
         state.transcriptionErrors[segmentId] = action.payload?.error || 'Failed to transcribe audio';
-      });
+      })
   }
 });
 
@@ -203,6 +237,10 @@ export const {
   setFilter, 
   clearError, 
   clearTranscriptionError,
-  resetTranscriptionState 
+  resetTranscriptionState,
+  startTranscriptionPolling,
+  stopTranscriptionPolling,
+  updatePollingCountdown,
+  clearAllPolling
 } = audioSegmentsSlice.actions;
 export default audioSegmentsSlice.reducer;

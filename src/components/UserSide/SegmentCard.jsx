@@ -1,8 +1,9 @@
 // components/UserSide/SegmentCard.jsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import CompactSegment from './CompactSegment';
 import FullSegment from './FullSegment';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { startTranscriptionPolling, stopTranscriptionPolling } from '../../store/slices/audioSegmentsSlice';
 
 const SegmentCard = ({ 
   segment, 
@@ -12,14 +13,37 @@ const SegmentCard = ({
   handleSummaryClick, 
   handleTranscriptionClick 
 }) => {
-  const { transcriptionStatus } = useSelector((state) => state.audioSegments);
+  const dispatch = useDispatch();
   
-  // Check if content is available - updated to handle "Empty" values
+  // Use specific selectors to avoid object reference changes
+  const isPolling = useSelector((state) => state.audioSegments.transcriptionPolling[segment.id]);
+  const nextPollTime = useSelector((state) => state.audioSegments.nextPollTime[segment.id]);
+  
+  // Check if content is available
   const hasContent = 
     (segment.transcription?.transcript && segment.transcription.transcript !== "Empty") ||
     (segment.analysis?.summary && segment.analysis.summary !== "Empty");
-  
-  const isTranscribing = transcriptionStatus[segment.id];
+
+  // Restart polling on component mount if it was previously polling and still valid
+  useEffect(() => {
+    if (isPolling && !hasContent && nextPollTime) {
+      const now = Date.now();
+      if (now < nextPollTime) {
+        // Still valid, continue polling
+        const secondsRemaining = Math.ceil((nextPollTime - now) / 1000);
+        dispatch(startTranscriptionPolling({ 
+          segmentId: segment.id, 
+          nextPollSeconds: secondsRemaining 
+        }));
+      } else {
+        // Time expired, poll immediately
+        dispatch(startTranscriptionPolling({ 
+          segmentId: segment.id, 
+          nextPollSeconds: 0 
+        }));
+      }
+    }
+  }, []); // Empty dependency array to run only once on mount
 
   return (
     <div className={`bg-white rounded-xl shadow-md overflow-hidden mb-6 ${!segment.is_active ? 'opacity-70' : ''}`}>

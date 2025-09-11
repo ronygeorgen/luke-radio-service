@@ -10,6 +10,7 @@ import SummaryModal from './SummaryModal';
 import TranscriptionModal from './TranscriptionModal';
 import AudioPlayer from './AudioPlayer';
 import { formatDateForDisplay, formatTimeDisplay } from '../../utils/formatters'
+import useTranscriptionPolling from '../../hooks/useTranscriptionPolling';
 
 const AudioSegmentsPage = () => {
   const { channelId } = useParams();
@@ -18,7 +19,7 @@ const AudioSegmentsPage = () => {
   const startTime = searchParams.get('startTime');
   const endTime = searchParams.get('endTime');
   const daypart = searchParams.get('daypart');
-
+  
   const channelName = searchParams.get("name"); 
   console.log('channel name ====', channelName);
   useEffect(() => {
@@ -30,6 +31,7 @@ const AudioSegmentsPage = () => {
   
   
   const dispatch = useDispatch();
+  useTranscriptionPolling();
   
   const { 
     segments, 
