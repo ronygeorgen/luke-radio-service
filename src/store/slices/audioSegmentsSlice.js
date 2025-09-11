@@ -111,7 +111,7 @@ const audioSegmentsSlice = createSlice({
       delete state.transcriptionStatus[segmentId];
     },
     startTranscriptionPolling: (state, action) => {
-      const { segmentId, nextPollSeconds = 15 } = action.payload;
+      const { segmentId, nextPollSeconds = 120 } = action.payload;
       state.transcriptionPolling[segmentId] = true;
       state.nextPollTime[segmentId] = Date.now() + (nextPollSeconds * 1000);
     },
@@ -206,7 +206,7 @@ const audioSegmentsSlice = createSlice({
             }
           } else if (action.payload.data?.status === 'queued' || action.payload.data?.status === 'recently_queued') {
             // Start polling for queued segments
-            const secondsRemaining = action.payload.data.seconds_remaining || action.payload.seconds_remaining || 15;
+            const secondsRemaining = action.payload.data.seconds_remaining || action.payload.seconds_remaining || 120;
             state.transcriptionStatus[segmentId] = action.payload.message;
             state.transcriptionPolling[segmentId] = true;
             state.nextPollTime[segmentId] = Date.now() + (secondsRemaining * 1000);

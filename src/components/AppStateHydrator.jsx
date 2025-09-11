@@ -28,7 +28,7 @@ const AppStateHydrator = () => {
           // If time has expired, poll immediately
           dispatch(startTranscriptionPolling({ 
             segmentId: parseInt(segmentId), 
-            nextPollSeconds: 0 
+            nextPollSeconds: 5
           }));
         }
       }

@@ -41,7 +41,7 @@ const TranscribeButton = ({ segmentId }) => {
   const handleTranscribe = () => {
     dispatch(transcribeAudioSegment(segmentId));
     // Start polling immediately
-    dispatch(startTranscriptionPolling({ segmentId, nextPollSeconds: 15 }));
+    dispatch(startTranscriptionPolling({ segmentId, nextPollSeconds: 120 }));
   };
 
   const handleClearError = () => {
@@ -94,7 +94,7 @@ const TranscribeButton = ({ segmentId }) => {
         <div className="w-full bg-blue-200 rounded-full h-2">
           <div 
             className="bg-blue-600 h-2 rounded-full transition-all duration-1000"
-            style={{ width: `${(countdown / 15) * 100}%` }}
+            style={{ width: `${(countdown / 120) * 100}%` }}
           />
         </div>
       </div>
