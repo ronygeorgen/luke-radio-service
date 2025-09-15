@@ -1,5 +1,10 @@
 // utils/formatters.js
 export const formatDateForDisplay = (dateString) => {
+  // ADD NULL/UNDEFINED CHECK
+  if (!dateString) {
+    return 'No date selected';
+  }
+  
   if (dateString.includes('-')) {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
@@ -19,12 +24,20 @@ export const formatDateForDisplay = (dateString) => {
 };
 
 export const formatTimeDisplay = (filters, daypartOptions) => {
+  if (filters.startDate && filters.endDate) {
+    return `${formatDateForDisplay(filters.startDate)} - ${formatDateForDisplay(filters.endDate)}`;
+  }
+  
   if (filters.daypart && filters.daypart !== 'none') {
     const daypart = daypartOptions.find(opt => opt.value === filters.daypart);
-    return `${filters.date} (${daypart.label})`;
-  } else if (filters.startTime && filters.endTime) {
-    return `${filters.date} ${filters.startTime.substring(0, 5)}-${filters.endTime.substring(0, 5)}`;
-  } else {
-    return filters.date;
+    const displayDate = filters.date ? formatDateForDisplay(filters.date) : 'Today';
+    return daypart ? `${displayDate} • ${daypart.label}` : 'All Day';
   }
+  
+  if (filters.startTime && filters.endTime) {
+    const displayDate = filters.date ? formatDateForDisplay(filters.date) : 'Today';
+    return `${displayDate} • ${filters.startTime.substring(0, 5)} - ${filters.endTime.substring(0, 5)}`;
+  }
+  
+  return filters.date ? formatDateForDisplay(filters.date) : 'Today';
 };

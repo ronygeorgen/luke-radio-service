@@ -19,9 +19,11 @@ const AudioSegmentsPage = () => {
   const startTime = searchParams.get('startTime');
   const endTime = searchParams.get('endTime');
   const daypart = searchParams.get('daypart');
+
+  const [localSearchText, setLocalSearchText] = useState('');
+  const [localSearchIn, setLocalSearchIn] = useState('transcription');
   
   const channelName = searchParams.get("name"); 
-  console.log('channel name ====', channelName);
   useEffect(() => {
     if (channelName) {
       localStorage.setItem("channelName", channelName);
@@ -100,27 +102,63 @@ const AudioSegmentsPage = () => {
   }, [channelId]);
 
   // Fetch data when filters change (only for date and daypart)
-  useEffect(() => {
-    // Only fetch if we have a date
-    if (filters.date) {
-      dispatch(fetchAudioSegments({ 
-        channelId, 
-        date: filters.date,
-        startTime: filters.startTime,
-        endTime: filters.endTime,
-        daypart: filters.daypart
-      }));
-      
-      // Update URL params
-      const params = {};
-      if (filters.date) params.date = filters.date;
-      if (filters.startTime) params.startTime = filters.startTime;
-      if (filters.endTime) params.endTime = filters.endTime;
-      if (filters.daypart && filters.daypart !== 'none') params.daypart = filters.daypart;
-      
-      setSearchParams(params);
-    }
-  }, [filters.date, filters.startTime, filters.endTime, channelId]);
+useEffect(() => {
+  // Only fetch if we have a date or date range
+  if (filters.date || (filters.startDate && filters.endDate)) {
+    dispatch(fetchAudioSegments({ 
+      channelId, 
+      date: filters.date,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      startTime: filters.startTime,
+      endTime: filters.endTime,
+      daypart: filters.daypart,
+      searchText: filters.searchText,
+      searchIn: filters.searchIn
+    }));
+    
+    // Update URL params
+    const params = {};
+    if (filters.date) params.date = filters.date;
+    if (filters.startDate) params.startDate = filters.startDate;
+    if (filters.endDate) params.endDate = filters.endDate;
+    if (filters.startTime) params.startTime = filters.startTime;
+    if (filters.endTime) params.endTime = filters.endTime;
+    if (filters.daypart && filters.daypart !== 'none') params.daypart = filters.daypart;
+    if (filters.searchText) params.searchText = filters.searchText;
+    if (filters.searchIn) params.searchIn = filters.searchIn;
+    
+    setSearchParams(params);
+  }
+}, [filters.date, filters.startDate, filters.endDate, filters.startTime, filters.endTime, filters.daypart, filters.searchText, filters.searchIn, channelId]);
+
+useEffect(() => {
+  // Update local time inputs when filter changes
+  setLocalStartTime(filters.startTime?.substring(0, 5) || '');
+  setLocalEndTime(filters.endTime?.substring(0, 5) || '');
+  
+  // Update local search state when filter changes
+  setLocalSearchText(filters.searchText || '');
+  setLocalSearchIn(filters.searchIn || 'transcription');
+}, [filters]);
+
+  const handleSearch = () => {
+    dispatch(setFilter({ 
+      searchText: localSearchText,
+      searchIn: localSearchIn
+    }));
+  };
+
+  // Add clear search handler
+  const handleClearSearch = () => {
+    setLocalSearchText('');
+    setLocalSearchIn('transcription');
+    dispatch(setFilter({ 
+      searchText: '',
+      searchIn: 'transcription'
+    }));
+  };
+
 
   // Filter segments (client-side filtering for status and recognition)
   const filteredSegments = segments.filter(segment => {
@@ -165,44 +203,94 @@ const AudioSegmentsPage = () => {
     }
   };
 
+  // Update handleDaypartChange to properly update the date
   const handleDaypartChange = (selectedDaypart) => {
-    if (selectedDaypart === 'none') {
-      dispatch(setFilter({ daypart: 'none', startTime: '', endTime: '' }));
-      setLocalStartTime('');
-      setLocalEndTime('');
-    } else {
-      const daypart = daypartOptions.find(opt => opt.value === selectedDaypart);
-      dispatch(setFilter({ 
-        daypart: selectedDaypart, 
-        startTime: daypart.startTime, 
-        endTime: daypart.endTime 
-      }));
-      setLocalStartTime(daypart.startTime.substring(0, 5));
-      setLocalEndTime(daypart.endTime.substring(0, 5));
-    }
-    
-    // The useEffect will now automatically trigger the fetch
-    // since we're updating the filters
-  };
-
-  const handleSearchWithCustomTime = () => {
+  const currentDate = new Date().toISOString().split('T')[0];
+  
+  if (selectedDaypart === 'none') {
     dispatch(setFilter({ 
-      startTime: localStartTime ? localStartTime + ':00' : '',
-      endTime: localEndTime ? localEndTime + ':00' : '',
-      daypart: 'none'
+      daypart: 'none', 
+      startTime: '', 
+      endTime: '',
+      date: currentDate,
+      startDate: null,
+      endDate: null
     }));
-    
-    // The useEffect will now automatically trigger the fetch
-    // since we're updating the filters
-  };
+  } else {
+    const daypart = daypartOptions.find(opt => opt.value === selectedDaypart);
+    dispatch(setFilter({ 
+      daypart: selectedDaypart, 
+      startTime: daypart.startTime, 
+      endTime: daypart.endTime,
+      date: currentDate, // Force current date
+      startDate: null,   // Clear date range
+      endDate: null      // Clear date range
+    }));
+  }
+};
 
+// Update handleSearchWithCustomTime
+const handleSearchWithCustomTime = () => {
+  const currentDate = new Date().toISOString().split('T')[0];
+  
+  dispatch(setFilter({ 
+    startTime: localStartTime ? localStartTime + ':00' : '',
+    endTime: localEndTime ? localEndTime + ':00' : '',
+    daypart: 'none',
+    date: currentDate,   // Force current date
+    startDate: null,     // Clear date range
+    endDate: null        // Clear date range
+  }));
+};
+
+const handleDateSelect = (selectedDate) => {
+  dispatch(setFilter({ 
+    date: selectedDate,
+    startDate: null,     // Clear date range
+    endDate: null,       // Clear date range
+    startTime: '',       // Clear time filters
+    endTime: '',         // Clear time filters
+    daypart: 'none'      // Clear daypart filter
+  }));
+};
+
+// Add handler for date range selection
+const handleDateRangeSelect = (start, end) => {
+  dispatch(setFilter({ 
+    startDate: start,
+    endDate: end,
+    date: null,          // Clear single date
+    startTime: '',       // Clear time filters
+    endTime: '',         // Clear time filters
+    daypart: 'none'      // Clear daypart filter
+  }));
+};
   const handleResetFilters = () => {
     const today = new Date().toISOString().split('T')[0];
-    dispatch(setFilter({ date: today, startTime: '', endTime: '', daypart: 'none', status: 'all', recognition: 'all' }));
+    dispatch(setFilter({ 
+      date: today, 
+      startDate: null, 
+      endDate: null,
+      startTime: '', 
+      endTime: '', 
+      daypart: 'none', 
+      status: 'all', 
+      recognition: 'all',
+      searchText: '',
+      searchIn: 'transcription'
+    }));
     setLocalStartTime('');
     setLocalEndTime('');
+    setLocalSearchText('');
+    setLocalSearchIn('transcription');
     setSearchParams({ date: today });
-    dispatch(fetchAudioSegments({ channelId, date: today, startTime: '', endTime: '', daypart: 'none' }));
+    dispatch(fetchAudioSegments({ 
+      channelId, 
+      date: today, 
+      startTime: '', 
+      endTime: '', 
+      daypart: 'none' 
+    }));
   };
 
   const handleSummaryClick = (segment) => {
@@ -222,7 +310,7 @@ const AudioSegmentsPage = () => {
           channelInfo={channelInfo} 
           channelName={channelName}
           filters={filters} 
-          formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)}
+          formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)} // UPDATED
           dispatch={dispatch}
           segments={segments}
           channelId={channelId}
@@ -234,6 +322,15 @@ const AudioSegmentsPage = () => {
           setLocalStartTime={setLocalStartTime}
           setLocalEndTime={setLocalEndTime}
           handleResetFilters={handleResetFilters}
+          // ADD THESE TO BOTH HEADER CALLS:
+          localSearchText={localSearchText}
+          setLocalSearchText={setLocalSearchText}
+          localSearchIn={localSearchIn}
+          setLocalSearchIn={setLocalSearchIn}
+          handleSearch={handleSearch}
+          handleClearSearch={handleClearSearch}
+          handleDateSelect={handleDateSelect}
+          handleDateRangeSelect={handleDateRangeSelect}
         />
         
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-32 mt-28"> {/* Added pt-32 to account for fixed header height */}
@@ -259,7 +356,7 @@ const AudioSegmentsPage = () => {
         channelInfo={channelInfo} 
         channelName={channelName}
         filters={filters} 
-        formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)}
+        formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)} // UPDATED
         dispatch={dispatch}
         segments={segments}
         channelId={channelId}
@@ -271,6 +368,15 @@ const AudioSegmentsPage = () => {
         setLocalStartTime={setLocalStartTime}
         setLocalEndTime={setLocalEndTime}
         handleResetFilters={handleResetFilters}
+        // ADD THESE TO BOTH HEADER CALLS:
+        localSearchText={localSearchText}
+        setLocalSearchText={setLocalSearchText}
+        localSearchIn={localSearchIn}
+        setLocalSearchIn={setLocalSearchIn}
+        handleSearch={handleSearch}
+        handleClearSearch={handleClearSearch}
+        handleDateSelect={handleDateSelect}
+        handleDateRangeSelect={handleDateRangeSelect}
       />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-32 mt-28"> {/* Added pt-32 to account for fixed header height */}

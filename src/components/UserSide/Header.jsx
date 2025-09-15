@@ -20,12 +20,25 @@ const Header = ({
   setLocalStartTime,
   setLocalEndTime,
   handleResetFilters,
+  // Search props
+  localSearchText,
+  setLocalSearchText,
+  localSearchIn,
+  setLocalSearchIn,
+  handleSearch,
+  handleClearSearch,
+  // ADD THESE NEW PROPS:
+  handleDateSelect,
+  handleDateRangeSelect
 }) => {
   const navigate = useNavigate();
-
-  
   const savedChannelName = localStorage.getItem("channelName");
-  
+
+  // Safe formatting function
+  const safeFormatDate = (dateString) => {
+    if (!dateString) return 'Select date';
+    return formatDateForDisplay(dateString);
+  };
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40">
@@ -58,12 +71,47 @@ const Header = ({
               {savedChannelName || "Channel"}
             </h1>
             <p className="text-xs text-gray-500">
-              {formatDateForDisplay(filters.date)} • {formatTimeDisplay()}
+              {safeFormatDate(filters.date)} • {formatTimeDisplay()}
             </p>
+          </div>
+          
+          {/* Search Bar */}
+          <div className="flex items-center space-x-2">
+            <select
+              value={localSearchIn}
+              onChange={(e) => setLocalSearchIn(e.target.value)}
+              className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="transcription">Transcription</option>
+              <option value="general_topics">General Topics</option>
+              <option value="iab_topics">IAB Topics</option>
+              <option value="bucket_prompt">Bucket Prompt</option>
+            </select>
+            <input
+              type="text"
+              value={localSearchText}
+              onChange={(e) => setLocalSearchText(e.target.value)}
+              placeholder="Search..."
+              className="text-sm border border-gray-300 rounded px-3 py-1 focus:ring-1 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleSearch}
+              className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
+            >
+              Search
+            </button>
+            {localSearchText && (
+              <button
+                onClick={handleClearSearch}
+                className="bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-400"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Filters Panel */}
+        {/* Filters Panel - PASS ALL THE PROPS INCLUDING NEW ONES */}
         <div className="pb-2">
           <FilterPanel
             filters={filters}
@@ -79,6 +127,16 @@ const Header = ({
             setLocalEndTime={setLocalEndTime}
             handleResetFilters={handleResetFilters}
             isInHeader={true}
+            // Search props
+            localSearchText={localSearchText}
+            setLocalSearchText={setLocalSearchText}
+            localSearchIn={localSearchIn}
+            setLocalSearchIn={setLocalSearchIn}
+            handleSearch={handleSearch}
+            handleClearSearch={handleClearSearch}
+            // NEW: Date handlers
+            handleDateSelect={handleDateSelect}
+            handleDateRangeSelect={handleDateRangeSelect}
           />
         </div>
       </div>

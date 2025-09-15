@@ -5,29 +5,56 @@ import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 // audioSegmentsSlice.js
 export const fetchAudioSegments = createAsyncThunk(
   'audioSegments/fetchAudioSegments',
-  async ({ channelId, date, startTime, endTime, daypart }, { rejectWithValue }) => {
+  async ({ channelId, date, startTime, endTime, daypart, searchText, searchIn, startDate, endDate }, { rejectWithValue }) => {
     try {
       let startDatetime = null;
       let endDatetime = null;
       
-      if (date) {
+      // Handle date range (startDate and endDate take priority over single date)
+      if (startDate && endDate) {
+        startDatetime = convertLocalToUTC(startDate, '00:00:00');
+        endDatetime = convertLocalToUTC(endDate, '23:59:59');
+      } else if (date) {
+        let useDate = date;
+        
+        // If time filters are applied, use CURRENT DATE instead of selected date
+        const hasTimeFilter = daypart !== 'none' || (startTime && endTime);
+        if (hasTimeFilter) {
+          useDate = new Date().toISOString().split('T')[0]; // CURRENT DATE
+        }
+        
         if (daypart === 'weekend') {
-          // Special handling for weekend - you might need to adjust this
-          // based on how your backend expects weekend queries
-          const dateObj = new Date(date);
-          const dayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Saturday
+          const dateObj = new Date(useDate);
+          const dayOfWeek = dateObj.getDay();
           
           if (dayOfWeek === 0 || dayOfWeek === 6) {
-            // It's a weekend day
-            startDatetime = convertLocalToUTC(date, '00:00:00');
-            endDatetime = convertLocalToUTC(date, '23:59:59');
+            startDatetime = convertLocalToUTC(useDate, '00:00:00');
+            endDatetime = convertLocalToUTC(useDate, '23:59:59');
           }
         } else if (startTime && endTime) {
-          startDatetime = convertLocalToUTC(date, startTime);
-          endDatetime = convertLocalToUTC(date, endTime);
+          // Custom time range
+          startDatetime = convertLocalToUTC(useDate, startTime);
+          endDatetime = convertLocalToUTC(useDate, endTime);
+        } else if (daypart !== 'none') {
+          // Time of day filter - ADD PROPER TIMES FOR EACH DAYPART
+          const daypartTimes = {
+            'morning': { start: '06:00:00', end: '10:00:00' },
+            'midday': { start: '10:00:00', end: '15:00:00' },
+            'afternoon': { start: '15:00:00', end: '19:00:00' },
+            'evening': { start: '19:00:00', end: '23:59:59' },
+            'overnight': { start: '00:00:00', end: '06:00:00' },
+            'weekend': { start: '00:00:00', end: '23:59:59' }
+          };
+          
+          const times = daypartTimes[daypart];
+          if (times) {
+            startDatetime = convertLocalToUTC(useDate, times.start);
+            endDatetime = convertLocalToUTC(useDate, times.end);
+          }
         } else {
-          startDatetime = convertLocalToUTC(date, '00:00:00');
-          endDatetime = convertLocalToUTC(date, '23:59:59');
+          // Whole day
+          startDatetime = convertLocalToUTC(useDate, '00:00:00');
+          endDatetime = convertLocalToUTC(useDate, '23:59:59');
         }
       }
       
@@ -37,6 +64,14 @@ export const fetchAudioSegments = createAsyncThunk(
       
       if (startDatetime) params.start_datetime = startDatetime;
       if (endDatetime) params.end_datetime = endDatetime;
+      
+      console.log('API Request Params:', params); // DEBUG
+      
+      // Search validation
+      if (searchText && searchIn) {
+        params.search_text = searchText;
+        params.search_in = searchIn;
+      }
       
       const response = await axiosInstance.get('/audio_segments', {
         params
@@ -77,9 +112,13 @@ const audioSegmentsSlice = createSlice({
       status: 'all',
       recognition: 'all',
       date: new Date().toISOString().split('T')[0],
+      startDate: null, // NEW: for date range
+      endDate: null,   // NEW: for date range
       startTime: '',
       endTime: '',
-      daypart: 'none'
+      daypart: 'none',
+      searchText: '',  // NEW: search text
+      searchIn: 'transcription' // NEW: search category
     },
     transcriptionLoading: {}, // Track loading state per segment
     transcriptionErrors: {}, // Track errors per segment
