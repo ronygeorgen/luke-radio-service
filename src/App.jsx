@@ -10,6 +10,7 @@ import UserChannelsPage from './pages/user/UserChannelsPage';
 import UserAudioSegmentsPage from './pages/user/AudioSegmentsPage';
 import Dashboard from './components/DashboardUserSide/Dashboard';
 import AppStateHydrator from './components/AppStateHydrator';
+import DashboardSettingsPage from './components/DashboardUserSide/DashboardSettingsPage';
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
 
             {/* Dashboard Route */}
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/settings" element={<DashboardSettingsPage />} />
 
             {/* Catch-all Redirect */}
             <Route path="*" element={<Navigate to="/" replace />} />

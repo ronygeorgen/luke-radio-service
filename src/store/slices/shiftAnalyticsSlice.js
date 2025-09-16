@@ -4,9 +4,9 @@ import { dashboardApi } from '../../services/dashboardApi';
 // Async thunk for fetching shift analytics data
 export const fetchShiftAnalytics = createAsyncThunk(
   'shiftAnalytics/fetchData',
-  async ({ startDate, endDate }, { rejectWithValue }) => {
+  async ({ startDate, endDate, showAllTopics = false }, { rejectWithValue }) => {
     try {
-      const response = await dashboardApi.getShiftAnalytics(startDate, endDate);
+      const response = await dashboardApi.getShiftAnalytics(startDate, endDate, showAllTopics);
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch shift analytics');

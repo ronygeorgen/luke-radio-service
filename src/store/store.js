@@ -5,6 +5,7 @@ import settingsReducer from './slices/settingsSlice';
 import audioSegmentsReducer from './slices/audioSegmentsSlice';
 import dashboardReducer from './slices/dashboardSlice';
 import shiftAnalyticsReducer from './slices/shiftAnalyticsSlice';
+import dashboardSettingsReducer from './slices/dashboardSettingsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -13,6 +14,7 @@ export const store = configureStore({
     audioSegments: audioSegmentsReducer,
     dashboard: dashboardReducer, 
     shiftAnalytics: shiftAnalyticsReducer, 
+    dashboardSettings: dashboardSettingsReducer,
   },
 });
 

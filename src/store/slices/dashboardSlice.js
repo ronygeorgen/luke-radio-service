@@ -3,10 +3,10 @@ import { dashboardApi } from '../../services/dashboardApi';
 
 export const fetchDashboardStats = createAsyncThunk(
   'dashboard/fetchStats',
-  async ({ startDate, endDate }, { rejectWithValue }) => {
+  async ({ startDate, endDate, showAllTopics = false }, { rejectWithValue }) => {
     try {
-      const response = await dashboardApi.getDashboardStats(startDate, endDate);
-      return response; // Return entire response
+      const response = await dashboardApi.getDashboardStats(startDate, endDate, showAllTopics);
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }

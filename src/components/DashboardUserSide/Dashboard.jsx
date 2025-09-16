@@ -17,10 +17,11 @@ import TranscriptionSummaries from './TranscriptionSummaries';
 import { useDashboard } from '../../hooks/useDashboard';
 import { fetchShiftAnalytics } from '../../store/slices/shiftAnalyticsSlice';
 import ErrorBoundary from '../ErrorBoundary';
+import { setShowAllTopics } from '../../store/slices/dashboardSettingsSlice';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('main');
-  const { loadDashboardData, loading, error } = useDashboard();
+  const { loadDashboardData, loading, error, showAllTopics } = useDashboard();
   const dispatch = useDispatch();
   
   // Get shift analytics data from Redux store
@@ -29,12 +30,11 @@ function Dashboard() {
   useEffect(() => {
     // Load data for today only
     const today = new Date().toISOString().split('T')[0];
-    console.log('Loading dashboard data for today:', today);
     
     // Load both dashboard and shift analytics data
-    loadDashboardData(today, today);
-    dispatch(fetchShiftAnalytics({ startDate: today, endDate: today }));
-  }, [loadDashboardData, dispatch]);
+    loadDashboardData(today, today, showAllTopics);
+    dispatch(fetchShiftAnalytics({ startDate: today, endDate: today, showAllTopics }));
+  }, [loadDashboardData, dispatch, showAllTopics]);
 
   // Handle loading state for both dashboard and shift analytics
   const isLoading = loading || (activeTab === 'shift' && shiftAnalytics.loading);

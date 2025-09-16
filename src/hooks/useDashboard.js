@@ -1,5 +1,5 @@
 import { useSelector, useDispatch } from 'react-redux';
-import { useCallback } from 'react'; // Add this import
+import { useCallback } from 'react';
 import { fetchDashboardStats, setDateRange, clearError } from '../store/slices/dashboardSlice';
 
 export const useDashboard = () => {
@@ -23,10 +23,17 @@ export const useDashboard = () => {
     error: null
   });
 
-  // Memoize the load function
-  const loadDashboardData = useCallback((startDate, endDate) => {
-    dispatch(fetchDashboardStats({ startDate, endDate }));
-  }, [dispatch]);
+  // Get showAllTopics from Redux store
+  const showAllTopics = useSelector((state) => state.dashboardSettings?.showAllTopics || false);
+
+  // Memoize the load function with showAllTopics parameter
+  const loadDashboardData = useCallback((startDate, endDate, showAllTopicsParam = showAllTopics) => {
+    dispatch(fetchDashboardStats({ 
+      startDate, 
+      endDate, 
+      showAllTopics: showAllTopicsParam 
+    }));
+  }, [dispatch, showAllTopics]); // Add showAllTopics to dependencies
 
   const updateDateRange = useCallback((dateRange) => {
     dispatch(setDateRange(dateRange));
@@ -44,6 +51,7 @@ export const useDashboard = () => {
     dateRange: dashboardState.dateRange,
     loading: dashboardState.loading,
     error: dashboardState.error,
+    showAllTopics, // Return showAllTopics for use in components
     loadDashboardData,
     updateDateRange,
     clearDashboardError
