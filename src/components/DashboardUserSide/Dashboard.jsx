@@ -17,11 +17,12 @@ import TranscriptionSummaries from './TranscriptionSummaries';
 import { useDashboard } from '../../hooks/useDashboard';
 import { fetchShiftAnalytics } from '../../store/slices/shiftAnalyticsSlice';
 import ErrorBoundary from '../ErrorBoundary';
-import { setShowAllTopics } from '../../store/slices/dashboardSettingsSlice';
 import TopicModal from './TopicModal';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('main');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const { loadDashboardData, loading, error, showAllTopics } = useDashboard();
   const dispatch = useDispatch();
   
@@ -40,8 +41,13 @@ function Dashboard() {
     const endDate = formatDate(today);
     
     // Load both dashboard and shift analytics data with 7-day range
-    loadDashboardData(startDate, endDate, showAllTopics);
-    dispatch(fetchShiftAnalytics({ startDate, endDate, showAllTopics }));
+    const loadData = async () => {
+      await loadDashboardData(startDate, endDate, showAllTopics);
+      await dispatch(fetchShiftAnalytics({ startDate, endDate, showAllTopics }));
+      setIsInitialLoad(false);
+    };
+    
+    loadData();
   }, [loadDashboardData, dispatch, showAllTopics]);
 
   // Handle loading state for both dashboard and shift analytics
@@ -50,16 +56,21 @@ function Dashboard() {
   // Handle error state for both dashboard and shift analytics
   const hasError = error || (activeTab === 'shift' && shiftAnalytics.error);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleToggleChange = (isLoading) => {
+    setIsRefreshing(isLoading);
+  };
+
+  // Show full page loader only on initial load
+  // if (isInitialLoad) {
+  //   return (
+  //     <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+  //       <div className="text-center">
+  //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+  //         <p className="text-gray-600">Loading dashboard...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   if (hasError) {
     const errorMessage = error || shiftAnalytics.error;
@@ -74,10 +85,13 @@ function Dashboard() {
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <Hero />
+      <Hero onToggleChange={handleToggleChange} />
       <Filters />
       
-      <ErrorBoundary><StatsCards /></ErrorBoundary>
+      <ErrorBoundary>
+        <StatsCards isLoading={isRefreshing || isLoading} />
+      </ErrorBoundary>
+      
       <TopicModal />
       
       <AnalyticsTabs activeTab={activeTab} setActiveTab={setActiveTab}>
@@ -85,18 +99,24 @@ function Dashboard() {
           <>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
               <ErrorBoundary>
-                <SentimentGauge />
+                <SentimentGauge isLoading={isRefreshing || isLoading} />
               </ErrorBoundary>
               <div className="lg:col-span-2">
-                <SentimentChart />
+                <SentimentChart isLoading={isRefreshing || isLoading} />
               </div>
             </div>
             
-            <TopicsDistribution />
+            <ErrorBoundary>
+              <TopicsDistribution isLoading={isRefreshing || isLoading} />
+            </ErrorBoundary>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              <WordCloud />
-              <TopTopicsTable />
+              <ErrorBoundary>
+                <WordCloud isLoading={isRefreshing || isLoading} />
+              </ErrorBoundary>
+              <ErrorBoundary>
+                <TopTopicsTable isLoading={isRefreshing || isLoading} />
+              </ErrorBoundary>
             </div>
 
             {/* <TranscriptionSummaries /> */}
@@ -104,19 +124,19 @@ function Dashboard() {
         ) : (
           <>
             <ErrorBoundary>
-              <ShiftCards />
+              <ShiftCards isLoading={isRefreshing || isLoading} />
             </ErrorBoundary>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
               <ErrorBoundary>
-                <SentimentByShiftChart />
+                <SentimentByShiftChart isLoading={isRefreshing || isLoading} />
               </ErrorBoundary>
               <ErrorBoundary>
-                <TranscriptionCountChart />
+                <TranscriptionCountChart isLoading={isRefreshing || isLoading} />
               </ErrorBoundary>
             </div>
             
             <ErrorBoundary>
-              <TopTopicsByShift />
+              <TopTopicsByShift isLoading={isRefreshing || isLoading} />
             </ErrorBoundary>
           </>
         )}

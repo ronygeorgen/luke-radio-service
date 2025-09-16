@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 import { useDashboard } from "../../hooks/useDashboard";
+import Shimmer from "./Shimmer";
 
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
-const SentimentGauge = () => {
+const SentimentGauge = ({ isLoading = false }) => {
   const { stats = {}, loading } = useDashboard();
 
   // Normalize and clamp to 0–100
@@ -13,6 +14,18 @@ const SentimentGauge = () => {
 
   // Map 0..100 -> -90..+90 degrees (left to right)
   const angle = useMemo(() => value * 1.8 - 90, [value]);
+
+
+  if (isLoading || loading) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-800 mb-6 text-center">
+          Average Sentiment
+        </h3>
+        <Shimmer type="gauge" className="h-48" />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">

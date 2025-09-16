@@ -12,27 +12,37 @@ const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseA
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-lg font-bold text-gray-900 flex items-center">
-          {segment.title ? (
-            segment.title
-          ) : (
-            `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
-              segment.title_before && segment.title_after ? " - " : ""
-            }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() || 
-            "Untitled Report Item"
-          )}
-        </h2>
-        <div className="flex space-x-2">
-          <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
-            {segment.duration_seconds}s
-          </span>
-          {isMusicSegment && (
-            <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">
-              Music
-            </span>
-          )}
-        </div>
-      </div>
+  <div>
+    {/* Segment ID as top heading */}
+    <h1 className="text-md font-bold text-blue-700 mb-1">
+      Segment ID: {segment.id}
+    </h1>
+
+    {/* Existing title */}
+    <h2 className="text-lg font-bold text-gray-900 flex items-center">
+      {segment.title ? (
+        segment.title
+      ) : (
+        `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
+          segment.title_before && segment.title_after ? " - " : ""
+        }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() || 
+        "Untitled Report Item"
+      )}
+    </h2>
+  </div>
+
+  <div className="flex space-x-2">
+    <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
+      {segment.duration_seconds}s
+    </span>
+    {isMusicSegment && (
+      <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">
+        Music
+      </span>
+    )}
+  </div>
+</div>
+
 
       {isMusicSegment && artistNames && (
         <div className="mb-2">

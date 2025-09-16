@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { useDashboard } from '../../hooks/useDashboard';
+import Shimmer from './Shimmer';
 
-const SentimentChart = () => {
+const SentimentChart = ({ isLoading = false }) => {
   const { sentimentData, loading } = useDashboard();
   const [tooltip, setTooltip] = useState({
     x: 0,
@@ -105,14 +106,14 @@ const SentimentChart = () => {
     setTooltip(prev => ({ ...prev, visible: false }));
   };
 
-  if (loading) {
+  if (isLoading || loading) {
     return (
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <div className="flex items-center space-x-2 mb-6">
           <TrendingUp className="w-5 h-5 text-blue-500" />
           <h3 className="text-lg font-semibold text-gray-800">Sentiment Analysis Over Time</h3>
         </div>
-        <div className="h-64 bg-gray-100 rounded animate-pulse"></div>
+        <Shimmer type="chart" />
       </div>
     );
   }

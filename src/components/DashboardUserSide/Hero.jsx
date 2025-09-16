@@ -6,24 +6,30 @@ import { setShowAllTopics } from '../../store/slices/dashboardSettingsSlice';
 import { fetchShiftAnalytics } from '../../store/slices/shiftAnalyticsSlice';
 import { useDashboard } from '../../hooks/useDashboard';
 
-const Hero = () => {
+const Hero = ({ onToggleChange }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dispatch = useDispatch();
   const { showAllTopics, dateRange, loadDashboardData } = useDashboard();
 
-  const handleShowAllTopicsChange = (checked) => {
+  const handleShowAllTopicsChange = async (checked) => {
+    // Notify parent component that a toggle change is happening
+    if (onToggleChange) onToggleChange(true);
+    
     dispatch(setShowAllTopics(checked));
 
     // Refetch dashboard data with the new showAllTopics setting
     if (dateRange.startDate && dateRange.endDate) {
-      loadDashboardData(dateRange.startDate, dateRange.endDate, checked);
+      await loadDashboardData(dateRange.startDate, dateRange.endDate, checked);
       
-      dispatch(fetchShiftAnalytics({
+      await dispatch(fetchShiftAnalytics({
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
         showAllTopics: checked
       }));
     }
+    
+    // Notify parent component that toggle change is complete
+    if (onToggleChange) onToggleChange(false);
   };
 
   return (
