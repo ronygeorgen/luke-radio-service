@@ -61,9 +61,9 @@ const TopicModal = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       ID
                     </th>
-                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       File Path
-                    </th> */}
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Title
                     </th>
@@ -81,7 +81,7 @@ const TopicModal = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {segment.id}
                       </td>
-                      {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-500">
                         <a
                           href={`${apiUrl}/${segment.file_path}`}
                           target="_blank"
@@ -90,7 +90,7 @@ const TopicModal = () => {
                         >
                           Link
                         </a>
-                      </td> */}
+                      </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {getTitle(segment)}
                       </td>
