@@ -9,36 +9,96 @@ const Filters = () => {
   const dispatch = useDispatch(); // Add this
 
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [tempStartDate, setTempStartDate] = useState(dateRange.startDate || "");
-  const [tempEndDate, setTempEndDate] = useState(dateRange.endDate || "");
+  const [tempStartDate, setTempStartDate] = useState(
+    dateRange.startDateOrDateTime ? dateRange.startDateOrDateTime.split(' ')[0] : ""
+  );
+  const [tempEndDate, setTempEndDate] = useState(
+    dateRange.endDateOrDateTime ? dateRange.endDateOrDateTime.split(' ')[0] : ""
+  );
   const datePickerRef = useRef(null);
 
-  const formatDateForDisplay = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+
+  useEffect(() => {
+      if (!dateRange.startDateOrDateTime && !dateRange.endDateOrDateTime) {
+        const today = new Date();
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(today.getDate() - 7);
+        
+        const formatDate = (date) => date.toISOString().split('T')[0];
+        setTempStartDate(formatDate(sevenDaysAgo));
+        setTempEndDate(formatDate(today));
+      } else {
+        // Extract date part from datetime string (YYYY-MM-DD HH:MM:SS -> YYYY-MM-DD)
+        setTempStartDate(dateRange.startDateOrDateTime ? dateRange.startDateOrDateTime.split(' ')[0] : "");
+        setTempEndDate(dateRange.endDateOrDateTime ? dateRange.endDateOrDateTime.split(' ')[0] : "");
+      }
+    }, [dateRange]);
+
+  const formatDateForDisplay = (dateTimeString) => {
+    if (!dateTimeString) return "N/A";
+    
+    // Extract date part if it's a datetime string
+    const dateString = dateTimeString.includes(' ') 
+      ? dateTimeString.split(' ')[0] 
+      : dateTimeString;
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "N/A";
+      
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch (error) {
+      return "N/A";
+    }
   };
 
   const handleApply = () => {
-    loadDashboardData(tempStartDate, tempEndDate);
-    dispatch(fetchShiftAnalytics({ startDate: tempStartDate, endDate: tempEndDate })); // Add this
-    setShowDatePicker(false);
+    if (tempStartDate && tempEndDate) {
+      loadDashboardData(tempStartDate, tempEndDate);
+      dispatch(fetchShiftAnalytics({ startDate: tempStartDate, endDate: tempEndDate }));
+      setShowDatePicker(false);
+    }
   };
 
   const handleReset = () => {
-    const today = new Date().toISOString().split("T")[0];
-    setTempStartDate(today);
-    setTempEndDate(today);
-    loadDashboardData(today, today);
-    dispatch(fetchShiftAnalytics({ startDate: today, endDate: today })); // Add this
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    
+    const formatDate = (date) => date.toISOString().split('T')[0];
+    const startDate = formatDate(sevenDaysAgo);
+    const endDate = formatDate(today);
+    
+    setTempStartDate(startDate);
+    setTempEndDate(endDate);
+    loadDashboardData(startDate, endDate);
+    dispatch(fetchShiftAnalytics({ startDate, endDate }));
   };
 
   const isTodaySelected = () => {
-    const today = new Date().toISOString().split("T")[0];
-    return dateRange.startDate === today && dateRange.endDate === today;
+    const today = new Date().toISOString().split('T')[0];
+    const startDate = dateRange.startDateOrDateTime ? dateRange.startDateOrDateTime.split(' ')[0] : '';
+    const endDate = dateRange.endDateOrDateTime ? dateRange.endDateOrDateTime.split(' ')[0] : '';
+    return startDate === today && endDate === today;
+  };
+
+  const isLast7DaysSelected = () => {
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    
+    const formatDate = (date) => date.toISOString().split('T')[0];
+    const expectedStartDate = formatDate(sevenDaysAgo);
+    const expectedEndDate = formatDate(today);
+    
+    const startDate = dateRange.startDateOrDateTime ? dateRange.startDateOrDateTime.split(' ')[0] : '';
+    const endDate = dateRange.endDateOrDateTime ? dateRange.endDateOrDateTime.split(' ')[0] : '';
+    
+    return startDate === expectedStartDate && endDate === expectedEndDate;
   };
 
   // Close on outside click
@@ -78,11 +138,16 @@ const Filters = () => {
               onClick={() => setShowDatePicker((prev) => !prev)}
               className="font-medium text-gray-900 hover:text-blue-600 focus:outline-none"
             >
-              {formatDateForDisplay(dateRange.startDate)} to{" "}
-              {formatDateForDisplay(dateRange.endDate)}
+              {formatDateForDisplay(dateRange.startDateOrDateTime)} to{" "}
+              {formatDateForDisplay(dateRange.endDateOrDateTime)}
               {isTodaySelected() && (
                 <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
                   Today
+                </span>
+              )}
+              {isLast7DaysSelected() && !isTodaySelected() && (
+                <span className="ml-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                  Last 7 Days
                 </span>
               )}
             </button>
@@ -138,7 +203,7 @@ const Filters = () => {
           className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center space-x-1 transition-colors duration-200"
         >
           <RotateCcw className="w-4 h-4" />
-          <span>Show Today</span>
+          <span>Reset</span>
         </button>
       </div>
     </div>

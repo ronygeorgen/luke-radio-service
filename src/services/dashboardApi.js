@@ -1,12 +1,40 @@
 import { axiosInstance } from './api';
 
+// Alternative format in dashboardApi.js
 export const dashboardApi = {
   getDashboardStats: async (startDate, endDate, showAllTopics = false) => {
     try {
+      // Format as YYYY-MM-DD HH:MM:SS (space separated)
+      const formatDateTime = (dateStr, isEndDate = false) => {
+        const date = new Date(dateStr);
+        if (isEndDate) {
+          date.setHours(23, 59, 59, 0);
+        } else {
+          date.setHours(0, 0, 0, 0);
+        }
+        
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      };
+      
+      const startDateTime = formatDateTime(startDate, false);
+      const endDateTime = formatDateTime(endDate, true);
+      
+      console.log('API Call:', {
+        start_datetime: startDateTime,
+        end_datetime: endDateTime
+      });
+      
       const response = await axiosInstance.get('/dashboard/stats/', {
         params: {
-          start_date: startDate,
-          end_date: endDate,
+          start_datetime: startDateTime,
+          end_datetime: endDateTime,
           channel_id: 1,
           show_all_topics: showAllTopics
         }
@@ -20,10 +48,37 @@ export const dashboardApi = {
 
   getShiftAnalytics: async (startDate, endDate, showAllTopics = false) => {
     try {
+      // Use the same formatting function
+      const formatDateTime = (dateStr, isEndDate = false) => {
+        const date = new Date(dateStr);
+        if (isEndDate) {
+          date.setHours(23, 59, 59, 0);
+        } else {
+          date.setHours(0, 0, 0, 0);
+        }
+        
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      };
+      
+      const startDateTime = formatDateTime(startDate, false);
+      const endDateTime = formatDateTime(endDate, true);
+      
+      console.log('API Call - Shift Analytics:', {
+        start_datetime: startDateTime,
+        end_datetime: endDateTime
+      });
+      
       const response = await axiosInstance.get('/dashboard/shift-analytics/', {
         params: {
-          start_date: startDate,
-          end_date: endDate,
+          start_datetime: startDateTime,
+          end_datetime: endDateTime,
           channel_id: 1,
           show_all_topics: showAllTopics
         }
@@ -33,5 +88,52 @@ export const dashboardApi = {
       console.error('Error fetching shift analytics:', error);
       throw error;
     }
+  },
+
+  getAudioSegmentsByTopic: async (topicName, startDate, endDate, showAllTopics = false) => {
+    try {
+      // Use the same formatting function as the other endpoints
+      const formatDateTime = (dateStr, isEndDate = false) => {
+        const date = new Date(dateStr);
+        if (isEndDate) {
+          date.setHours(23, 59, 59, 0);
+        } else {
+          date.setHours(0, 0, 0, 0);
+        }
+        
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      };
+      
+      const startDateTime = formatDateTime(startDate, false);
+      const endDateTime = formatDateTime(endDate, true);
+      
+      console.log('API Call - Audio Segments by Topic:', {
+        start_datetime: startDateTime,
+        end_datetime: endDateTime,
+        topic_name: topicName
+      });
+      
+      const response = await axiosInstance.get('/dashboard/topic-audio-segments/', {
+        params: {
+          start_datetime: startDateTime,
+          end_datetime: endDateTime,
+          channel_id: 1,
+          topic_name: topicName,
+          show_all_topics: showAllTopics
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching audio segments by topic:', error);
+      throw error;
+    }
   }
 };
+

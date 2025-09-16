@@ -1,11 +1,31 @@
 import { BarChart } from "lucide-react";
 import { useDashboard } from "../../hooks/useDashboard";
 import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { openModal, fetchAudioSegmentsByTopic } from "../../store/slices/topicModalSlice";
 
 const TopicsDistribution = () => {
   const { topicsDistribution, loading } = useDashboard();
   const [hoveredTopic, setHoveredTopic] = useState(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+  const dispatch = useDispatch();
+
+  const { dateRange, showAllTopics } = useSelector((state) => state.dashboard);
+
+  const handleTopicClick = (topic) => {
+    dispatch(openModal(topic.topic));
+    
+    // Extract just the date part (YYYY-MM-DD) from the datetime strings
+    const startDate = dateRange.startDateOrDateTime ? dateRange.startDateOrDateTime.split(' ')[0] : '';
+    const endDate = dateRange.endDateOrDateTime ? dateRange.endDateOrDateTime.split(' ')[0] : '';
+    
+    dispatch(fetchAudioSegmentsByTopic({
+      topicName: topic.topic,
+      startDate: startDate,
+      endDate: endDate,
+      showAllTopics: showAllTopics
+    }));
+  };
 
   if (loading) {
     return (
@@ -61,14 +81,18 @@ const TopicsDistribution = () => {
 
       <div className="space-y-3">
         {normalizedData.slice(0, 10).map((topic, index) => (
-          <div key={index} className="flex items-center">
+          <div 
+            key={index} 
+            className="flex items-center cursor-pointer"
+            onClick={() => handleTopicClick(topic)}
+          >
             <div className="w-32 text-sm text-gray-600 text-right pr-4 truncate">
               {topic.topic}
             </div>
             <div className="flex-1 relative">
               <div className="bg-gray-200 h-6 rounded-r">
                 <div
-                  className="bg-blue-400 h-6 rounded-r transition-all duration-1000"
+                  className="bg-blue-400 h-6 rounded-r transition-all duration-1000 hover:bg-blue-500"
                   style={{ width: `${topic.normalizedValue * 100}%` }}
                   onMouseEnter={() => setHoveredTopic(topic)}
                   onMouseMove={(e) => {

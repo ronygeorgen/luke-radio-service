@@ -18,6 +18,7 @@ import { useDashboard } from '../../hooks/useDashboard';
 import { fetchShiftAnalytics } from '../../store/slices/shiftAnalyticsSlice';
 import ErrorBoundary from '../ErrorBoundary';
 import { setShowAllTopics } from '../../store/slices/dashboardSettingsSlice';
+import TopicModal from './TopicModal';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState('main');
@@ -28,12 +29,19 @@ function Dashboard() {
   const shiftAnalytics = useSelector((state) => state.shiftAnalytics);
   
   useEffect(() => {
-    // Load data for today only
-    const today = new Date().toISOString().split('T')[0];
+    // Calculate default date range: last 7 days from today
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
     
-    // Load both dashboard and shift analytics data
-    loadDashboardData(today, today, showAllTopics);
-    dispatch(fetchShiftAnalytics({ startDate: today, endDate: today, showAllTopics }));
+    // Format dates as YYYY-MM-DD
+    const formatDate = (date) => date.toISOString().split('T')[0];
+    const startDate = formatDate(sevenDaysAgo);
+    const endDate = formatDate(today);
+    
+    // Load both dashboard and shift analytics data with 7-day range
+    loadDashboardData(startDate, endDate, showAllTopics);
+    dispatch(fetchShiftAnalytics({ startDate, endDate, showAllTopics }));
   }, [loadDashboardData, dispatch, showAllTopics]);
 
   // Handle loading state for both dashboard and shift analytics
@@ -70,6 +78,7 @@ function Dashboard() {
       <Filters />
       
       <ErrorBoundary><StatsCards /></ErrorBoundary>
+      <TopicModal />
       
       <AnalyticsTabs activeTab={activeTab} setActiveTab={setActiveTab}>
         {activeTab === 'main' ? (

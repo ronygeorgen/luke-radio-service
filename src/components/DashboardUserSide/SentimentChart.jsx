@@ -41,9 +41,9 @@ const SentimentChart = () => {
   const chartData = useMemo(() => {
     if (!sentimentData || sentimentData.length === 0) return null;
 
-    const width = 400;
+    const width = sentimentData.length * 80;
     const height = 200;
-    const padding = { top: 20, right: 20, bottom: 40, left: 60 };
+    const padding = { top: 20, right: 10, bottom: 40, left: 60 };
     
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
@@ -62,7 +62,8 @@ const SentimentChart = () => {
 
     // Calculate point positions
     const points = sentimentData.map((point, index) => {
-      const x = padding.left + (index / (sentimentData.length - 1)) * chartWidth;
+      // Calculate x position to use full available width
+      const x = padding.left + (index / Math.max(1, sentimentData.length - 1)) * chartWidth;
       const y = padding.top + chartHeight - ((point.sentiment - yMin) / yRange) * chartHeight;
       return { ...point, x, y };
     });
@@ -223,6 +224,19 @@ const SentimentChart = () => {
             </g>
           ))}
 
+          {/* X-axis labels - positioned exactly at each data point */}
+          {points.map((point, index) => (
+            <text
+              key={index}
+              x={point.x}
+              y={height - padding.bottom / 2}
+              className="text-xs fill-gray-500"
+              textAnchor="middle"
+            >
+              {formatDate(point.date)}
+            </text>
+          ))}
+
           {/* Area fill */}
           <path
             d={areaPath}
@@ -265,18 +279,6 @@ const SentimentChart = () => {
             </g>
           ))}
         </svg>
-
-        {/* X-axis labels */}
-        <div className="absolute bottom-0 left-0 right-0 flex justify-between" style={{ paddingLeft: `${padding.left}px`, paddingRight: `${padding.right}px` }}>
-          {points.map((point, index) => (
-            <div key={index} className="text-xs text-gray-500 text-center" style={{ 
-              transform: 'translateX(-50%)',
-              width: 'max-content'
-            }}>
-              {formatDate(point.date)}
-            </div>
-          ))}
-        </div>
 
         {/* Tooltip */}
         {tooltip.visible && (
