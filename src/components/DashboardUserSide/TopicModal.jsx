@@ -1,21 +1,72 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { closeModal } from '../../store/slices/topicModalSlice';
-import { X } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { useState } from 'react';
 
 const TopicModal = () => {
   const dispatch = useDispatch();
   const { isOpen, topicName, audioSegments, loading, error } = useSelector((state) => state.topicModal);
   const apiUrl = import.meta.env.VITE_API_URL || 'https://radio.reloop.pro/api';
+  const [expandedRows, setExpandedRows] = useState(new Set());
+  const [expandedGeneralTopics, setExpandedGeneralTopics] = useState(new Set());
 
   if (!isOpen) return null;
 
   const handleClose = () => {
     dispatch(closeModal());
+    setExpandedRows(new Set());
+    setExpandedGeneralTopics(new Set());
   };
 
   const getTitle = (segment) => {
     if (segment.title) return segment.title;
     return `${segment.title_before || ''} ${segment.title_after || ''}`.trim();
+  };
+
+  const toggleRowExpansion = (segmentId) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(segmentId)) {
+      newExpandedRows.delete(segmentId);
+    } else {
+      newExpandedRows.add(segmentId);
+    }
+    setExpandedRows(newExpandedRows);
+  };
+
+  const toggleGeneralTopicsExpansion = (segmentId) => {
+    const newExpandedGeneralTopics = new Set(expandedGeneralTopics);
+    if (newExpandedGeneralTopics.has(segmentId)) {
+      newExpandedGeneralTopics.delete(segmentId);
+    } else {
+      newExpandedGeneralTopics.add(segmentId);
+    }
+    setExpandedGeneralTopics(newExpandedGeneralTopics);
+  };
+
+  const truncateText = (text, maxLength = 100) => {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
+  const formatGeneralTopics = (topics) => {
+    if (!topics) return 'N/A';
+    
+    // If it's already a formatted list with numbers, return as is
+    if (topics.includes('\n') || topics.includes('1.')) {
+      return topics.split('\n').map((line, index) => (
+        <div key={index} className="mb-1">{line}</div>
+      ));
+    }
+    
+    // If it's a comma-separated list, format it with line breaks
+    if (topics.includes(',')) {
+      return topics.split(',').map((topic, index) => (
+        <div key={index} className="mb-1">{topic.trim()}</div>
+      ));
+    }
+    
+    // For single topics or other formats
+    return topics;
   };
 
   return (
@@ -58,49 +109,129 @@ const TopicModal = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       ID
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      File Path
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      File
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Title
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       General Topics
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Sentiment
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Transcript
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {audioSegments.map((segment) => (
-                    <tr key={segment.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {segment.id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-500">
-                        <a
-                          href={`${apiUrl}/${segment.file_path}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline"
-                        >
-                          Link
-                        </a>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {getTitle(segment)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {segment.analysis?.general_topics || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {segment.analysis?.sentiment || 'N/A'}
-                      </td>
-                    </tr>
+                    <>
+                      <tr key={segment.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {segment.id}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          <a
+                            href={`${apiUrl}/${segment.file_path}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:text-blue-700 flex items-center"
+                            title="Open audio file"
+                          >
+                            <ExternalLink className="w-4 h-4 mr-1" />
+                            Audio
+                          </a>
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-500 max-w-xs">
+                          <div className="overflow-hidden" style={{ WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical' }} title={getTitle(segment)}>
+                            {getTitle(segment)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-500 max-w-xs">
+                          <div 
+                            className={`overflow-hidden ${expandedGeneralTopics.has(segment.id) ? '' : 'cursor-pointer'}`}
+                            style={expandedGeneralTopics.has(segment.id) ? {} : { WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical' }}
+                            onClick={() => toggleGeneralTopicsExpansion(segment.id)}
+                            title={expandedGeneralTopics.has(segment.id) ? '' : 'Click to expand'}
+                          >
+                            {expandedGeneralTopics.has(segment.id) 
+                              ? formatGeneralTopics(segment.analysis?.general_topics)
+                              : truncateText(segment.analysis?.general_topics, 80)
+                            }
+                          </div>
+                          {segment.analysis?.general_topics && segment.analysis.general_topics.length > 80 && (
+                            <button
+                              onClick={() => toggleGeneralTopicsExpansion(segment.id)}
+                              className="text-blue-500 text-xs mt-1 flex items-center"
+                            >
+                              {expandedGeneralTopics.has(segment.id) ? (
+                                <>
+                                  <ChevronUp className="w-3 h-3 mr-1" />
+                                  Show less
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="w-3 h-3 mr-1" />
+                                  Show more
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {segment.analysis?.sentiment || 'N/A'}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-500 max-w-xs">
+                          <div 
+                            className={`overflow-hidden ${expandedRows.has(segment.id) ? '' : 'cursor-pointer'}`}
+                            style={expandedRows.has(segment.id) ? {} : { WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical' }}
+                            onClick={() => toggleRowExpansion(segment.id)}
+                            title={expandedRows.has(segment.id) ? '' : 'Click to expand transcript'}
+                          >
+                            {expandedRows.has(segment.id) 
+                              ? segment.transcription?.transcript 
+                              : truncateText(segment.transcription?.transcript, 100)
+                            }
+                          </div>
+                          {segment.transcription?.transcript && segment.transcription.transcript.length > 100 && (
+                            <button
+                              onClick={() => toggleRowExpansion(segment.id)}
+                              className="text-blue-500 text-xs mt-1 flex items-center"
+                            >
+                              {expandedRows.has(segment.id) ? (
+                                <>
+                                  <ChevronUp className="w-3 h-3 mr-1" />
+                                  Show less
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="w-3 h-3 mr-1" />
+                                  Show more
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      {expandedRows.has(segment.id) && (
+                        <tr key={`${segment.id}-expanded`}>
+                          <td colSpan="6" className="px-4 py-4 bg-gray-50">
+                            <div className="text-sm text-gray-700">
+                              <strong>Full Transcript:</strong>
+                              <div className="mt-2 p-3 bg-white border rounded-md whitespace-pre-wrap overflow-auto max-h-64">
+                                {segment.transcription?.transcript || 'N/A'}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                 </tbody>
               </table>
