@@ -2,20 +2,40 @@ import { useDispatch, useSelector } from 'react-redux';
 import { closeModal } from '../../store/slices/topicModalSlice';
 import { X, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
+import AudioPlayer from '../../pages/user/AudioPlayer';
+import { setCurrentPlaying, setIsPlaying } from '../../store/slices/audioSegmentsSlice';
 
 const TopicModal = () => {
+
   const dispatch = useDispatch();
   const { isOpen, topicName, audioSegments, loading, error } = useSelector((state) => state.topicModal);
+  const { currentPlayingId, isPlaying } = useSelector((state) => state.audioSegments);
   const apiUrl = import.meta.env.VITE_API_URL || 'https://radio.reloop.pro/api';
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [expandedGeneralTopics, setExpandedGeneralTopics] = useState(new Set());
 
   if (!isOpen) return null;
 
+   // Handler functions for audio playback
+  const handlePlayPauseAudio = (segmentId) => {
+    if (currentPlayingId === segmentId) {
+      dispatch(setIsPlaying(!isPlaying));
+    } else {
+      dispatch(setCurrentPlaying(segmentId));
+      dispatch(setIsPlaying(true));
+    }
+  };
+
+  
+
   const handleClose = () => {
     dispatch(closeModal());
     setExpandedRows(new Set());
     setExpandedGeneralTopics(new Set());
+    // Stop audio when closing modal
+    if (currentPlayingId) {
+      dispatch(setCurrentPlaying(null));
+    }
   };
 
   const getTitle = (segment) => {
@@ -113,7 +133,10 @@ const TopicModal = () => {
                       ID
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      File
+                      Play
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Download
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Title
@@ -137,15 +160,33 @@ const TopicModal = () => {
                           {segment.id}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => handlePlayPauseAudio(segment.id)}
+                            className="p-1 rounded-full hover:bg-gray-200 transition-colors"
+                            aria-label={currentPlayingId === segment.id && isPlaying ? 'Pause' : 'Play'}
+                          >
+                            {currentPlayingId === segment.id && isPlaying ? (
+                              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                              </svg>
+                            )}
+                          </button>
+                        </td>
+                        {/* Download link column (kept for reference) */}
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">
                           <a
                             href={`${apiUrl}/${segment.file_path}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-500 hover:text-blue-700 flex items-center"
-                            title="Open audio file"
+                            title="Download audio file"
                           >
                             <ExternalLink className="w-4 h-4 mr-1" />
-                            Audio
+                            Download
                           </a>
                         </td>
                         <td className="px-4 py-4 text-sm text-gray-500 max-w-xs">
@@ -219,6 +260,21 @@ const TopicModal = () => {
                           )}
                         </td>
                       </tr>
+                      {/* Audio player row for this segment */}
+                      {currentPlayingId === segment.id && (
+                        <tr key={`${segment.id}-player`}>
+                          <td colSpan="7" className="px-4 py-4 bg-gray-50">
+                            <div className="flex justify-center w-full">
+                              <div className="w-full max-w-2xl">
+                                <AudioPlayer 
+                                  segment={segment} 
+                                  onClose={() => dispatch(setCurrentPlaying(null))}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                       {expandedRows.has(segment.id) && (
                         <tr key={`${segment.id}-expanded`}>
                           <td colSpan="6" className="px-4 py-4 bg-gray-50">
