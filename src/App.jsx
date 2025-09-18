@@ -11,6 +11,8 @@ import UserAudioSegmentsPage from './pages/user/AudioSegmentsPage';
 import Dashboard from './components/DashboardUserSide/Dashboard';
 import AppStateHydrator from './components/AppStateHydrator';
 import DashboardSettingsPage from './components/DashboardUserSide/DashboardSettingsPage';
+import ReportsPage from './pages/user/ReportsPage';
+import ReportDetailPage from './pages/user/ReportDetailPage';
 
 function App() {
   return (
@@ -32,6 +34,10 @@ function App() {
             {/* User Routes */}
             <Route path="/user-channels" element={<UserChannelsPage />} />
             <Route path="/channels/:channelId/segments" element={<UserAudioSegmentsPage />} />
+
+             {/* Report Routes */}
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/reports/:id" element={<ReportDetailPage />} />
 
             {/* Dashboard Route */}
             <Route path="/dashboard" element={<Dashboard />} />

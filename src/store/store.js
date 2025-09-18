@@ -7,6 +7,7 @@ import dashboardReducer from './slices/dashboardSlice';
 import shiftAnalyticsReducer from './slices/shiftAnalyticsSlice';
 import dashboardSettingsReducer from './slices/dashboardSettingsSlice';
 import topicModalReducer from './slices/topicModalSlice';
+import reportReducer from './slices/reportSlice';
 
 export const store = configureStore({
   reducer: {
@@ -17,6 +18,7 @@ export const store = configureStore({
     shiftAnalytics: shiftAnalyticsReducer, 
     dashboardSettings: dashboardSettingsReducer,
     topicModal: topicModalReducer,
+    reports: reportReducer,
   },
 });
 

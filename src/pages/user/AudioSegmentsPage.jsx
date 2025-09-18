@@ -1,3 +1,4 @@
+// pages/user/AudioSegmentsPage.jsx
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useSearchParams } from 'react-router-dom';
@@ -403,13 +404,15 @@ const handleDateRangeSelect = (start, end) => {
 
       {/* Audio Player and Modals */}
       {currentPlayingId && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 p-4 z-30">
-          <AudioPlayer 
-            segment={segments.find(s => s.id === currentPlayingId)} 
-            onClose={() => dispatch(setCurrentPlaying(null))}
-          />
-        </div>
-      )}
+  <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 p-4 z-30">
+    {console.log("🎧 Current Playing ID:", currentPlayingId)}
+    {console.log("🎧 Segment passed to AudioPlayer:", segments.find(s => s.id === currentPlayingId))}
+    <AudioPlayer 
+      segment={segments.find(s => s.id === currentPlayingId)} 
+      onClose={() => dispatch(setCurrentPlaying(null))}
+    />
+  </div>
+)}
 
       {showSummaryModal && selectedSegment && (
         <SummaryModal 

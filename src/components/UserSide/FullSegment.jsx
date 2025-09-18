@@ -1,4 +1,6 @@
-import React from 'react';
+// components/UserSide/FullSegment.jsx
+import React, { useState } from 'react';
+import { SelectReportModal, CreateReportModal } from '../../pages/user/ReportModals';
 
 const FullSegment = ({ 
   segment, 
@@ -8,45 +10,67 @@ const FullSegment = ({
   handleSummaryClick, 
   handleTranscriptionClick 
 }) => {
+  const [showSelectModal, setShowSelectModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
   // Check if this is a music segment and extract artist names
   const isMusicSegment = segment.metadata_json?.source === 'music';
   const artistNames = isMusicSegment 
     ? segment.metadata_json.artists?.map(artist => artist.name).join(', ') 
     : null;
 
+  // Check if segment has content for showing "Add to Report" button
+  const hasContent = segment.analysis?.summary || segment.transcription?.transcript;
+
+  const handleAddToReport = () => {
+    setShowSelectModal(true);
+  };
+
+  const handleCreateNewReport = () => {
+    setShowSelectModal(false);
+    setShowCreateModal(true);
+  };
+
+  const handleBackToSelect = () => {
+    setShowCreateModal(false);
+    setShowSelectModal(true);
+  };
+
+  const closeModals = () => {
+    setShowSelectModal(false);
+    setShowCreateModal(false);
+  };
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-4">
-  <div>
-    {/* Segment ID as top heading */}
-    <h1 className="text-xl font-bold text-blue-700 mb-1">
-      Segment ID: {segment.id}
-    </h1>
+        <div>
+          <h1 className="text-sm font-bold text-blue-700 mb-1">
+            Segment ID: {segment.id}
+          </h1>
+          <h2 className="text-lg font-bold text-gray-900 flex items-center">
+            {segment.title ? (
+              segment.title
+            ) : (
+              `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
+                segment.title_before && segment.title_after ? " - " : ""
+              }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() || 
+              "Untitled Report Item"
+            )}
+          </h2>
+        </div>
 
-    {/* Existing title logic */}
-    <h2 className="text-lg font-bold text-gray-900 flex items-center">
-      {segment.title ? (
-        segment.title
-      ) : (
-        `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
-          segment.title_before && segment.title_after ? " - " : ""
-        }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() || 
-        "Untitled Report Item"
-      )}
-    </h2>
-  </div>
-
-  <div className="flex space-x-2">
-    <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
-      {segment.duration_seconds}s
-    </span>
-    {isMusicSegment && (
-      <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">
-        Music
-      </span>
-    )}
-  </div>
-</div>
+        <div className="flex space-x-2">
+          <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
+            {segment.duration_seconds}s
+          </span>
+          {isMusicSegment && (
+            <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">
+              Music
+            </span>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Left column - Details */}
@@ -97,18 +121,32 @@ const FullSegment = ({
               )}
             </div>
           </div>
-          <button
-            onClick={() => handlePlayPauseAudio(segment.id)}
-            className={`w-full ${
-              currentPlayingId === segment.id && isPlaying 
-                ? 'bg-yellow-600 hover:bg-yellow-700' 
-                : 'bg-green-600 hover:bg-green-700'
-            } text-white py-2 px-4 rounded-md flex items-center justify-center text-sm`}
-          >
-            {currentPlayingId === segment.id && isPlaying ? 'Pause Audio' : 'Play Audio'}
-          </button>
+          
+          <div className="flex flex-col space-y-2">
+            <button
+              onClick={() => handlePlayPauseAudio(segment.id)}
+              className={`w-full ${
+                currentPlayingId === segment.id && isPlaying 
+                  ? 'bg-yellow-600 hover:bg-yellow-700' 
+                  : 'bg-green-600 hover:bg-green-700'
+              } text-white py-2 px-4 rounded-md flex items-center justify-center text-sm`}
+            >
+              {currentPlayingId === segment.id && isPlaying ? 'Pause Audio' : 'Play Audio'}
+            </button>
+            
+            {/* Add to Report Button - Only show if segment has content */}
+            {hasContent && (
+              <button
+                onClick={handleAddToReport}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center justify-center text-sm"
+              >
+                Add to Report
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* Rest of the component remains the same */}
         {/* Middle column - Content */}
         <div className="md:col-span-7 space-y-4">
           <h3 className="font-bold text-center text-white bg-gradient-to-r from-blue-500 to-blue-600 py-2 px-4 rounded-md mb-4">
@@ -193,6 +231,21 @@ const FullSegment = ({
           )}
         </div>
       </div>
+
+      {/* Report Modals */}
+      <SelectReportModal
+        isOpen={showSelectModal}
+        onClose={closeModals}
+        segmentId={segment.id}
+        onCreateNew={handleCreateNewReport}
+      />
+      
+      <CreateReportModal
+        isOpen={showCreateModal}
+        onClose={closeModals}
+        onBack={handleBackToSelect}
+        segmentId={segment.id}
+      />
     </div>
   );
 };

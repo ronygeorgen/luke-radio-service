@@ -1,8 +1,9 @@
-import React from "react";
+// components/UserSide/Header.jsx
+import React, { useState } from "react";
 import { formatDateForDisplay } from "../../utils/formatters";
 import FilterPanel from "../../components/UserSide/FilterPanel";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { Settings, ArrowLeft, FileText, BarChart3 } from "lucide-react";
 
 const Header = ({
   channelInfo,
@@ -33,6 +34,7 @@ const Header = ({
 }) => {
   const navigate = useNavigate();
   const savedChannelName = localStorage.getItem("channelName");
+  const [showDropdown, setShowDropdown] = useState(false);
 
   // Safe formatting function
   const safeFormatDate = (dateString) => {
@@ -44,26 +46,54 @@ const Header = ({
     <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Top Row: Back + Dashboard */}
+        {/* Top Row: Settings Dropdown */}
         <div className="flex items-center justify-between py-2">
           <a
-            href="/reports"
+            href="/channels"
             className="flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 transition"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
             <span>Back</span>
           </a>
 
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="px-4 py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 
-                       text-white text-sm font-medium shadow-sm hover:from-blue-600 hover:to-blue-700 
-                       focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 transition"
-          >
-            Switch to Dashboard
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="p-2 rounded-full hover:bg-gray-100 transition"
+            >
+              <Settings className="w-5 h-5 text-gray-600" />
+            </button>
+            
+            {showDropdown && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      navigate("/reports");
+                      setShowDropdown(false);
+                    }}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Go to Reports
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate("/dashboard");
+                      setShowDropdown(false);
+                    }}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    Go to Dashboard
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* Rest of the header remains the same */}
         {/* Channel Info Row */}
         <div className="flex items-center justify-between py-2">
           <div>
@@ -111,7 +141,7 @@ const Header = ({
           </div>
         </div>
 
-        {/* Filters Panel - PASS ALL THE PROPS INCLUDING NEW ONES */}
+        {/* Filters Panel */}
         <div className="pb-2">
           <FilterPanel
             filters={filters}
