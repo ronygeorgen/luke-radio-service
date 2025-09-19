@@ -13,6 +13,9 @@ import AppStateHydrator from './components/AppStateHydrator';
 import DashboardSettingsPage from './components/DashboardUserSide/DashboardSettingsPage';
 import ReportsPage from './pages/user/ReportsPage';
 import ReportDetailPage from './pages/user/ReportDetailPage';
+import AdminLogin from './pages/admin/AdminLogin';
+import CreatePassword from './pages/user/Createpassword';
+import UserLogin from './pages/user/UserLogin';
 
 function App() {
   return (
@@ -21,6 +24,12 @@ function App() {
         <div className="min-h-screen bg-gray-50">
           <AppStateHydrator /> {/* Move AppStateHydrator here */}
           <Routes>
+
+            {/* Auth Routes */}
+            <Route path="/admin-login" element={<AdminLogin />} />
+            <Route path="/user-login" element={<UserLogin />} />
+            <Route path="/create-password" element={<CreatePassword />} />
+            
             {/* Landing Page → Now UserChannelsPage */}
             <Route path="/" element={<UserChannelsPage />} />
 
