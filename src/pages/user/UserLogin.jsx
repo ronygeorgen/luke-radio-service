@@ -264,14 +264,14 @@ const UserLogin = () => {
               </div>
 
               {/* Create Account Link */}
-              <div className="text-center">
+              {/* <div className="text-center">
                 <Link 
                   to="/create-password" 
                   className="text-blue-600 hover:text-blue-500 font-medium"
                 >
                   First time here? Create your password
                 </Link>
-              </div>
+              </div> */}
             </form>
           </div>
 
