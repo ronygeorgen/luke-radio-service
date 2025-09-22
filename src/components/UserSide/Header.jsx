@@ -4,6 +4,8 @@ import { formatDateForDisplay } from "../../utils/formatters";
 import FilterPanel from "../../components/UserSide/FilterPanel";
 import { useNavigate } from "react-router-dom";
 import { Settings, ArrowLeft, FileText, BarChart3 } from "lucide-react";
+import { useDispatch } from 'react-redux';
+import { logout } from "../../store/slices/authSlice";
 
 const Header = ({
   channelInfo,
@@ -40,6 +42,11 @@ const Header = ({
   const safeFormatDate = (dateString) => {
     if (!dateString) return 'Select date';
     return formatDateForDisplay(dateString);
+  };
+
+
+  const handleLogout = () => {
+    dispatch(logout());
   };
 
   return (
@@ -88,6 +95,29 @@ const Header = ({
                     Go to Dashboard
                   </button>
                 </div>
+                <div className="bg-white shadow-sm border-b border-gray-200 p-3 flex justify-end">
+                  <button
+                    onClick={handleLogout}
+                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg shadow-sm transition duration-200 ease-in-out flex items-center gap-2"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 002 2h5a2 2 0 002-2V7a2 2 0 00-2-2h-5a2 2 0 00-2 2v1"
+                      />
+                    </svg>
+                    Logout
+                  </button>
+                </div>
+
               </div>
             )}
           </div>

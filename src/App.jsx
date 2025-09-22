@@ -16,41 +16,79 @@ import ReportDetailPage from './pages/user/ReportDetailPage';
 import AdminLogin from './pages/admin/AdminLogin';
 import CreatePassword from './pages/user/Createpassword';
 import UserLogin from './pages/user/UserLogin';
+import ProtectedRoute from './components/ProtectedRoute';
+import PublicRoute from './components/PublicRoute';
+import LandingRedirect from './components/LandingRedirect';
 
 function App() {
   return (
     <Provider store={store}>
       <Router>
         <div className="min-h-screen bg-gray-50">
-          <AppStateHydrator /> {/* Move AppStateHydrator here */}
+          <AppStateHydrator />
           <Routes>
-
-            {/* Auth Routes */}
-            <Route path="/admin-login" element={<AdminLogin />} />
-            <Route path="/user-login" element={<UserLogin />} />
+            {/* Public Auth Routes */}
+            <Route path="/admin-login" element={
+              <PublicRoute restricted>
+                <AdminLogin />
+              </PublicRoute>
+            } />
+            <Route path="/user-login" element={
+              <PublicRoute restricted>
+                <UserLogin />
+              </PublicRoute>
+            } />
             <Route path="/create-password" element={<CreatePassword />} />
             
-            {/* Landing Page → Now UserChannelsPage */}
-            <Route path="/" element={<UserChannelsPage />} />
-
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminLayout />}>
+            {/* Protected Admin Routes */}
+            <Route path="/admin" element={
+              <ProtectedRoute requireAdmin>
+                <AdminLayout />
+              </ProtectedRoute>
+            }>
               <Route index element={<Navigate to="channels" replace />} />
               <Route path="channels" element={<ChannelsPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
 
-            {/* User Routes */}
-            <Route path="/user-channels" element={<UserChannelsPage />} />
-            <Route path="/channels/:channelId/segments" element={<UserAudioSegmentsPage />} />
+            {/* Protected User Routes */}
+            <Route path="/user-channels" element={
+              <ProtectedRoute>
+                <UserChannelsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/channels/:channelId/segments" element={
+              <ProtectedRoute>
+                <UserAudioSegmentsPage />
+              </ProtectedRoute>
+            } />
 
-             {/* Report Routes */}
-            <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/reports/:id" element={<ReportDetailPage />} />
+            {/* Protected User Report Routes */}
+            <Route path="/reports" element={
+              <ProtectedRoute>
+                <ReportsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/reports/:id" element={
+              <ProtectedRoute>
+                <ReportDetailPage />
+              </ProtectedRoute>
+            } />
 
-            {/* Dashboard Route */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/settings" element={<DashboardSettingsPage />} />
+            {/* Protected User Dashboard Route */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/settings" element={
+              <ProtectedRoute>
+                <DashboardSettingsPage />
+              </ProtectedRoute>
+            } />
+
+            {/* Public Landing Page */}
+            <Route path="/" element={<LandingRedirect />} />
 
             {/* Catch-all Redirect */}
             <Route path="*" element={<Navigate to="/" replace />} />

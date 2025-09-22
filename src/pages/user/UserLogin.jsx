@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Radio, Eye, EyeOff, ArrowRight, Waves, Signal } from 'lucide-react';
-
+import { useDispatch, useSelector } from 'react-redux';
+import { loginUser, clearError } from '../../store/slices/authSlice';
 const UserLogin = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -9,7 +10,29 @@ const UserLogin = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
+  
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const { isLoading, error, isAuthenticated, user } = useSelector((state) => state.auth);
+  
+  const from = location.state?.from?.pathname || '/user-channels';
+
+  useEffect(() => {
+    if (isAuthenticated && !user?.isAdmin) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, user, navigate, from]);
+
+  useEffect(() => {
+    if (error) {
+      setErrors(prev => ({
+        ...prev,
+        submit: error.detail || 'Login failed. Please check your credentials and try again.'
+      }));
+    }
+  }, [error]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -17,10 +40,19 @@ const UserLogin = () => {
       ...prev,
       [name]: value
     }));
+    
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
         [name]: ''
+      }));
+    }
+    
+    if (errors.submit) {
+      dispatch(clearError());
+      setErrors(prev => ({
+        ...prev,
+        submit: ''
       }));
     }
   };
@@ -50,11 +82,7 @@ const UserLogin = () => {
       return;
     }
     
-    setIsLoading(true);
-    setTimeout(() => {
-      console.log('User login:', formData);
-      setIsLoading(false);
-    }, 1500);
+    dispatch(loginUser({ ...formData, isAdmin: false }));
   };
 
   return (
@@ -214,6 +242,13 @@ const UserLogin = () => {
                 {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
               </div>
 
+              {/* Error Message */}
+              {errors.submit && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-red-600 text-sm">{errors.submit}</p>
+                </div>
+              )}
+
               {/* Remember Me & Forgot Password */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
@@ -250,28 +285,6 @@ const UserLogin = () => {
                   </div>
                 )}
               </button>
-
-              {/* Divider */}
-              {/* <div className="mt-6">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">or</span>
-                  </div>
-                </div>
-              </div> */}
-
-              {/* Create Account Link */}
-              {/* <div className="text-center">
-                <Link 
-                  to="/create-password" 
-                  className="text-blue-600 hover:text-blue-500 font-medium"
-                >
-                  First time here? Create your password
-                </Link>
-              </div> */}
             </form>
           </div>
 
@@ -286,16 +299,6 @@ const UserLogin = () => {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-        }
-        .animate-float {
-          animation: float 3s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };

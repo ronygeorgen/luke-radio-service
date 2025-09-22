@@ -1,14 +1,17 @@
-// components/AppStateHydrator.jsx
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { startTranscriptionPolling } from '../store/slices/audioSegmentsSlice';
 import { cleanupOldPollingData } from '../utils/pollingCleanup';
+import { checkAuth } from '../store/slices/authSlice';
 
 const AppStateHydrator = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    // Clean up old data first
+    // Check authentication first
+    dispatch(checkAuth());
+    
+    // Then clean up old data and restore polling
     const { transcriptionPolling, nextPollTime } = cleanupOldPollingData();
     
     // For each polling segment, restore the polling state

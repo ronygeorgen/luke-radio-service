@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Lock, Eye, EyeOff, CheckCircle, Radio } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Lock, Eye, EyeOff, CheckCircle, Radio, Mail } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { verifyMagicLink, setPassword, resendMagicLink, clearError } from '../../store/slices/authSlice';
 
 const CreatePassword = () => {
   const [formData, setFormData] = useState({
@@ -10,7 +12,31 @@ const CreatePassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
+
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+  
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const { isLoading, error, magicLinkData } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/user-login', { replace: true });
+      return;
+    }
+
+    // Verify the magic link token
+    dispatch(verifyMagicLink(token));
+  }, [token, dispatch, navigate]);
+
+  useEffect(() => {
+    if (error) {
+      setErrors({ submit: error.detail || 'An error occurred' });
+    }
+  }, [error]);
 
   const passwordRequirements = [
     { text: 'At least 8 characters', met: formData.password.length >= 8 },
@@ -31,6 +57,9 @@ const CreatePassword = () => {
         ...prev,
         [name]: ''
       }));
+    }
+    if (errors.submit) {
+      dispatch(clearError());
     }
   };
 
@@ -61,12 +90,66 @@ const CreatePassword = () => {
       return;
     }
     
-    setIsLoading(true);
-    setTimeout(() => {
-      console.log('Password created:', formData);
-      setIsLoading(false);
-    }, 1500);
+    const result = await dispatch(setPassword({ token, password: formData.password }));
+    
+    if (setPassword.fulfilled.match(result)) {
+      navigate('/user-login', { 
+        state: { message: 'Password set successfully! You can now login.' }
+      });
+    }
   };
+
+  const handleResendLink = async () => {
+    if (!magicLinkData?.user?.email) return;
+    
+    const result = await dispatch(resendMagicLink(magicLinkData.user.email));
+    
+    if (resendMagicLink.fulfilled.match(result)) {
+      setResendSuccess(true);
+      setTimeout(() => setResendSuccess(false), 5000);
+    }
+  };
+
+
+  // Show loading while verifying token
+  if (!magicLinkData && isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Verifying your link...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if token is invalid
+  if (error && !magicLinkData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md p-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h3 className="text-lg font-medium text-red-800 mb-2">Invalid or Expired Link</h3>
+            <p className="text-red-600 mb-4">
+              This password creation link is invalid or has expired.
+            </p>
+            <button
+              onClick={handleResendLink}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              Resend Link
+            </button>
+            {resendSuccess && (
+              <p className="text-green-600 mt-3">New link sent to your email!</p>
+            )}
+          </div>
+          <Link to="/user-login" className="text-blue-600 mt-4 inline-block">
+            Back to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
@@ -254,11 +337,42 @@ const CreatePassword = () => {
                 >
                   Already have a password? Sign in
                 </Link>
+                {/* Resend Magic Link Section */}
+                {magicLinkData?.user?.email && (
+                  <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center justify-center mb-2">
+                      <Mail className="w-4 h-4 text-blue-600 mr-2" />
+                      <p className="text-sm text-gray-700">
+                        Setting up password for:
+                      </p>
+                    </div>
+                    <p className="text-sm font-medium text-blue-800 mb-3">
+                      {magicLinkData.user.email}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleResendLink}
+                      disabled={isLoading || resendSuccess}
+                      className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-white border border-blue-300 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                    >
+                      {resendSuccess ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Link Sent
+                        </>
+                      ) : (
+                        'Resend Magic Link'
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             </form>
           </div>
         </div>
       </div>
+
+      
     </div>
   );
 };

@@ -1,14 +1,17 @@
 // ChannelOnboard.jsx
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Users, Plus, RefreshCw } from 'lucide-react';
 import { fetchChannels } from '../store/slices/channelSlice';
 import ChannelCard from './ChannelCard';
 import OnboardModal from './OnboardModal';
+import CreateUserModal from '../pages/admin/CreateUserModal';
 
 const ChannelOnboard = () => {
   const dispatch = useDispatch();
   const { channels, loading, error } = useSelector(state => state.channels);
+  const { user } = useSelector(state => state.auth);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false); 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [channelToEdit, setChannelToEdit] = useState(null);
 
@@ -42,6 +45,10 @@ const ChannelOnboard = () => {
     setChannelToEdit(null);
   };
 
+  const handleCloseUserModal = () => {
+    setIsUserModalOpen(false);
+  };
+
   if (loading && channels.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -53,7 +60,14 @@ const ChannelOnboard = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Channel Management</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Channel Management</h2>
+          {user && (
+            <p className="text-sm text-gray-600 mt-1">
+              Welcome, {user.name} ({user.isAdmin ? 'Admin' : 'User'})
+            </p>
+          )}
+        </div>
         <div className="flex space-x-3">
           <button
             onClick={handleRefresh}
@@ -62,6 +76,18 @@ const ChannelOnboard = () => {
             <RefreshCw className="h-4 w-4" />
             <span>Refresh</span>
           </button>
+          
+          {/* Show Create User button only for admin */}
+          {user?.isAdmin && (
+            <button
+              onClick={() => setIsUserModalOpen(true)}
+              className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+            >
+              <Users className="h-4 w-4" />
+              <span>Create User</span>
+            </button>
+          )}
+          
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
@@ -83,13 +109,24 @@ const ChannelOnboard = () => {
           <div className="bg-gray-50 rounded-lg p-8">
             <h3 className="text-lg font-medium text-gray-900 mb-2">No channels found</h3>
             <p className="text-gray-600 mb-4">Get started by onboarding your first channel</p>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Onboard Channel</span>
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              {user?.isAdmin && (
+                <button
+                  onClick={() => setIsUserModalOpen(true)}
+                  className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+                >
+                  <Users className="h-4 w-4" />
+                  <span>Create User</span>
+                </button>
+              )}
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Onboard Channel</span>
+              </button>
+            </div>
           </div>
         </div>
       ) : (
@@ -108,6 +145,12 @@ const ChannelOnboard = () => {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         channelToEdit={channelToEdit}
+      />
+      
+      {/* Add the Create User Modal */}
+      <CreateUserModal
+        isOpen={isUserModalOpen}
+        onClose={handleCloseUserModal}
       />
     </div>
   );

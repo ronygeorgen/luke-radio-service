@@ -1,5 +1,7 @@
 import axios from "axios";
 import { axiosInstance, BASE_URL } from "./api";
+import { store } from "../store/store";
+import { refreshToken } from "../store/slices/authSlice";
 
 
 axiosInstance.interceptors.response.use(
@@ -8,26 +10,30 @@ axiosInstance.interceptors.response.use(
       const originalRequest = error.config;
       
       if (error.response && error.response.status === 401 && !originalRequest._retry) {
-        originalRequest._retry = true; // Prevent infinite loop
-  
+        originalRequest._retry = true;
+
         try {
-          // Send refresh token request
-          const res = await axios.post(`${BASE_URL}/token/refresh/`, {}, { withCredentials: true });
+          // Use Redux thunk to refresh token
+          const result = await store.dispatch(refreshToken());
           
-          const newAccessToken = res.data.accessToken;
-          localStorage.setItem('accessToken', newAccessToken);
-  
-          // Update Authorization header and retry original request
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          return axiosInstance(originalRequest);
-  
+          if (refreshToken.fulfilled.match(result)) {
+            const newAccessToken = result.payload.accessToken;
+            
+            // Update Authorization header and retry original request
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+            return axiosInstance(originalRequest);
+          } else {
+            // Refresh failed, logout user
+            store.dispatch(logout());
+            window.location.href = '/user-login';
+          }
         } catch (refreshError) {
           console.error('Refresh token invalid, logging out');
-          // Optional: logout user or redirect to login
-          return Promise.reject(refreshError);
+          store.dispatch(logout());
+          window.location.href = '/user-login';
         }
       }
-  
+      
       return Promise.reject(error);
     }
-  );
+);

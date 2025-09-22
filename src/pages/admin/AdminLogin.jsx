@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Radio, Eye, EyeOff } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { loginUser, clearError } from '../../store/slices/authSlice';
 
 const AdminLogin = () => {
   const [formData, setFormData] = useState({
@@ -8,8 +10,29 @@ const AdminLogin = () => {
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({}); 
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const { isLoading, error, isAuthenticated, user } = useSelector((state) => state.auth);
+
+  const from = location.state?.from?.pathname || '/admin/channels';
+
+  useEffect(() => {
+    if (isAuthenticated && user?.isAdmin) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, user, navigate, from]);
+
+  useEffect(() => {
+    if (error) {
+      setErrors(prev => ({
+        ...prev,
+        submit: error.detail || 'Login failed. Please try again.'
+      }));
+    }
+  }, [error]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -17,11 +40,19 @@ const AdminLogin = () => {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
+    
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
         [name]: ''
+      }));
+    }
+    
+    if (errors.submit) {
+      dispatch(clearError());
+      setErrors(prev => ({
+        ...prev,
+        submit: ''
       }));
     }
   };
@@ -53,13 +84,7 @@ const AdminLogin = () => {
       return;
     }
     
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Admin login:', formData);
-      setIsLoading(false);
-      // Handle successful login here
-    }, 1500);
+    dispatch(loginUser({ ...formData, isAdmin: true }));
   };
 
   return (
@@ -143,6 +168,13 @@ const AdminLogin = () => {
               </div>
               {errors.password && <p className="text-red-300 text-sm">{errors.password}</p>}
             </div>
+
+            {/* Error Message */}
+            {errors.submit && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-red-600 text-sm">{errors.submit}</p>
+              </div>
+            )}
 
             {/* Submit Button */}
             <button
