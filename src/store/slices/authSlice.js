@@ -99,6 +99,13 @@ export const refreshToken = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      console.log("refresh token starts working");
+      
+      
       const response = await axiosInstance.post('/accounts/token/refresh/', {
         refresh: refreshToken
       });
@@ -108,9 +115,11 @@ export const refreshToken = createAsyncThunk(
       
       return { accessToken: access };
     } catch (error) {
-      // Clear tokens if refresh fails
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+      // Only clear tokens if it's an authentication error (refresh token invalid)
+      if (error.response?.status === 401) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      }
       return rejectWithValue(error.response?.data || error.message);
     }
   }
@@ -128,16 +137,35 @@ export const checkAuth = createAsyncThunk(
         throw new Error('No tokens found');
       }
       
-      // Verify token is still valid by making a simple request
-      // or just decode and check expiry
+      // Verify token is still valid
       const tokenPayload = JSON.parse(atob(accessToken.split('.')[1]));
       const isExpired = tokenPayload.exp * 1000 < Date.now();
       
       if (isExpired) {
         // Token expired, try to refresh
-        return await dispatch(refreshToken()).unwrap();
+        const refreshResult = await dispatch(refreshToken());
+        if (refreshToken.fulfilled.match(refreshResult)) {
+          // Get the new token payload after refresh
+          const newAccessToken = refreshResult.payload.accessToken;
+          const newTokenPayload = JSON.parse(atob(newAccessToken.split('.')[1]));
+          
+          return {
+            accessToken: newAccessToken,
+            refreshToken: localStorage.getItem('refreshToken'), // refresh token remains same
+            user: {
+              id: newTokenPayload.user_id,
+              email: newTokenPayload.email,
+              name: newTokenPayload.name,
+              isAdmin: newTokenPayload.is_admin
+            }
+          };
+        } else {
+          // Refresh failed
+          throw new Error('Token refresh failed');
+        }
       }
       
+      // Token is still valid
       return {
         accessToken,
         refreshToken,

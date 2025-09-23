@@ -19,9 +19,9 @@ export const fetchAudioSegments = createAsyncThunk(
         
         // If time filters are applied, use CURRENT DATE instead of selected date
         const hasTimeFilter = daypart !== 'none' || (startTime && endTime);
-        if (hasTimeFilter) {
-          useDate = new Date().toISOString().split('T')[0]; // CURRENT DATE
-        }
+        // if (hasTimeFilter) {
+        //   useDate = new Date().toISOString().split('T')[0]; // CURRENT DATE
+        // }
         
         if (daypart === 'weekend') {
           const dateObj = new Date(useDate);

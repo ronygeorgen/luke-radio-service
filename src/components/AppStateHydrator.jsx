@@ -8,34 +8,37 @@ const AppStateHydrator = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    // Check authentication first
-    dispatch(checkAuth());
-    
-    // Then clean up old data and restore polling
-    const { transcriptionPolling, nextPollTime } = cleanupOldPollingData();
-    
-    // For each polling segment, restore the polling state
-    Object.entries(transcriptionPolling).forEach(([segmentId, isPolling]) => {
-      if (isPolling && nextPollTime[segmentId]) {
-        const now = Date.now();
-        const timeRemaining = nextPollTime[segmentId] - now;
+    const initializeApp = async () => {
+      // First check authentication
+      const authResult = await dispatch(checkAuth());
+      
+      // Only start polling if user is authenticated
+      if (checkAuth.fulfilled.match(authResult)) {
+        const { transcriptionPolling, nextPollTime } = cleanupOldPollingData();
         
-        if (timeRemaining > 0) {
-          // If there's still time remaining, restart polling
-          const secondsRemaining = Math.ceil(timeRemaining / 1000);
-          dispatch(startTranscriptionPolling({ 
-            segmentId: parseInt(segmentId), 
-            nextPollSeconds: secondsRemaining 
-          }));
-        } else {
-          // If time has expired, poll immediately
-          dispatch(startTranscriptionPolling({ 
-            segmentId: parseInt(segmentId), 
-            nextPollSeconds: 5
-          }));
-        }
+        Object.entries(transcriptionPolling).forEach(([segmentId, isPolling]) => {
+          if (isPolling && nextPollTime[segmentId]) {
+            const now = Date.now();
+            const timeRemaining = nextPollTime[segmentId] - now;
+            
+            if (timeRemaining > 0) {
+              const secondsRemaining = Math.ceil(timeRemaining / 1000);
+              dispatch(startTranscriptionPolling({ 
+                segmentId: parseInt(segmentId), 
+                nextPollSeconds: secondsRemaining 
+              }));
+            } else {
+              dispatch(startTranscriptionPolling({ 
+                segmentId: parseInt(segmentId), 
+                nextPollSeconds: 5
+              }));
+            }
+          }
+        });
       }
-    });
+    };
+
+    initializeApp();
   }, [dispatch]);
 
   return null;

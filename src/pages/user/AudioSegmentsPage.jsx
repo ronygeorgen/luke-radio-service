@@ -213,9 +213,6 @@ useEffect(() => {
       daypart: 'none', 
       startTime: '', 
       endTime: '',
-      date: currentDate,
-      startDate: null,
-      endDate: null
     }));
   } else {
     const daypart = daypartOptions.find(opt => opt.value === selectedDaypart);
@@ -232,15 +229,10 @@ useEffect(() => {
 
 // Update handleSearchWithCustomTime
 const handleSearchWithCustomTime = () => {
-  const currentDate = new Date().toISOString().split('T')[0];
-  
   dispatch(setFilter({ 
     startTime: localStartTime ? localStartTime + ':00' : '',
     endTime: localEndTime ? localEndTime + ':00' : '',
     daypart: 'none',
-    date: currentDate,   // Force current date
-    startDate: null,     // Clear date range
-    endDate: null        // Clear date range
   }));
 };
 

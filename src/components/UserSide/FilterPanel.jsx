@@ -149,7 +149,6 @@ const FilterPanel = ({
             </div>
           </div>
 
-          {/* REMOVED THE SEPARATE SINGLE DATE FIELD */}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             {/* Time of Day */}
