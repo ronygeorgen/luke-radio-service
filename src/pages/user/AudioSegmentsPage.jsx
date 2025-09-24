@@ -399,10 +399,25 @@ const handleDateRangeSelect = (start, end) => {
   <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 p-4 z-30">
     {console.log("🎧 Current Playing ID:", currentPlayingId)}
     {console.log("🎧 Segment passed to AudioPlayer:", segments.find(s => s.id === currentPlayingId))}
-    <AudioPlayer 
-      segment={segments.find(s => s.id === currentPlayingId)} 
-      onClose={() => dispatch(setCurrentPlaying(null))}
-    />
+    
+    {/* Add this check - if segment is not found, don't render AudioPlayer */}
+    {segments.find(s => s.id === currentPlayingId) ? (
+      <AudioPlayer 
+        segment={segments.find(s => s.id === currentPlayingId)} 
+        onClose={() => dispatch(setCurrentPlaying(null))}
+      />
+    ) : (
+      // Auto-close the audio player when segment is not found
+      <div className="text-center py-2">
+        <p className="text-gray-500">Audio segment no longer available</p>
+        <button 
+          onClick={() => dispatch(setCurrentPlaying(null))}
+          className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Close Player
+        </button>
+      </div>
+    )}
   </div>
 )}
 

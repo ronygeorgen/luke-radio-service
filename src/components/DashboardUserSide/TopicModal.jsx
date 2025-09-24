@@ -4,6 +4,7 @@ import { X, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 import AudioPlayer from '../../pages/user/AudioPlayer';
 import { setCurrentPlaying, setIsPlaying } from '../../store/slices/audioSegmentsSlice';
+import TranscriptionModal from '../../pages/user/TranscriptionModal';
 
 const TopicModal = () => {
 
@@ -13,6 +14,7 @@ const TopicModal = () => {
   const apiUrl = import.meta.env.VITE_API_URL || 'https://radio.reloop.pro/api';
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [expandedGeneralTopics, setExpandedGeneralTopics] = useState(new Set());
+  const [selectedSegmentForTranscript, setSelectedSegmentForTranscript] = useState(null);
 
   if (!isOpen) return null;
 
@@ -228,36 +230,16 @@ const TopicModal = () => {
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                           {segment.analysis?.sentiment || 'N/A'}
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-500 max-w-xs">
-                          <div 
-                            className={`overflow-hidden ${expandedRows.has(segment.id) ? '' : 'cursor-pointer'}`}
-                            style={expandedRows.has(segment.id) ? {} : { WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical' }}
-                            onClick={() => toggleRowExpansion(segment.id)}
-                            title={expandedRows.has(segment.id) ? '' : 'Click to expand transcript'}
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => setSelectedSegmentForTranscript(segment)}
+                            className="text-blue-500 hover:text-blue-700 flex items-center"
                           >
-                            {expandedRows.has(segment.id) 
-                              ? segment.transcription?.transcript 
-                              : truncateText(segment.transcription?.transcript, 100)
-                            }
-                          </div>
-                          {segment.transcription?.transcript && segment.transcription.transcript.length > 100 && (
-                            <button
-                              onClick={() => toggleRowExpansion(segment.id)}
-                              className="text-blue-500 text-xs mt-1 flex items-center"
-                            >
-                              {expandedRows.has(segment.id) ? (
-                                <>
-                                  <ChevronUp className="w-3 h-3 mr-1" />
-                                  Show less
-                                </>
-                              ) : (
-                                <>
-                                  <ChevronDown className="w-3 h-3 mr-1" />
-                                  Show more
-                                </>
-                              )}
-                            </button>
-                          )}
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            View Transcript
+                          </button>
                         </td>
                       </tr>
                       {/* Audio player row for this segment */}
@@ -295,6 +277,12 @@ const TopicModal = () => {
           )}
         </div>
       </div>
+      {selectedSegmentForTranscript && (
+        <TranscriptionModal 
+          transcription={selectedSegmentForTranscript.transcription?.transcript} 
+          onClose={() => setSelectedSegmentForTranscript(null)}
+        />
+      )}
     </div>
   );
 };
