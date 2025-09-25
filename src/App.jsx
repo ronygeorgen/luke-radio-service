@@ -19,6 +19,7 @@ import UserLogin from './pages/user/UserLogin';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import LandingRedirect from './components/LandingRedirect';
+import UserManagement from './pages/admin/UserManagement';
 
 function App() {
   return (
@@ -48,6 +49,7 @@ function App() {
             }>
               <Route index element={<Navigate to="channels" replace />} />
               <Route path="channels" element={<ChannelsPage />} />
+              <Route path="users" element={<UserManagement />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
 

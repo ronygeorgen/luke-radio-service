@@ -1,4 +1,4 @@
-// channelSlice.js
+// channelSlice.js (updated)
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { axiosInstance } from '../../services/api';
 
@@ -8,6 +8,15 @@ export const fetchChannels = createAsyncThunk(
   async () => {
     const response = await axiosInstance.get('/channels');
     return response.data.channels;
+  }
+);
+
+// New API: Fetch channels for specific user
+export const fetchUserChannels = createAsyncThunk(
+  'channels/fetchUserChannels',
+  async () => {
+    const response = await axiosInstance.get('/accounts/user/channels/');
+    return response.data;
   }
 );
 
@@ -23,13 +32,12 @@ export const addChannel = createAsyncThunk(
       return response.data.channel;
     } catch (err) {
       if (err.response && err.response.data && err.response.data.error) {
-        return rejectWithValue(err.response.data.error); // Use backend error message
+        return rejectWithValue(err.response.data.error);
       }
       return rejectWithValue(err.message || 'Something went wrong');
     }
   }
 );
-
 
 export const updateChannel = createAsyncThunk(
   'channels/updateChannel',
@@ -57,8 +65,6 @@ export const deleteChannel = createAsyncThunk(
 export const toggleChannel = createAsyncThunk(
   'channels/toggleChannel',
   async (channelId) => {
-    // Note: The API doesn't have a toggle endpoint, so we'll need to implement this
-    // based on your actual API. For now, I'll just return the channelId
     return channelId;
   }
 );
@@ -67,9 +73,12 @@ const channelSlice = createSlice({
   name: 'channels',
   initialState: {
     channels: [],
+    userChannels: [], // New state for user-specific channels
     selectedChannel: null,
     loading: false,
+    userChannelsLoading: false, // Separate loading state for user channels
     error: null,
+    userChannelsError: null, // Separate error state for user channels
   },
   reducers: {
     setSelectedChannel: (state, action) => {
@@ -78,10 +87,13 @@ const channelSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    clearUserChannelsError: (state) => {
+      state.userChannelsError = null;
+    },
   },
   extraReducers: (builder) => {
     builder
-      // Fetch channels
+      // Fetch all channels (admin)
       .addCase(fetchChannels.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -100,6 +112,29 @@ const channelSlice = createSlice({
       .addCase(fetchChannels.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message;
+      })
+      // Fetch user-specific channels
+      .addCase(fetchUserChannels.pending, (state) => {
+        state.userChannelsLoading = true;
+        state.userChannelsError = null;
+      })
+      .addCase(fetchUserChannels.fulfilled, (state, action) => {
+        state.userChannelsLoading = false;
+        
+        // Extract channels from the response
+        const channels = action.payload.channels || [];
+        
+        state.userChannels = channels.map(channel => ({
+          id: channel.id.toString(),
+          channelId: channel.channel_id,
+          projectId: channel.project_id,
+          name: channel.name,
+          assignedAt: channel.assigned_at || null
+        }));
+      })
+      .addCase(fetchUserChannels.rejected, (state, action) => {
+        state.userChannelsLoading = false;
+        state.userChannelsError = action.error.message;
       })
       // Add channel
       .addCase(addChannel.pending, (state) => {
@@ -183,5 +218,9 @@ const channelSlice = createSlice({
 });
 
 export const selectSelectedChannel = (state) => state.channels.selectedChannel;
-export const { clearError, setSelectedChannel  } = channelSlice.actions;
+export const selectUserChannels = (state) => state.channels.userChannels;
+export const selectUserChannelsLoading = (state) => state.channels.userChannelsLoading;
+export const selectUserChannelsError = (state) => state.channels.userChannelsError;
+
+export const { clearError, setSelectedChannel, clearUserChannelsError } = channelSlice.actions;
 export default channelSlice.reducer;

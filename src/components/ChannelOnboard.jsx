@@ -1,7 +1,8 @@
-// ChannelOnboard.jsx
+// ChannelOnboard.jsx (updated navigation)
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Users, Plus, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // Add this import
+import { Users, Plus, RefreshCw, UserCog } from 'lucide-react';
 import { fetchChannels } from '../store/slices/channelSlice';
 import ChannelCard from './ChannelCard';
 import OnboardModal from './OnboardModal';
@@ -9,6 +10,7 @@ import CreateUserModal from '../pages/admin/CreateUserModal';
 
 const ChannelOnboard = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate(); // Add this
   const { channels, loading, error } = useSelector(state => state.channels);
   const { user } = useSelector(state => state.auth);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false); 
@@ -49,6 +51,11 @@ const ChannelOnboard = () => {
     setIsUserModalOpen(false);
   };
 
+  // Navigate to user management using React Router
+  const navigateToUserManagement = () => {
+    navigate('/admin/users');
+  };
+
   if (loading && channels.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -76,6 +83,17 @@ const ChannelOnboard = () => {
             <RefreshCw className="h-4 w-4" />
             <span>Refresh</span>
           </button>
+          
+          {/* Show User Management button only for admin */}
+          {user?.isAdmin && (
+            <button
+              onClick={navigateToUserManagement}
+              className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors"
+            >
+              <UserCog className="h-4 w-4" />
+              <span>Manage Users</span>
+            </button>
+          )}
           
           {/* Show Create User button only for admin */}
           {user?.isAdmin && (
@@ -110,6 +128,15 @@ const ChannelOnboard = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-2">No channels found</h3>
             <p className="text-gray-600 mb-4">Get started by onboarding your first channel</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              {user?.isAdmin && (
+                <button
+                  onClick={() => navigateToUserManagement()}
+                  className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors"
+                >
+                  <UserCog className="h-4 w-4" />
+                  <span>Manage Users</span>
+                </button>
+              )}
               {user?.isAdmin && (
                 <button
                   onClick={() => setIsUserModalOpen(true)}
@@ -147,7 +174,6 @@ const ChannelOnboard = () => {
         channelToEdit={channelToEdit}
       />
       
-      {/* Add the Create User Modal */}
       <CreateUserModal
         isOpen={isUserModalOpen}
         onClose={handleCloseUserModal}

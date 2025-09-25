@@ -9,6 +9,7 @@ import dashboardSettingsReducer from './slices/dashboardSettingsSlice';
 import topicModalReducer from './slices/topicModalSlice';
 import reportReducer from './slices/reportSlice';
 import authReducer from './slices/authSlice';
+import userManagementReducer from './slices/userManagementSlice';
 
 export const store = configureStore({
   reducer: {
@@ -20,7 +21,8 @@ export const store = configureStore({
     dashboardSettings: dashboardSettingsReducer,
     topicModal: topicModalReducer,
     reports: reportReducer,
-    auth: authReducer
+    auth: authReducer,
+    userManagement: userManagementReducer
   },
 });
 
