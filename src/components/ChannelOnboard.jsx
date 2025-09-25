@@ -75,45 +75,6 @@ const ChannelOnboard = () => {
             </p>
           )}
         </div>
-        <div className="flex space-x-3">
-          <button
-            onClick={handleRefresh}
-            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span>Refresh</span>
-          </button>
-          
-          {/* Show User Management button only for admin */}
-          {user?.isAdmin && (
-            <button
-              onClick={navigateToUserManagement}
-              className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors"
-            >
-              <UserCog className="h-4 w-4" />
-              <span>Manage Users</span>
-            </button>
-          )}
-          
-          {/* Show Create User button only for admin */}
-          {user?.isAdmin && (
-            <button
-              onClick={() => setIsUserModalOpen(true)}
-              className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
-            >
-              <Users className="h-4 w-4" />
-              <span>Create User</span>
-            </button>
-          )}
-          
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Onboard Channel</span>
-          </button>
-        </div>
       </div>
 
       {error && (
@@ -127,7 +88,7 @@ const ChannelOnboard = () => {
           <div className="bg-gray-50 rounded-lg p-8">
             <h3 className="text-lg font-medium text-gray-900 mb-2">No channels found</h3>
             <p className="text-gray-600 mb-4">Get started by onboarding your first channel</p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            {/* <div className="flex flex-col sm:flex-row gap-3 justify-center">
               {user?.isAdmin && (
                 <button
                   onClick={() => navigateToUserManagement()}
@@ -153,7 +114,7 @@ const ChannelOnboard = () => {
                 <Plus className="h-4 w-4" />
                 <span>Onboard Channel</span>
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
       ) : (
