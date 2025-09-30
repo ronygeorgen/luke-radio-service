@@ -12,9 +12,14 @@ import TranscriptionModal from './TranscriptionModal';
 import AudioPlayer from './AudioPlayer';
 import { formatDateForDisplay, formatTimeDisplay } from '../../utils/formatters'
 import useTranscriptionPolling from '../../hooks/useTranscriptionPolling';
+import { openTrimmer } from '../../store/slices/audioTrimmerSlice';
+import AudioTrimmer from './AudioTrimmer';
 
 const AudioSegmentsPage = () => {
-  const { channelId } = useParams();
+  const { channelId: channelIdFromParams } = useParams();
+  const channelId = channelIdFromParams || localStorage.getItem("channelId");
+  
+  
   const [searchParams, setSearchParams] = useSearchParams();
   const date = searchParams.get('date');
   const startTime = searchParams.get('startTime');
@@ -23,6 +28,12 @@ const AudioSegmentsPage = () => {
 
   const [localSearchText, setLocalSearchText] = useState('');
   const [localSearchIn, setLocalSearchIn] = useState('transcription');
+
+  const { isOpen: isTrimmerOpen } = useSelector((state) => state.audioTrimmer);
+  
+  const handleTrimClick = (segment) => {
+    dispatch(openTrimmer(segment));
+  };
   
   const channelName = searchParams.get("name"); 
   useEffect(() => {
@@ -30,7 +41,12 @@ const AudioSegmentsPage = () => {
       localStorage.setItem("channelName", channelName);
       console.log("Channel name saved:", channelName);
     }
-  }, [channelName]);
+
+    if (channelId) {
+    localStorage.setItem("channelId", channelId);
+    console.log("Channel ID saved:", channelId);
+  }
+  }, [channelName, channelId]);
   
   
   const dispatch = useDispatch();
@@ -390,6 +406,7 @@ const handleDateRangeSelect = (start, end) => {
             handlePlayPauseAudio={handlePlayPauseAudio}
             handleSummaryClick={handleSummaryClick}
             handleTranscriptionClick={handleTranscriptionClick}
+            handleTrimClick={handleTrimClick}
           />
         ))}
       </main>
@@ -420,6 +437,8 @@ const handleDateRangeSelect = (start, end) => {
     )}
   </div>
 )}
+
+  {isTrimmerOpen && <AudioTrimmer />}
 
       {showSummaryModal && selectedSegment && (
         <SummaryModal 

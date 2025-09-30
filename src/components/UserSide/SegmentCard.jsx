@@ -11,7 +11,8 @@ const SegmentCard = ({
   isPlaying, 
   handlePlayPauseAudio, 
   handleSummaryClick, 
-  handleTranscriptionClick 
+  handleTranscriptionClick,
+  handleTrimClick  
 }) => {
   const dispatch = useDispatch();
   
@@ -55,6 +56,7 @@ const SegmentCard = ({
           handlePlayPauseAudio={handlePlayPauseAudio}
           handleSummaryClick={handleSummaryClick}
           handleTranscriptionClick={handleTranscriptionClick}
+          handleTrimClick={handleTrimClick}
         />
       ) : (
         <CompactSegment

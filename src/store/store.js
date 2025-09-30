@@ -10,6 +10,7 @@ import topicModalReducer from './slices/topicModalSlice';
 import reportReducer from './slices/reportSlice';
 import authReducer from './slices/authSlice';
 import userManagementReducer from './slices/userManagementSlice';
+import audioTrimmerReducer from './slices/audioTrimmerSlice'
 
 export const store = configureStore({
   reducer: {
@@ -22,7 +23,8 @@ export const store = configureStore({
     topicModal: topicModalReducer,
     reports: reportReducer,
     auth: authReducer,
-    userManagement: userManagementReducer
+    userManagement: userManagementReducer,
+    audioTrimmer: audioTrimmerReducer
   },
 });
 

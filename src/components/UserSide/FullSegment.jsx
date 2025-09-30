@@ -8,7 +8,8 @@ const FullSegment = ({
   isPlaying, 
   handlePlayPauseAudio, 
   handleSummaryClick, 
-  handleTranscriptionClick 
+  handleTranscriptionClick,
+  handleTrimClick 
 }) => {
   const [showSelectModal, setShowSelectModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -133,6 +134,14 @@ const FullSegment = ({
             >
               {currentPlayingId === segment.id && isPlaying ? 'Pause Audio' : 'Play Audio'}
             </button>
+
+            {/* Add Trim Audio Button */}
+              <button
+                onClick={() => handleTrimClick(segment)}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md flex items-center justify-center text-sm"
+              >
+                Trim Audio
+              </button>
             
             {/* Add to Report Button - Only show if segment has content */}
             {hasContent && (
