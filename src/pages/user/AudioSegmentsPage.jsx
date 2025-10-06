@@ -14,6 +14,7 @@ import { formatDateForDisplay, formatTimeDisplay } from '../../utils/formatters'
 import useTranscriptionPolling from '../../hooks/useTranscriptionPolling';
 import { openTrimmer } from '../../store/slices/audioTrimmerSlice';
 import AudioTrimmer from './AudioTrimmer';
+import TimePagination from '../../components/UserSide/TimePagination';
 
 const AudioSegmentsPage = () => {
   const { channelId: channelIdFromParams } = useParams();
@@ -25,6 +26,10 @@ const AudioSegmentsPage = () => {
   const startTime = searchParams.get('startTime');
   const endTime = searchParams.get('endTime');
   const daypart = searchParams.get('daypart');
+
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageLabels, setPageLabels] = useState([]);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [localSearchText, setLocalSearchText] = useState('');
   const [localSearchIn, setLocalSearchIn] = useState('transcription');
@@ -77,6 +82,143 @@ const AudioSegmentsPage = () => {
     { value: 'overnight', label: 'Overnight (00:00–06:00)', startTime: '00:00:00', endTime: '06:00:00' },
     { value: 'weekend', label: 'Weekend (Saturday & Sunday)', startTime: '00:00:00', endTime: '23:59:59' }
   ];
+
+  const generatePaginationData = () => {
+    console.log('Generating pagination data with filters:', filters);
+    
+    // Reset if no date filters
+    if (!filters.date && !filters.startDate && !filters.endDate) {
+      setTotalPages(0);
+      setPageLabels([]);
+      setCurrentPage(0);
+      return;
+    }
+
+    // Date range pagination takes priority (daily with hours)
+    if (filters.startDate && filters.endDate) {
+      const start = new Date(filters.startDate);
+      const end = new Date(filters.endDate);
+      
+      // Handle invalid dates
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        console.error('Invalid date range');
+        setTotalPages(0);
+        setPageLabels([]);
+        setCurrentPage(0);
+        return;
+      }
+      
+      const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+      
+      const pages = [];
+      const labels = [];
+      let pageIndex = 0;
+
+      for (let day = 0; day < days; day++) {
+        const currentDate = new Date(start);
+        currentDate.setDate(start.getDate() + day);
+        const dateStr = currentDate.toISOString().split('T')[0];
+        const formattedDate = formatDateForDisplay(dateStr);
+        
+        for (let hour = 0; hour < 24; hour++) {
+          pages.push(pageIndex);
+          labels.push(`${formattedDate} ${hour}-${hour + 1}`);
+          pageIndex++;
+        }
+      }
+      
+      setTotalPages(pages.length);
+      setPageLabels(labels);
+      
+      // Calculate current page based on current filters
+      if (filters.date && filters.startTime) {
+        const currentDate = new Date(filters.date);
+        const rangeStart = new Date(filters.startDate);
+        const dayDiff = Math.floor((currentDate - rangeStart) / (1000 * 60 * 60 * 24));
+        const hour = parseInt(filters.startTime.split(':')[0]);
+        const calculatedPage = (dayDiff * 24) + hour;
+        setCurrentPage(calculatedPage);
+      } else {
+        setCurrentPage(0);
+      }
+      
+      console.log('Date range pagination generated:', pages.length, 'pages');
+    }
+    // Single day pagination (hourly)
+    else if (filters.date && !filters.startDate && !filters.endDate) {
+      const pages = [];
+      const labels = [];
+      
+      for (let i = 0; i < 24; i++) {
+        pages.push(i);
+        labels.push(`${i}-${i + 1}`);
+      }
+      
+      setTotalPages(pages.length);
+      setPageLabels(labels);
+      
+      // Set current page based on startTime
+      if (filters.startTime) {
+        const hour = parseInt(filters.startTime.split(':')[0]);
+        setCurrentPage(hour);
+      } else {
+        setCurrentPage(0);
+      }
+      
+      console.log('Single day pagination generated:', pages.length, 'pages');
+    } else {
+      // Reset if we have partial date range
+      setTotalPages(0);
+      setPageLabels([]);
+      setCurrentPage(0);
+    }
+  };
+
+  useEffect(() => {
+    generatePaginationData();
+  }, [filters.date, filters.startDate, filters.endDate, filters.startTime, filters.endTime]);
+
+
+
+const handlePageChange = (pageIndex) => {
+  setCurrentPage(pageIndex);
+  
+  if (filters.date && !filters.startDate && !filters.endDate) {
+    // Single day - update time filters
+    const startTime = `${pageIndex.toString().padStart(2, '0')}:00:00`;
+    const endTime = `${(pageIndex + 1).toString().padStart(2, '0')}:00:00`;
+    
+    dispatch(setFilter({ 
+      startTime,
+      endTime,
+      daypart: 'none'
+    }));
+  } else if (filters.startDate && filters.endDate) {
+    // Date range - calculate which date and hour this page represents
+    const start = new Date(filters.startDate);
+    const totalHoursPerDay = 24;
+    const dayIndex = Math.floor(pageIndex / totalHoursPerDay);
+    const hourIndex = pageIndex % totalHoursPerDay;
+    
+    const targetDate = new Date(start);
+    targetDate.setDate(start.getDate() + dayIndex);
+    const dateStr = targetDate.toISOString().split('T')[0];
+    
+    const startTime = `${hourIndex.toString().padStart(2, '0')}:00:00`;
+    const endTime = `${(hourIndex + 1).toString().padStart(2, '0')}:00:00`;
+    
+    // IMPORTANT: Keep the original date range in filters for pagination context
+    // but use the specific date and time for the API call
+    dispatch(setFilter({ 
+      date: dateStr,           // Specific date for this page
+      startDate: filters.startDate, // Keep original start date range
+      endDate: filters.endDate,     // Keep original end date range  
+      startTime,
+      endTime,
+      daypart: 'none'
+    }));
+  }
+};
 
   // Initialize with URL params or defaults
   useEffect(() => {
@@ -387,8 +529,21 @@ const handleDateRangeSelect = (start, end) => {
         handleDateSelect={handleDateSelect}
         handleDateRangeSelect={handleDateRangeSelect}
       />
+
+      
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-32 mt-28"> {/* Added pt-32 to account for fixed header height */}
+
+        {totalPages > 1 && (
+        <div className="mb-6">
+          <TimePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            pageLabels={pageLabels}
+          />
+        </div>
+      )}
         {/* Loading and segments rendering */}
         {loading && segments.length > 0 && (
           <div className="mb-6">
