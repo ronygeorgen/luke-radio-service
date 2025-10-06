@@ -10,18 +10,20 @@ export const fetchAudioSegments = createAsyncThunk(
       let startDatetime = null;
       let endDatetime = null;
       
+      // If we have a specific date with time (from pagination), use that
+      if (date && startTime && endTime) {
+        // Use the specific date and time from pagination
+        startDatetime = convertLocalToUTC(date, startTime);
+        endDatetime = convertLocalToUTC(date, endTime);
+      }
       // Handle date range (startDate and endDate take priority over single date)
-      if (startDate && endDate) {
+      else if (startDate && endDate) {
+        // If we have a date range but no specific time, show the entire range
         startDatetime = convertLocalToUTC(startDate, '00:00:00');
         endDatetime = convertLocalToUTC(endDate, '23:59:59');
-      } else if (date) {
+      } 
+      else if (date) {
         let useDate = date;
-        
-        // If time filters are applied, use CURRENT DATE instead of selected date
-        const hasTimeFilter = daypart !== 'none' || (startTime && endTime);
-        // if (hasTimeFilter) {
-        //   useDate = new Date().toISOString().split('T')[0]; // CURRENT DATE
-        // }
         
         if (daypart === 'weekend') {
           const dateObj = new Date(useDate);
@@ -36,7 +38,7 @@ export const fetchAudioSegments = createAsyncThunk(
           startDatetime = convertLocalToUTC(useDate, startTime);
           endDatetime = convertLocalToUTC(useDate, endTime);
         } else if (daypart !== 'none') {
-          // Time of day filter - ADD PROPER TIMES FOR EACH DAYPART
+          // Time of day filter
           const daypartTimes = {
             'morning': { start: '06:00:00', end: '10:00:00' },
             'midday': { start: '10:00:00', end: '15:00:00' },

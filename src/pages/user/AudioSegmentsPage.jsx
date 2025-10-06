@@ -83,96 +83,98 @@ const AudioSegmentsPage = () => {
     { value: 'weekend', label: 'Weekend (Saturday & Sunday)', startTime: '00:00:00', endTime: '23:59:59' }
   ];
 
-  const generatePaginationData = () => {
-    console.log('Generating pagination data with filters:', filters);
+const generatePaginationData = () => {
+  console.log('Generating pagination data with filters:', filters);
+  
+  // Reset if no date filters
+  if (!filters.date && !filters.startDate && !filters.endDate) {
+    setTotalPages(0);
+    setPageLabels([]);
+    setCurrentPage(0);
+    return;
+  }
+
+  // Date range pagination takes priority (daily with hours)
+  if (filters.startDate && filters.endDate) {
+    const start = new Date(filters.startDate);
+    const end = new Date(filters.endDate);
     
-    // Reset if no date filters
-    if (!filters.date && !filters.startDate && !filters.endDate) {
+    // Handle invalid dates
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      console.error('Invalid date range');
       setTotalPages(0);
       setPageLabels([]);
       setCurrentPage(0);
       return;
     }
+    
+    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    
+    const pages = [];
+    const labels = [];
+    let pageIndex = 0;
 
-    // Date range pagination takes priority (daily with hours)
-    if (filters.startDate && filters.endDate) {
-      const start = new Date(filters.startDate);
-      const end = new Date(filters.endDate);
+    for (let day = 0; day < days; day++) {
+      const currentDate = new Date(start);
+      currentDate.setDate(start.getDate() + day);
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const formattedDate = formatDateForDisplay(dateStr);
       
-      // Handle invalid dates
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-        console.error('Invalid date range');
-        setTotalPages(0);
-        setPageLabels([]);
-        setCurrentPage(0);
-        return;
+      for (let hour = 0; hour < 24; hour++) {
+        pages.push(pageIndex);
+        labels.push(`${formattedDate} ${hour}-${hour + 1}`);
+        pageIndex++;
       }
-      
-      const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-      
-      const pages = [];
-      const labels = [];
-      let pageIndex = 0;
-
-      for (let day = 0; day < days; day++) {
-        const currentDate = new Date(start);
-        currentDate.setDate(start.getDate() + day);
-        const dateStr = currentDate.toISOString().split('T')[0];
-        const formattedDate = formatDateForDisplay(dateStr);
-        
-        for (let hour = 0; hour < 24; hour++) {
-          pages.push(pageIndex);
-          labels.push(`${formattedDate} ${hour}-${hour + 1}`);
-          pageIndex++;
-        }
-      }
-      
-      setTotalPages(pages.length);
-      setPageLabels(labels);
-      
-      // Calculate current page based on current filters
-      if (filters.date && filters.startTime) {
-        const currentDate = new Date(filters.date);
-        const rangeStart = new Date(filters.startDate);
-        const dayDiff = Math.floor((currentDate - rangeStart) / (1000 * 60 * 60 * 24));
-        const hour = parseInt(filters.startTime.split(':')[0]);
-        const calculatedPage = (dayDiff * 24) + hour;
-        setCurrentPage(calculatedPage);
-      } else {
-        setCurrentPage(0);
-      }
-      
-      console.log('Date range pagination generated:', pages.length, 'pages');
     }
-    // Single day pagination (hourly)
-    else if (filters.date && !filters.startDate && !filters.endDate) {
-      const pages = [];
-      const labels = [];
-      
-      for (let i = 0; i < 24; i++) {
-        pages.push(i);
-        labels.push(`${i}-${i + 1}`);
-      }
-      
-      setTotalPages(pages.length);
-      setPageLabels(labels);
-      
-      // Set current page based on startTime
-      if (filters.startTime) {
-        const hour = parseInt(filters.startTime.split(':')[0]);
+    
+    setTotalPages(pages.length);
+    setPageLabels(labels);
+    
+    // Calculate current page based on current filters
+    if (filters.date && filters.startTime) {
+      const currentDate = new Date(filters.date);
+      const rangeStart = new Date(filters.startDate);
+      const dayDiff = Math.floor((currentDate - rangeStart) / (1000 * 60 * 60 * 24));
+      const hour = parseInt(filters.startTime.split(':')[0]);
+      const calculatedPage = (dayDiff * 24) + hour;
+      setCurrentPage(calculatedPage);
+    } else {
+      setCurrentPage(0); // Default to first page
+    }
+  }
+  // Single day pagination (hourly)
+  else if (filters.date && !filters.startDate && !filters.endDate) {
+    const pages = [];
+    const labels = [];
+    
+    for (let i = 0; i < 24; i++) {
+      pages.push(i);
+      labels.push(`${i}-${i + 1}`);
+    }
+    
+    setTotalPages(pages.length);
+    setPageLabels(labels);
+    
+    // Always default to first page if no specific time is set
+    // or if the time doesn't match any specific hour
+    if (filters.startTime) {
+      const hour = parseInt(filters.startTime.split(':')[0]);
+      // Only set the page if it's a valid hour (0-23)
+      if (hour >= 0 && hour <= 23) {
         setCurrentPage(hour);
       } else {
-        setCurrentPage(0);
+        setCurrentPage(0); // Default to first page
       }
-      
-      console.log('Single day pagination generated:', pages.length, 'pages');
     } else {
-      // Reset if we have partial date range
-      setTotalPages(0);
-      setPageLabels([]);
-      setCurrentPage(0);
+      setCurrentPage(0); // Default to first page (0-1 hour)
     }
-  };
+  } else {
+    // Reset if we have partial date range
+    setTotalPages(0);
+    setPageLabels([]);
+    setCurrentPage(0);
+  }
+};
 
   useEffect(() => {
     generatePaginationData();
@@ -207,12 +209,12 @@ const handlePageChange = (pageIndex) => {
     const startTime = `${hourIndex.toString().padStart(2, '0')}:00:00`;
     const endTime = `${(hourIndex + 1).toString().padStart(2, '0')}:00:00`;
     
-    // IMPORTANT: Keep the original date range in filters for pagination context
-    // but use the specific date and time for the API call
+    // IMPORTANT: For date range pagination, we need to use the specific date
+    // but keep the time range for that specific hour
     dispatch(setFilter({ 
       date: dateStr,           // Specific date for this page
-      startDate: filters.startDate, // Keep original start date range
-      endDate: filters.endDate,     // Keep original end date range  
+      startDate: filters.startDate, // Keep original start date range for pagination context
+      endDate: filters.endDate,     // Keep original end date range for pagination context
       startTime,
       endTime,
       daypart: 'none'
@@ -220,45 +222,52 @@ const handlePageChange = (pageIndex) => {
   }
 };
 
-  // Initialize with URL params or defaults
-  useEffect(() => {
-    let initialDate = searchParams.get('date');
-    
-    // If date is in YYYYMMDD format, convert to YYYY-MM-DD
-    if (initialDate && /^\d{8}$/.test(initialDate)) {
-      const year = initialDate.substring(0, 4);
-      const month = initialDate.substring(4, 6);
-      const day = initialDate.substring(6, 8);
-      initialDate = `${year}-${month}-${day}`;
-    } else if (!initialDate) {
-      initialDate = new Date().toISOString().split('T')[0];
-    }
+  // Initialize with today's date always
+useEffect(() => {
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Set first page time (0-1 hour) by default
+  const defaultStartTime = '00:00:00';
+  const defaultEndTime = '01:00:00';
 
-    const initialStartTime = startTime || '';
-    const initialEndTime = endTime || '';
-    const initialDaypart = daypart || 'none';
+  // Set URL parameters with first page selected
+  setSearchParams({
+    date: today,
+    startTime: defaultStartTime,
+    endTime: defaultEndTime,
+    searchIn: 'transcription'
+  });
 
-    dispatch(setFilter({ 
-      date: initialDate,
-      startTime: initialStartTime,
-      endTime: initialEndTime,
-      daypart: initialDaypart,
-      status: 'all',
-      recognition: 'all'
-    }));
-    
-    setLocalStartTime(initialStartTime.substring(0, 5));
-    setLocalEndTime(initialEndTime.substring(0, 5));
-    
-    // Initial fetch
-    dispatch(fetchAudioSegments({ 
-      channelId, 
-      date: initialDate,
-      startTime: initialStartTime,
-      endTime: initialEndTime,
-      daypart: initialDaypart
-    }));
-  }, [channelId]);
+  dispatch(setFilter({ 
+    date: today,
+    startTime: defaultStartTime,
+    endTime: defaultEndTime,
+    daypart: 'none',
+    startDate: null,
+    endDate: null,
+    status: 'all',
+    recognition: 'all',
+    searchText: '',
+    searchIn: 'transcription'
+  }));
+  
+  setLocalStartTime('');
+  setLocalEndTime('');
+  setLocalSearchText('');
+  setLocalSearchIn('transcription');
+  
+  // Initial fetch for today with first page time
+  dispatch(fetchAudioSegments({ 
+    channelId, 
+    date: today,
+    startTime: defaultStartTime,
+    endTime: defaultEndTime,
+    daypart: 'none'
+  }));
+
+  // Set pagination to first page
+  setCurrentPage(0);
+}, [channelId]);
 
   // Fetch data when filters change (only for date and daypart)
 useEffect(() => {
@@ -363,8 +372,8 @@ useEffect(() => {
   };
 
   // Update handleDaypartChange to properly update the date
-  const handleDaypartChange = (selectedDaypart) => {
-  const currentDate = new Date().toISOString().split('T')[0];
+const handleDaypartChange = (selectedDaypart) => {
+  const today = new Date().toISOString().split('T')[0]; // Use today's date
   
   if (selectedDaypart === 'none') {
     dispatch(setFilter({ 
@@ -378,7 +387,7 @@ useEffect(() => {
       daypart: selectedDaypart, 
       startTime: daypart.startTime, 
       endTime: daypart.endTime,
-      date: currentDate, // Force current date
+      date: today, // Use today's date
       startDate: null,   // Clear date range
       endDate: null      // Clear date range
     }));
@@ -407,23 +416,42 @@ const handleDateSelect = (selectedDate) => {
 
 // Add handler for date range selection
 const handleDateRangeSelect = (start, end) => {
+  const defaultStartTime = '00:00:00';
+  const defaultEndTime = '01:00:00';
+  
   dispatch(setFilter({ 
     startDate: start,
     endDate: end,
-    date: null,          // Clear single date
-    startTime: '',       // Clear time filters
-    endTime: '',         // Clear time filters
-    daypart: 'none'      // Clear daypart filter
+    date: start, // Set the specific date for the first page
+    startTime: defaultStartTime,
+    endTime: defaultEndTime,
+    daypart: 'none'
   }));
+
+  // Update URL params
+  const params = {
+    startDate: start,
+    endDate: end,
+    date: start,
+    startTime: defaultStartTime,
+    endTime: defaultEndTime
+  };
+  setSearchParams(params);
+
+  // Reset to first page
+  setCurrentPage(0);
 };
   const handleResetFilters = () => {
     const today = new Date().toISOString().split('T')[0];
+    const defaultStartTime = '00:00:00';
+    const defaultEndTime = '01:00:00';
+    
     dispatch(setFilter({ 
       date: today, 
       startDate: null, 
       endDate: null,
-      startTime: '', 
-      endTime: '', 
+      startTime: defaultStartTime, 
+      endTime: defaultEndTime, 
       daypart: 'none', 
       status: 'all', 
       recognition: 'all',
@@ -434,12 +462,19 @@ const handleDateRangeSelect = (start, end) => {
     setLocalEndTime('');
     setLocalSearchText('');
     setLocalSearchIn('transcription');
-    setSearchParams({ date: today });
+    setSearchParams({ 
+      date: today,
+      startTime: defaultStartTime,
+      endTime: defaultEndTime,
+      searchIn: 'transcription'
+    });
+    setCurrentPage(0); // Reset to first page
+    
     dispatch(fetchAudioSegments({ 
       channelId, 
       date: today, 
-      startTime: '', 
-      endTime: '', 
+      startTime: defaultStartTime, 
+      endTime: defaultEndTime, 
       daypart: 'none' 
     }));
   };
