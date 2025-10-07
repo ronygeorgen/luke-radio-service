@@ -11,6 +11,7 @@ import reportReducer from './slices/reportSlice';
 import authReducer from './slices/authSlice';
 import userManagementReducer from './slices/userManagementSlice';
 import audioTrimmerReducer from './slices/audioTrimmerSlice'
+import audioManagementReducer from './slices/audioManagementSlice';
 
 export const store = configureStore({
   reducer: {
@@ -24,7 +25,8 @@ export const store = configureStore({
     reports: reportReducer,
     auth: authReducer,
     userManagement: userManagementReducer,
-    audioTrimmer: audioTrimmerReducer
+    audioTrimmer: audioTrimmerReducer,
+    audioManagement: audioManagementReducer
   },
 });
 

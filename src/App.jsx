@@ -20,6 +20,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import LandingRedirect from './components/LandingRedirect';
 import UserManagement from './pages/admin/UserManagement';
+import AudioManagement from './pages/admin/AudioManagement';
 
 function App() {
   return (
@@ -50,6 +51,7 @@ function App() {
               <Route index element={<Navigate to="channels" replace />} />
               <Route path="channels" element={<ChannelsPage />} />
               <Route path="users" element={<UserManagement />} />
+              <Route path="audio" element={<AudioManagement />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
 

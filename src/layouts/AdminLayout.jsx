@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { Settings, Layers, Users, Plus, UserCog, ChevronDown } from 'lucide-react';
+import { Settings, Layers, Users, Plus, UserCog, ChevronDown, Music } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from 'react-redux';
@@ -171,6 +171,20 @@ const AdminLayout = () => {
                         >
                             <UserCog className="h-5 w-5" />
                             <span>User Management</span>
+                        </NavLink>
+
+                        <NavLink
+                            to="/admin/audio"
+                            className={({ isActive }) =>
+                                `flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                                isActive
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`
+                            }
+                            >
+                            <Music className="h-5 w-5" />
+                            <span>Audio Management</span>
                         </NavLink>
                         
                         <NavLink
