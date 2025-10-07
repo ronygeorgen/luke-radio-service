@@ -99,6 +99,82 @@ export const transcribeAudioSegment = createAsyncThunk(
   }
 );
 
+// Update the fetchPieChartData async thunk
+export const fetchPieChartData = createAsyncThunk(
+  'audioSegments/fetchPieChartData',
+  async ({ channelId, date, startTime, endTime, daypart, startDate, endDate }, { rejectWithValue }) => {
+    try {
+      let startDatetime = null;
+      let endDatetime = null;
+      
+      // Use the same date/time logic as fetchAudioSegments
+      if (date && startTime && endTime) {
+        startDatetime = convertLocalToUTC(date, startTime);
+        endDatetime = convertLocalToUTC(date, endTime);
+      } else if (startDate && endDate) {
+        // For date range with specific time (from pagination)
+        if (startTime && endTime) {
+          startDatetime = convertLocalToUTC(date, startTime); // Use the specific date from pagination
+          endDatetime = convertLocalToUTC(date, endTime);
+        } else {
+          // For date range without specific time
+          startDatetime = convertLocalToUTC(startDate, '00:00:00');
+          endDatetime = convertLocalToUTC(endDate, '23:59:59');
+        }
+      } else if (date) {
+        let useDate = date;
+        
+        if (daypart === 'weekend') {
+          const dateObj = new Date(useDate);
+          const dayOfWeek = dateObj.getDay();
+          
+          if (dayOfWeek === 0 || dayOfWeek === 6) {
+            startDatetime = convertLocalToUTC(useDate, '00:00:00');
+            endDatetime = convertLocalToUTC(useDate, '23:59:59');
+          }
+        } else if (startTime && endTime) {
+          startDatetime = convertLocalToUTC(useDate, startTime);
+          endDatetime = convertLocalToUTC(useDate, endTime);
+        } else if (daypart !== 'none') {
+          const daypartTimes = {
+            'morning': { start: '06:00:00', end: '10:00:00' },
+            'midday': { start: '10:00:00', end: '15:00:00' },
+            'afternoon': { start: '15:00:00', end: '19:00:00' },
+            'evening': { start: '19:00:00', end: '23:59:59' },
+            'overnight': { start: '00:00:00', end: '06:00:00' },
+            'weekend': { start: '00:00:00', end: '23:59:59' }
+          };
+          
+          const times = daypartTimes[daypart];
+          if (times) {
+            startDatetime = convertLocalToUTC(useDate, times.start);
+            endDatetime = convertLocalToUTC(useDate, times.end);
+          }
+        } else {
+          startDatetime = convertLocalToUTC(useDate, '00:00:00');
+          endDatetime = convertLocalToUTC(useDate, '23:59:59');
+        }
+      }
+      
+      const params = { 
+        channel_id: channelId
+      };
+      
+      if (startDatetime) params.start_datetime = startDatetime;
+      if (endDatetime) params.end_datetime = endDatetime; // ADD THIS LINE
+      
+      console.log('Pie Chart API Request Params:', params);
+      
+      const response = await axiosInstance.get('/pie_chart', { // Make sure this matches your endpoint
+        params
+      });
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  }
+);
+
 // audioSegmentsSlice.js
 const audioSegmentsSlice = createSlice({
   name: 'audioSegments',
@@ -108,6 +184,9 @@ const audioSegmentsSlice = createSlice({
     totals: {},
     loading: false,
     error: null,
+    pieChartData: [],
+    pieChartLoading: false,
+    pieChartError: null,
     currentPlayingId: null,
     isPlaying: false,
     filters: {
@@ -269,6 +348,19 @@ const audioSegmentsSlice = createSlice({
         state.transcriptionLoading[segmentId] = false;
         state.transcriptionErrors[segmentId] = action.payload?.error || 'Failed to transcribe audio';
       })
+      // Pie Chart cases
+    .addCase(fetchPieChartData.pending, (state) => {
+      state.pieChartLoading = true;
+      state.pieChartError = null;
+    })
+    .addCase(fetchPieChartData.fulfilled, (state, action) => {
+      state.pieChartLoading = false;
+      state.pieChartData = action.payload.data || [];
+    })
+    .addCase(fetchPieChartData.rejected, (state, action) => {
+      state.pieChartLoading = false;
+      state.pieChartError = action.payload || 'Failed to fetch pie chart data';
+    })
   }
 });
 

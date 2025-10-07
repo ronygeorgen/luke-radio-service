@@ -15,6 +15,8 @@ import useTranscriptionPolling from '../../hooks/useTranscriptionPolling';
 import { openTrimmer } from '../../store/slices/audioTrimmerSlice';
 import AudioTrimmer from './AudioTrimmer';
 import TimePagination from '../../components/UserSide/TimePagination';
+import PieChartModal from '../../components/UserSide/PieChartModal';
+import PieChartTrigger from '../../components/UserSide/PieChartTrigger';
 
 const AudioSegmentsPage = () => {
   const { channelId: channelIdFromParams } = useParams();
@@ -35,6 +37,8 @@ const AudioSegmentsPage = () => {
   const [localSearchIn, setLocalSearchIn] = useState('transcription');
 
   const { isOpen: isTrimmerOpen } = useSelector((state) => state.audioTrimmer);
+
+  const [showPieChartModal, setShowPieChartModal] = useState(false);
   
   const handleTrimClick = (segment) => {
     dispatch(openTrimmer(segment));
@@ -538,6 +542,7 @@ const handleDateRangeSelect = (start, end) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <PieChartTrigger onClick={() => setShowPieChartModal(true)} />
       <Header 
         channelInfo={channelInfo} 
         channelName={channelName}
@@ -600,6 +605,11 @@ const handleDateRangeSelect = (start, end) => {
           />
         ))}
       </main>
+      {/* Pie Chart Modal */}
+      <PieChartModal 
+        isOpen={showPieChartModal}
+        onClose={() => setShowPieChartModal(false)}
+      />
 
       {/* Audio Player and Modals */}
       {currentPlayingId && (
