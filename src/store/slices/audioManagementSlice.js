@@ -38,6 +38,18 @@ export const updateCategory = createAsyncThunk(
   }
 );
 
+export const deleteCategory = createAsyncThunk(
+'audioManagement/deleteCategory',
+async (id, { rejectWithValue }) => {
+    try {
+    await audioManagementApi.deleteCategory(id);
+    return id;
+    } catch (error) {
+    return rejectWithValue(error.response?.data || 'Failed to delete category');
+    }
+}
+);
+
 // Async thunks for title rules
 export const createTitleRule = createAsyncThunk(
   'audioManagement/createTitleRule',
@@ -118,6 +130,13 @@ const audioManagementSlice = createSlice({
           state.categories[index] = action.payload;
         }
       })
+      .addCase(deleteCategory.fulfilled, (state, action) => {
+        state.categories = state.categories.filter(cat => cat.id !== action.payload);
+      })
+      .addCase(deleteCategory.rejected, (state, action) => {
+        state.error = action.payload;
+       })
+       
       // Title Rules
       .addCase(fetchCategoryTitles.pending, (state) => {
         state.titleLoading = true;

@@ -5,6 +5,7 @@ export const audioManagementApi = {
   getCategories: () => axiosInstance.get('/segmentor/unrecognized-categories/'),
   createCategory: (data) => axiosInstance.post('/segmentor/unrecognized-categories/', data),
   updateCategory: (id, data) => axiosInstance.patch(`/segmentor/unrecognized-categories/${id}/`, data),
+  deleteCategory: (id) => axiosInstance.delete(`/segmentor/unrecognized-categories/${id}/`),
   
   // Title Mapping Rules APIs
   createTitleRule: (data) => axiosInstance.post('/segmentor/title-mapping-rules/', data),

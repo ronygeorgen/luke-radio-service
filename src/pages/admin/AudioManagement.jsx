@@ -5,6 +5,7 @@ import {
   fetchCategories, 
   createCategory, 
   updateCategory,
+  deleteCategory,
   clearError,
   fetchCategoryTitles,
   clearCurrentCategoryTitles 
@@ -56,6 +57,19 @@ const AudioManagement = () => {
     setSelectedCategory(null);
     dispatch(clearCurrentCategoryTitles());
   };
+
+  const handleDeleteCategory = (category) => {
+    if (window.confirm(`Are you sure you want to delete the category "${category.name}"? This action cannot be undone.`)) {
+        dispatch(deleteCategory(category.id))
+        .unwrap()
+        .then(() => {
+            // Success - category will be removed from the list automatically
+        })
+        .catch((error) => {
+            console.error('Failed to delete category:', error);
+        });
+    }
+    };
 
   if (loading && categories.length === 0) {
     return (
@@ -124,7 +138,7 @@ const AudioManagement = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -176,6 +190,13 @@ const AudioManagement = () => {
                     >
                       <Edit3 className="h-3 w-3 mr-1" />
                       Edit
+                    </button>
+                    <button
+                        onClick={() => handleDeleteCategory(category)}
+                        className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-md text-xs font-medium transition-colors inline-flex items-center"
+                    >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Delete
                     </button>
                   </td>
                 </tr>
