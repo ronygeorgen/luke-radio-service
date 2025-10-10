@@ -3,6 +3,7 @@ import { axiosInstance } from '../../services/api';
 import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 
 // audioSegmentsSlice.js - Update the fetchAudioSegments thunk
+// In audioSegmentsSlice.js - Update the date range with time logic
 export const fetchAudioSegmentsWithFilter = createAsyncThunk(
   'audioSegments/fetchAudioSegmentsWithFilter',
   async ({ channelId, date, startTime, endTime, daypart, searchText, searchIn, startDate, endDate }, { rejectWithValue }) => {
@@ -14,28 +15,33 @@ export const fetchAudioSegmentsWithFilter = createAsyncThunk(
         channelId, date, startTime, endTime, startDate, endDate, daypart
       });
 
-      // Handle date range (startDate and endDate take priority)
-      if (startDate && endDate) {
-        // For date range, we want the entire period from startDate 00:00 to endDate 23:59
-        startDatetime = convertLocalToUTC(startDate, '00:00:00');
-        endDatetime = convertLocalToUTC(endDate, '23:59:59');
+      // Handle date range with specific time
+      if (startDate && endDate && startTime && endTime) {
+        // For date range WITH specific time, we want to apply the time filter to each day in the range
+        // The API should handle pagination within this filtered range
+        startDatetime = convertLocalToUTC(startDate, startTime);
+        endDatetime = convertLocalToUTC(endDate, endTime);
         
-        console.log('📅 Date Range Selected:', {
-          startDate,
-          endDate,
-          startDatetime,
-          endDatetime
+        console.log('📅 Date Range with Time Filter:', {
+          startDate, endDate, startTime, endTime,
+          startDatetime, endDatetime
         });
       }
-      // If we have empty start/end time, fetch entire day for single date
-      else if (date && (!startTime || !endTime)) {
-        startDatetime = convertLocalToUTC(date, '00:00:00');
-        endDatetime = convertLocalToUTC(date, '23:59:59');
+      // Handle date range without specific time (entire days)
+      else if (startDate && endDate) {
+        // For date range without time, fetch entire days
+        startDatetime = convertLocalToUTC(startDate, '00:00:00');
+        endDatetime = convertLocalToUTC(endDate, '23:59:59');
       }
-      // If we have specific time from pagination, use that
+      // Handle single date with specific time
       else if (date && startTime && endTime) {
         startDatetime = convertLocalToUTC(date, startTime);
         endDatetime = convertLocalToUTC(date, endTime);
+      }
+      // Handle single date without specific time (entire day)
+      else if (date && (!startTime || !endTime)) {
+        startDatetime = convertLocalToUTC(date, '00:00:00');
+        endDatetime = convertLocalToUTC(date, '23:59:59');
       }
       else if (date) {
         let useDate = date;

@@ -127,8 +127,8 @@ const FilterPanel = ({
 
         {isExpanded && (
           <div className="border-t border-gray-200 p-4 bg-white">
-            {/* Date Range Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {/* All Date & Time Filters in Single Line */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
                 <input
@@ -149,23 +149,6 @@ const FilterPanel = ({
                   max={new Date().toISOString().split('T')[0]}
                 />
               </div>
-            </div>
-
-            {/* Single Date Field */}
-            {/* <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Single Date</label>
-              <input
-                type="date"
-                value={filters.date || ''}
-                onChange={(e) => handleSingleDateSelect(e.target.value)}
-                className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                max={new Date().toISOString().split('T')[0]}
-              />
-            </div> */}
-
-            {/* Rest of the filters remain the same */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              {/* Time of Day */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Time of Day</label>
                 <select
@@ -175,78 +158,58 @@ const FilterPanel = ({
                 >
                   {daypartOptions.map(option => (
                     <option key={option.value} value={option.value}>
-                      {option.label.length > 20 ? option.label.substring(0, 20) + '...' : option.label}
+                      {option.label.length > 15 ? option.label.substring(0, 15) + '...' : option.label}
                     </option>
                   ))}
                 </select>
               </div>
-
-              {/* Status Filter */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  value={filters.status || 'all'}
-                  onChange={(e) => dispatch(setFilter({ status: e.target.value }))}
+                <label className="block text-xs font-medium text-gray-700 mb-1">Start Time</label>
+                <input
+                  type="time"
+                  value={localStartTime}
+                  onChange={(e) => {
+                    setLocalStartTime(e.target.value);
+                    if (e.target.value) {
+                      dispatch(setFilter({ 
+                        startTime: e.target.value + ':00'
+                      }));
+                    }
+                  }}
                   className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
+                  disabled={filters.daypart !== 'none'}
+                />
               </div>
-
-              {/* Recognition Filter */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Recognition</label>
-                <select
-                  value={filters.recognition || 'all'}
-                  onChange={(e) => dispatch(setFilter({ recognition: e.target.value }))}
+                <label className="block text-xs font-medium text-gray-700 mb-1">End Time</label>
+                <input
+                  type="time"
+                  value={localEndTime}
+                  onChange={(e) => {
+                    setLocalEndTime(e.target.value);
+                    if (e.target.value) {
+                      dispatch(setFilter({ 
+                        endTime: e.target.value + ':00'
+                      }));
+                    }
+                  }}
                   className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Recognition</option>
-                  <option value="recognized">Recognized ({recognizedCount})</option>
-                  <option value="unrecognized">Unrecognized ({unrecognizedCount})</option>
-                  <option value="unrecognized_with_content">
-                    Unrecognized with Content ({unrecognizedWithContentCount})
-                  </option>
-                  <option value="unrecognized_without_content">
-                    Unrecognized without Content ({unrecognizedWithoutContentCount})
-                  </option>
-                </select>
+                  disabled={filters.daypart !== 'none'}
+                />
               </div>
             </div>
 
-            {/* Custom Time Inputs (only show when daypart is none) */}
-            {filters.daypart === 'none' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Start Time</label>
-                  <input
-                    type="time"
-                    value={localStartTime}
-                    onChange={(e) => setLocalStartTime(e.target.value)}
-                    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">End Time</label>
-                  <input
-                    type="time"
-                    value={localEndTime}
-                    onChange={(e) => setLocalEndTime(e.target.value)}
-                    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <button
-                    onClick={handleSearchWithCustomTime}
-                    className="w-full p-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-                  >
-                    Apply Time
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Single Date Filter */}
+            {/* <div className="mb-4">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Single Date (Optional)</label>
+              <input
+                type="date"
+                value={filters.date || ''}
+                onChange={(e) => handleSingleDateSelect(e.target.value)}
+                className="w-full md:w-1/3 p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                max={new Date().toISOString().split('T')[0]}
+              />
+            </div> */}
 
             {/* Action Buttons */}
             <div className="flex justify-between items-center">
@@ -290,7 +253,7 @@ const FilterPanel = ({
 
       {isExpanded && (
         <div className="border-t border-gray-200 p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 gap-8">
             {/* Date & Time Section */}
             <div className="space-y-4">
               <div className="flex items-center space-x-2 mb-4">
@@ -300,11 +263,11 @@ const FilterPanel = ({
                 <h3 className="font-semibold text-gray-900">Date & Time</h3>
               </div>
 
-              {/* Date Range */}
+              {/* All Date & Time Filters in Single Line */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date Range & Time</label>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Start Date</label>
                       <input
@@ -325,111 +288,66 @@ const FilterPanel = ({
                         max={new Date().toISOString().split('T')[0]}
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Time of Day</label>
+                      <select
+                        value={filters.daypart || 'none'}
+                        onChange={(e) => handleDaypartChange(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      >
+                        {daypartOptions.map(option => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
+                      <input
+                        type="time"
+                        value={localStartTime}
+                        onChange={(e) => {
+                          setLocalStartTime(e.target.value);
+                          if (e.target.value) {
+                            dispatch(setFilter({ 
+                              startTime: e.target.value + ':00'
+                            }));
+                          }
+                        }}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        disabled={filters.daypart !== 'none'}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
+                      <input
+                        type="time"
+                        value={localEndTime}
+                        onChange={(e) => {
+                          setLocalEndTime(e.target.value);
+                          if (e.target.value) {
+                            dispatch(setFilter({ 
+                              endTime: e.target.value + ':00'
+                            }));
+                          }
+                        }}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        disabled={filters.daypart !== 'none'}
+                      />
+                    </div>
                   </div>
                 </div>
 
+                {/* Single Date Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Single Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Single Date (Optional)</label>
                   <input
                     type="date"
                     value={filters.date || ''}
                     onChange={(e) => handleSingleDateSelect(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    className="w-full md:w-1/3 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     max={new Date().toISOString().split('T')[0]}
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Time of Day</label>
-                <select
-                  value={filters.daypart || 'none'}
-                  onChange={(e) => handleDaypartChange(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  {daypartOptions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
-                    <input
-                      type="time"
-                      value={localStartTime}
-                      onChange={(e) => setLocalStartTime(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      disabled={filters.daypart !== 'none'}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
-                    <input
-                      type="time"
-                      value={localEndTime}
-                      onChange={(e) => setLocalEndTime(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      disabled={filters.daypart !== 'none'}
-                    />
-                  </div>
-                </div>
-                
-                <button
-                  onClick={handleSearchWithCustomTime}
-                  disabled={filters.daypart !== 'none'}
-                  className={`w-full p-3 rounded-lg font-medium ${
-                    filters.daypart !== 'none'
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
-                  } transition-colors`}
-                >
-                  Search with Custom Time
-                </button>
-              </div>
-            </div>
-
-            {/* Status & Recognition Section */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                  <Filter className="w-4 h-4 text-white" />
-                </div>
-                <h3 className="font-semibold text-gray-900">Status & Recognition</h3>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                <select
-                  value={filters.status || 'all'}
-                  onChange={(e) => dispatch(setFilter({ status: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Recognition</label>
-                <select
-                  value={filters.recognition || 'all'}
-                  onChange={(e) => dispatch(setFilter({ recognition: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                >
-                  <option value="all">All Recognition</option>
-                  <option value="recognized">Recognized ({recognizedCount})</option>
-                  <option value="unrecognized">Unrecognized ({unrecognizedCount})</option>
-                  <option value="unrecognized_with_content">
-                    Unrecognized with Content ({unrecognizedWithContentCount})
-                  </option>
-                  <option value="unrecognized_without_content">
-                    Unrecognized without Content ({unrecognizedWithoutContentCount})
-                  </option>
-                </select>
               </div>
             </div>
           </div>

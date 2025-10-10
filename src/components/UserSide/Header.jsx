@@ -30,9 +30,10 @@ const Header = ({
   setLocalSearchIn,
   handleSearch,
   handleClearSearch,
-  // ADD THESE NEW PROPS:
+  // Date handlers
   handleDateSelect,
-  handleDateRangeSelect
+  handleDateRangeSelect,
+  setFilter 
 }) => {
   const navigate = useNavigate();
   const savedChannelName = localStorage.getItem("channelName");
@@ -44,6 +45,11 @@ const Header = ({
     return formatDateForDisplay(dateString);
   };
 
+  // Calculate counts for recognition filters
+  const recognizedCount = segments.filter(s => s.is_recognized).length;
+  const unrecognizedCount = segments.filter(s => !s.is_recognized).length;
+  const unrecognizedWithContentCount = segments.filter(s => !s.is_recognized && (s.analysis?.summary || s.transcription?.transcript)).length;
+  const unrecognizedWithoutContentCount = segments.filter(s => !s.is_recognized && !s.analysis?.summary && !s.transcription?.transcript).length;
 
   const handleLogout = () => {
     dispatch(logout());
@@ -117,13 +123,11 @@ const Header = ({
                     Logout
                   </button>
                 </div>
-
               </div>
             )}
           </div>
         </div>
 
-        {/* Rest of the header remains the same */}
         {/* Channel Info Row */}
         <div className="flex items-center justify-between py-2">
           <div>
@@ -135,41 +139,88 @@ const Header = ({
             </p>
           </div>
           
-          {/* Search Bar */}
-          <div className="flex items-center space-x-2">
-            <select
-              value={localSearchIn}
-              onChange={(e) => setLocalSearchIn(e.target.value)}
-              className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="transcription">Transcription</option>
-              <option value="general_topics">General Topics</option>
-              <option value="iab_topics">IAB Topics</option>
-              <option value="bucket_prompt">Bucket Prompt</option>
-              <option value="summary">Summary</option>
-              <option value="title">Title</option>
-            </select>
-            <input
-              type="text"
-              value={localSearchText}
-              onChange={(e) => setLocalSearchText(e.target.value)}
-              placeholder="Search..."
-              className="text-sm border border-gray-300 rounded px-3 py-1 focus:ring-1 focus:ring-blue-500"
-            />
-            <button
-              onClick={handleSearch}
-              className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
-            >
-              Search
-            </button>
-            {localSearchText && (
-              <button
-                onClick={handleClearSearch}
-                className="bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-400"
+          {/* Search and Filter Bar */}
+          <div className="flex items-center space-x-4">
+            {/* Status Filter */}
+            <div className="flex flex-col">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={filters.status || 'all'}
+                onChange={(e) => dispatch(setFilter({ status: e.target.value }))}
+                className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500"
               >
-                Clear
-              </button>
-            )}
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+
+            {/* Recognition Filter */}
+            <div className="flex flex-col">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Recognition</label>
+              <select
+                value={filters.recognition || 'all'}
+                onChange={(e) => dispatch(setFilter({ recognition: e.target.value }))}
+                className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="all">All Recognition</option>
+                <option value="recognized">Recognized ({recognizedCount})</option>
+                <option value="unrecognized">Unrecognized ({unrecognizedCount})</option>
+                <option value="unrecognized_with_content">
+                  Unrecognized with Content ({unrecognizedWithContentCount})
+                </option>
+                <option value="unrecognized_without_content">
+                  Unrecognized without Content ({unrecognizedWithoutContentCount})
+                </option>
+              </select>
+            </div>
+
+            {/* Search Bar */}
+            <div className="flex items-center space-x-2">
+              <div className="flex flex-col">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Search In</label>
+                <select
+                  value={localSearchIn}
+                  onChange={(e) => setLocalSearchIn(e.target.value)}
+                  className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="transcription">Transcription</option>
+                  <option value="general_topics">General Topics</option>
+                  <option value="iab_topics">IAB Topics</option>
+                  <option value="bucket_prompt">Bucket Prompt</option>
+                  <option value="summary">Summary</option>
+                  <option value="title">Title</option>
+                </select>
+              </div>
+              <div className="flex flex-col">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Search</label>
+                <input
+                  type="text"
+                  value={localSearchText}
+                  onChange={(e) => setLocalSearchText(e.target.value)}
+                  placeholder="Search..."
+                  className="text-sm border border-gray-300 rounded px-3 py-1 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex flex-col justify-end">
+                <button
+                  onClick={handleSearch}
+                  className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 h-[34px]"
+                >
+                  Search
+                </button>
+              </div>
+              {localSearchText && (
+                <div className="flex flex-col justify-end">
+                  <button
+                    onClick={handleClearSearch}
+                    className="bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-400 h-[34px]"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -196,7 +247,7 @@ const Header = ({
             setLocalSearchIn={setLocalSearchIn}
             handleSearch={handleSearch}
             handleClearSearch={handleClearSearch}
-            // NEW: Date handlers
+            // Date handlers
             handleDateSelect={handleDateSelect}
             handleDateRangeSelect={handleDateRangeSelect}
           />

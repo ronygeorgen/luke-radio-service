@@ -113,7 +113,7 @@ useEffect(() => {
     searchText: '',
     searchIn: 'transcription'
   }));
-  
+
   
   setLocalStartTime('');
   setLocalEndTime('');
@@ -344,35 +344,65 @@ useEffect(() => {
   };
 
   // Filter segments (client-side filtering for status and recognition)
-  const filteredSegments = segments.filter(segment => {
-    if (filters.status !== 'all') {
-      if (filters.status === 'active' && !segment.is_active) return false;
-      if (filters.status === 'inactive' && segment.is_active) return false;
-    }
-    
-    if (filters.recognition !== 'all') {
-      const hasContent = segment.analysis?.summary || segment.transcription?.transcript;
-      
-      switch (filters.recognition) {
-        case 'recognized':
-          if (!segment.is_recognized) return false;
-          break;
-        case 'unrecognized':
-          if (segment.is_recognized) return false;
-          break;
-        case 'unrecognized_with_content':
-          if (segment.is_recognized || !hasContent) return false;
-          break;
-        case 'unrecognized_without_content':
-          if (segment.is_recognized || hasContent) return false;
-          break;
-        default:
-          break;
-      }
-    }
-    
-    return true;
+const filteredSegments = segments.filter(segment => {
+  console.log('Filtering segment:', {
+    id: segment.id,
+    is_active: segment.is_active,
+    is_recognized: segment.is_recognized,
+    hasContent: segment.analysis?.summary || segment.transcription?.transcript,
+    statusFilter: filters.status,
+    recognitionFilter: filters.recognition
   });
+
+  // Status filter
+  if (filters.status !== 'all') {
+    if (filters.status === 'active' && !segment.is_active) {
+      console.log('❌ Filtered out - status not active');
+      return false;
+    }
+    if (filters.status === 'inactive' && segment.is_active) {
+      console.log('❌ Filtered out - status not inactive');
+      return false;
+    }
+  }
+  
+  // Recognition filter
+  if (filters.recognition !== 'all') {
+    const hasContent = segment.analysis?.summary || segment.transcription?.transcript;
+    
+    switch (filters.recognition) {
+      case 'recognized':
+        if (!segment.is_recognized) {
+          console.log('❌ Filtered out - not recognized');
+          return false;
+        }
+        break;
+      case 'unrecognized':
+        if (segment.is_recognized) {
+          console.log('❌ Filtered out - not unrecognized');
+          return false;
+        }
+        break;
+      case 'unrecognized_with_content':
+        if (segment.is_recognized || !hasContent) {
+          console.log('❌ Filtered out - not unrecognized with content');
+          return false;
+        }
+        break;
+      case 'unrecognized_without_content':
+        if (segment.is_recognized || hasContent) {
+          console.log('❌ Filtered out - not unrecognized without content');
+          return false;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  
+  console.log('✅ Segment passed filters');
+  return true;
+});
 
   const handlePlayPauseAudio = (segmentId) => {
     if (currentPlayingId === segmentId) {
@@ -522,6 +552,7 @@ const handleDateRangeSelect = (start, end) => {
           handleClearSearch={handleClearSearch}
           handleDateSelect={handleDateSelect}
           handleDateRangeSelect={handleDateRangeSelect}
+          setFilter={setFilter} 
         />
         
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-32 mt-28">
@@ -550,7 +581,8 @@ const handleDateRangeSelect = (start, end) => {
         filters={filters} 
         formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)}
         dispatch={dispatch}
-        segments={segments}
+        segments={filteredSegments} 
+        // segments={segments}
         channelId={channelId}
         fetchAudioSegments={fetchAudioSegmentsWithFilter}
         handleDaypartChange={handleDaypartChange}
@@ -568,6 +600,7 @@ const handleDateRangeSelect = (start, end) => {
         handleClearSearch={handleClearSearch}
         handleDateSelect={handleDateSelect}
         handleDateRangeSelect={handleDateRangeSelect}
+        setFilter={setFilter} 
       />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-32 mt-28">
