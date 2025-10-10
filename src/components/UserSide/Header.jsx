@@ -147,6 +147,7 @@ const Header = ({
               <option value="iab_topics">IAB Topics</option>
               <option value="bucket_prompt">Bucket Prompt</option>
               <option value="summary">Summary</option>
+              <option value="title">Title</option>
             </select>
             <input
               type="text"

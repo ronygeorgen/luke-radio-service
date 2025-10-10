@@ -1,4 +1,3 @@
-// components/UserSide/TimePagination.jsx
 import React from 'react';
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 
@@ -6,10 +5,15 @@ const TimePagination = ({
   currentPage, 
   totalPages, 
   onPageChange,
-  pageLabels 
+  pageLabels,
+  availablePages = []
 }) => {
+  console.log('🎯 TimePagination - currentPage:', currentPage);
+  console.log('🎯 TimePagination - totalPages:', totalPages);
+  console.log('🎯 TimePagination - pageLabels:', pageLabels);
+
   const getVisiblePages = () => {
-    if (totalPages <= 5) {
+    if (totalPages <= 7) {
       return Array.from({ length: totalPages }, (_, i) => i);
     }
 
@@ -43,6 +47,7 @@ const TimePagination = ({
   };
 
   const visiblePages = getVisiblePages();
+  console.log('🎯 TimePagination - visiblePages:', visiblePages);
 
   return (
     <div className="flex items-center justify-center space-x-1 py-4">
@@ -65,17 +70,26 @@ const TimePagination = ({
           );
         }
 
+        const pageData = availablePages[page];
+        const segmentCount = pageData?.segment_count || 0;
+
+        console.log(`🎯 Rendering page ${page}, isCurrent: ${currentPage === page}`);
+
         return (
           <button
             key={page}
             onClick={() => onPageChange(page)}
-            className={`px-3 py-1 rounded-lg border text-sm font-medium ${
+            className={`px-3 py-2 rounded-lg border text-sm font-medium min-w-[120px] ${
               currentPage === page
                 ? 'bg-blue-500 text-white border-blue-500'
                 : 'border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
+            title={`${pageLabels[page]} (${segmentCount} segments)`}
           >
-            {pageLabels[page] || `Page ${page + 1}`}
+            <div className="text-xs">{pageLabels[page]}</div>
+            <div className="text-xs opacity-75">
+              {segmentCount} segments
+            </div>
           </button>
         );
       })}
