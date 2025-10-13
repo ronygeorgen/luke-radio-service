@@ -149,7 +149,7 @@ const FilterPanel = ({
                   max={new Date().toISOString().split('T')[0]}
                 />
               </div>
-              <div>
+              {/* <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Time of Day</label>
                 <select
                   value={filters.daypart || 'none'}
@@ -162,7 +162,7 @@ const FilterPanel = ({
                     </option>
                   ))}
                 </select>
-              </div>
+              </div> */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Start Time</label>
                 <input
@@ -288,7 +288,7 @@ const FilterPanel = ({
                         max={new Date().toISOString().split('T')[0]}
                       />
                     </div>
-                    <div>
+                    {/* <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Time of Day</label>
                       <select
                         value={filters.daypart || 'none'}
@@ -299,7 +299,7 @@ const FilterPanel = ({
                           <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                       </select>
-                    </div>
+                    </div> */}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
                       <input
