@@ -132,21 +132,32 @@ export const fetchPieChartData = createAsyncThunk(
       let startDatetime = null;
       let endDatetime = null;
       
-      // Use the same date/time logic as fetchAudioSegments
-      if (date && startTime && endTime) {
+      console.log('Pie Chart API - Received params:', {
+        channelId, date, startTime, endTime, startDate, endDate, daypart
+      });
+
+      // Handle date range with specific time
+      if (startDate && endDate && startTime && endTime) {
+        startDatetime = convertLocalToUTC(startDate, startTime);
+        endDatetime = convertLocalToUTC(endDate, endTime);
+      }
+      // Handle date range without specific time (entire days)
+      else if (startDate && endDate) {
+        startDatetime = convertLocalToUTC(startDate, '00:00:00');
+        endDatetime = convertLocalToUTC(endDate, '23:59:59');
+      }
+      // Handle single date with specific time
+      else if (date && startTime && endTime) {
         startDatetime = convertLocalToUTC(date, startTime);
         endDatetime = convertLocalToUTC(date, endTime);
-      } else if (startDate && endDate) {
-        // For date range with specific time (from pagination)
-        if (startTime && endTime) {
-          startDatetime = convertLocalToUTC(date, startTime); // Use the specific date from pagination
-          endDatetime = convertLocalToUTC(date, endTime);
-        } else {
-          // For date range without specific time
-          startDatetime = convertLocalToUTC(startDate, '00:00:00');
-          endDatetime = convertLocalToUTC(endDate, '23:59:59');
-        }
-      } else if (date) {
+      }
+      // Handle single date without specific time (entire day)
+      else if (date && (!startTime || !endTime)) {
+        startDatetime = convertLocalToUTC(date, '00:00:00');
+        endDatetime = convertLocalToUTC(date, '23:59:59');
+      }
+      // Handle daypart logic
+      else if (date) {
         let useDate = date;
         
         if (daypart === 'weekend') {
@@ -157,9 +168,6 @@ export const fetchPieChartData = createAsyncThunk(
             startDatetime = convertLocalToUTC(useDate, '00:00:00');
             endDatetime = convertLocalToUTC(useDate, '23:59:59');
           }
-        } else if (startTime && endTime) {
-          startDatetime = convertLocalToUTC(useDate, startTime);
-          endDatetime = convertLocalToUTC(useDate, endTime);
         } else if (daypart !== 'none') {
           const daypartTimes = {
             'morning': { start: '06:00:00', end: '10:00:00' },
@@ -176,21 +184,25 @@ export const fetchPieChartData = createAsyncThunk(
             endDatetime = convertLocalToUTC(useDate, times.end);
           }
         } else {
+          // Fallback for single date without daypart
           startDatetime = convertLocalToUTC(useDate, '00:00:00');
           endDatetime = convertLocalToUTC(useDate, '23:59:59');
         }
       }
       
+      
+      
       const params = { 
         channel_id: channelId
       };
       
+      // These are REQUIRED parameters
       if (startDatetime) params.start_datetime = startDatetime;
-      if (endDatetime) params.end_datetime = endDatetime; // ADD THIS LINE
+      if (endDatetime) params.end_datetime = endDatetime;
       
-      console.log('Pie Chart API Request Params:', params);
+      console.log('Pie Chart API - Final params:', params);
       
-      const response = await axiosInstance.get('/pie_chart', { // Make sure this matches your endpoint
+      const response = await axiosInstance.get('/pie_chart', {
         params
       });
       return response.data;
