@@ -197,94 +197,61 @@ const handleSingleDateSelect = (date) => {
                 </select>
               </div> */}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
-                <input
-                  type="time"
-                  value={localStartTime}
-                  onChange={(e) => {
-                    const newStartTime = e.target.value;
-                    setLocalStartTime(newStartTime);
-                    
-                    // Update Redux filter immediately
-                    const updatedStartTime = newStartTime ? newStartTime + ':00' : '';
-                    dispatch(setFilter({ 
-                      startTime: updatedStartTime,
-                      daypart: 'none' // Reset daypart when using custom time
-                    }));
-                    
-                    // Trigger API call with updated filters
-                    const updatedFilters = {
-                      ...filters,
-                      startTime: updatedStartTime,
-                      daypart: 'none'
-                    };
-                    
-                    // Use a small timeout to ensure state is updated
-                    setTimeout(() => {
-                      if (fetchAudioSegments) {
-                        fetchAudioSegments({ 
-                          channelId, 
-                          date: filters.date,
-                          startDate: filters.startDate,
-                          endDate: filters.endDate,
-                          startTime: updatedStartTime,
-                          endTime: filters.endTime,
-                          daypart: 'none',
-                          searchText: filters.searchText,
-                          searchIn: filters.searchIn,
-                          page: 1
-                        });
-                      }
-                    }, 100);
-                  }}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
+  <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
+  <input
+    type="time"
+    value={localStartTime}
+    onChange={(e) => setLocalStartTime(e.target.value)}
+    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+  />
+</div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
-                <input
-                  type="time"
-                  value={localEndTime}
-                  onChange={(e) => {
-                    const newEndTime = e.target.value;
-                    setLocalEndTime(newEndTime);
-                    
-                    // Update Redux filter immediately
-                    const updatedEndTime = newEndTime ? newEndTime + ':00' : '';
-                    dispatch(setFilter({ 
-                      endTime: updatedEndTime,
-                      daypart: 'none' // Reset daypart when using custom time
-                    }));
-                    
-                    // Trigger API call with updated filters
-                    const updatedFilters = {
-                      ...filters,
-                      endTime: updatedEndTime,
-                      daypart: 'none'
-                    };
-                    
-                    // Use a small timeout to ensure state is updated
-                    setTimeout(() => {
-                      if (fetchAudioSegments) {
-                        fetchAudioSegments({ 
-                          channelId, 
-                          date: filters.date,
-                          startDate: filters.startDate,
-                          endDate: filters.endDate,
-                          startTime: filters.startTime,
-                          endTime: updatedEndTime,
-                          daypart: 'none',
-                          searchText: filters.searchText,
-                          searchIn: filters.searchIn,
-                          page: 1
-                        });
-                      }
-                    }, 100);
-                  }}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-              </div>
+<div>
+  <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
+  <input
+    type="time"
+    value={localEndTime}
+    onChange={(e) => setLocalEndTime(e.target.value)}
+    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+  />
+</div>
+
+{/* Add Apply Time Button in compact view */}
+<div className="flex flex-col justify-end">
+  <button
+    onClick={() => {
+      if (localStartTime || localEndTime) {
+        const newFilters = {
+          startTime: localStartTime ? localStartTime + ':00' : '',
+          endTime: localEndTime ? localEndTime + ':00' : '',
+          daypart: 'none',
+        };
+        
+        dispatch(setFilter(newFilters));
+        
+        const updatedFilters = { ...filters, ...newFilters };
+        if (fetchAudioSegments) {
+          fetchAudioSegments({ 
+            channelId, 
+            date: filters.date,
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            startTime: newFilters.startTime,
+            endTime: newFilters.endTime,
+            daypart: 'none',
+            searchText: filters.searchText,
+            searchIn: filters.searchIn,
+            page: 1
+          });
+        }
+      }
+    }}
+    disabled={!localStartTime && !localEndTime}
+    className="w-full p-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+  >
+    Apply Time
+  </button>
+</div>
             </div>
 
             {/* Single Date Filter */}
@@ -393,42 +360,7 @@ const handleSingleDateSelect = (date) => {
                       <input
                         type="time"
                         value={localStartTime}
-                        onChange={(e) => {
-                          const newStartTime = e.target.value;
-                          setLocalStartTime(newStartTime);
-                          
-                          // Update Redux filter immediately
-                          const updatedStartTime = newStartTime ? newStartTime + ':00' : '';
-                          dispatch(setFilter({ 
-                            startTime: updatedStartTime,
-                            daypart: 'none' // Reset daypart when using custom time
-                          }));
-                          
-                          // Trigger API call with updated filters
-                          const updatedFilters = {
-                            ...filters,
-                            startTime: updatedStartTime,
-                            daypart: 'none'
-                          };
-                          
-                          // Use a small timeout to ensure state is updated
-                          setTimeout(() => {
-                            if (fetchAudioSegments) {
-                              fetchAudioSegments({ 
-                                channelId, 
-                                date: filters.date,
-                                startDate: filters.startDate,
-                                endDate: filters.endDate,
-                                startTime: updatedStartTime,
-                                endTime: filters.endTime,
-                                daypart: 'none',
-                                searchText: filters.searchText,
-                                searchIn: filters.searchIn,
-                                page: 1
-                              });
-                            }
-                          }, 100);
-                        }}
+                        onChange={(e) => setLocalStartTime(e.target.value)}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
@@ -438,44 +370,48 @@ const handleSingleDateSelect = (date) => {
                       <input
                         type="time"
                         value={localEndTime}
-                        onChange={(e) => {
-                          const newEndTime = e.target.value;
-                          setLocalEndTime(newEndTime);
-                          
-                          // Update Redux filter immediately
-                          const updatedEndTime = newEndTime ? newEndTime + ':00' : '';
-                          dispatch(setFilter({ 
-                            endTime: updatedEndTime,
-                            daypart: 'none' // Reset daypart when using custom time
-                          }));
-                          
-                          // Trigger API call with updated filters
-                          const updatedFilters = {
-                            ...filters,
-                            endTime: updatedEndTime,
-                            daypart: 'none'
-                          };
-                          
-                          // Use a small timeout to ensure state is updated
-                          setTimeout(() => {
+                        onChange={(e) => setLocalEndTime(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+
+                    {/* Add Apply Time Button */}
+                    <div className="flex flex-col justify-end">
+                      <button
+                        onClick={() => {
+                          if (localStartTime || localEndTime) {
+                            const newFilters = {
+                              startTime: localStartTime ? localStartTime + ':00' : '',
+                              endTime: localEndTime ? localEndTime + ':00' : '',
+                              daypart: 'none',
+                            };
+                            
+                            // Update Redux state
+                            dispatch(setFilter(newFilters));
+                            
+                            // Trigger API call
+                            const updatedFilters = { ...filters, ...newFilters };
                             if (fetchAudioSegments) {
                               fetchAudioSegments({ 
                                 channelId, 
                                 date: filters.date,
                                 startDate: filters.startDate,
                                 endDate: filters.endDate,
-                                startTime: filters.startTime,
-                                endTime: updatedEndTime,
+                                startTime: newFilters.startTime,
+                                endTime: newFilters.endTime,
                                 daypart: 'none',
                                 searchText: filters.searchText,
                                 searchIn: filters.searchIn,
                                 page: 1
                               });
                             }
-                          }, 100);
+                          }
                         }}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      />
+                        disabled={!localStartTime && !localEndTime}
+                        className="w-full p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Apply Time
+                      </button>
                     </div>
                   </div>
                 </div>
