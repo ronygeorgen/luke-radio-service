@@ -39,6 +39,12 @@ const FilterPanel = ({
     { value: 'weekend', label: 'Weekend (Saturday & Sunday)', startTime: '00:00:00', endTime: '23:59:59' }
   ];
 
+useEffect(() => {
+  // Convert "14:30:00" to "14:30" for time inputs
+  setLocalStartTime(filters.startTime?.substring(0, 5) || '');
+  setLocalEndTime(filters.endTime?.substring(0, 5) || '');
+}, [filters.startTime, filters.endTime]);
+
   // Close filter when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -68,15 +74,16 @@ const handleDateRangeSelection = (startDate, endDate) => {
   if (handleDateRangeSelect) {
     handleDateRangeSelect(startDate, endDate);
   } else {
-    // Fallback: set the date range and clear single date
+    // ✅ PRESERVE both Redux state AND local state
     dispatch(setFilter({ 
       startDate: startDate,
       endDate: endDate,
-      date: null, // Clear single date
-      startTime: '', // Empty for entire day range
-      endTime: '',   // Empty for entire day range
+      date: null,
+      // Don't clear startTime and endTime - they stay in Redux state
       daypart: 'none'
     }));
+    
+    // ✅ Don't reset localStartTime and localEndTime - they stay as they are
     
     // Trigger API call with page 1
     if (fetchAudioSegments) {
@@ -84,10 +91,10 @@ const handleDateRangeSelection = (startDate, endDate) => {
         channelId, 
         startDate: startDate,
         endDate: endDate,
-        startTime: '',
-        endTime: '',
+        startTime: filters.startTime, // Use current startTime
+        endTime: filters.endTime,     // Use current endTime
         daypart: 'none',
-        page: 1  // Reset to page 1 on filter change
+        page: 1
       });
     }
   }
@@ -111,25 +118,26 @@ const handleSingleDateSelect = (date) => {
   if (handleDateSelect) {
     handleDateSelect(date);
   } else {
-    // Fallback: clear date range when single date is selected
+    // ✅ PRESERVE both Redux state AND local state
     dispatch(setFilter({ 
       date: date,
       startDate: null,
       endDate: null,
-      startTime: '',
-      endTime: '',
+      // Don't clear startTime and endTime - they stay in Redux state
       daypart: 'none'
     }));
+    
+    // ✅ Don't reset localStartTime and localEndTime - they stay as they are
     
     // Trigger API call with page 1
     if (fetchAudioSegments) {
       fetchAudioSegments({ 
         channelId, 
         date: date,
-        startTime: '',
-        endTime: '',
+        startTime: filters.startTime, // Use current startTime
+        endTime: filters.endTime,     // Use current endTime
         daypart: 'none',
-        page: 1  // Reset to page 1 on filter change
+        page: 1
       });
     }
   }

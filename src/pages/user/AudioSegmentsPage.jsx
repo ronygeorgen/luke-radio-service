@@ -157,21 +157,21 @@ useEffect(() => {
   if ((filters.startDate && filters.endDate) || filters.date) {
     console.log('Fetching with filters:', filters);
     
-    // Always fetch page 1 when filters change
-    dispatch(fetchAudioSegments({ 
-      channelId, 
-      date: filters.date,
-      startDate: filters.startDate,
-      endDate: filters.endDate,
-      startTime: filters.startTime,
-      endTime: filters.endTime,
-      daypart: filters.daypart,
-      searchText: filters.searchText,
-      searchIn: filters.searchIn,
-      page: 1  // Reset to page 1 on filter change
-    }));
+    // COMMENT OUT or REMOVE this automatic API call
+    // dispatch(fetchAudioSegments({ 
+    //   channelId, 
+    //   date: filters.date,
+    //   startDate: filters.startDate,
+    //   endDate: filters.endDate,
+    //   startTime: filters.startTime,
+    //   endTime: filters.endTime,
+    //   daypart: filters.daypart,
+    //   searchText: filters.searchText,
+    //   searchIn: filters.searchIn,
+    //   page: 1
+    // }));
     
-    // Update URL params
+    // Keep only the URL param updates if needed
     const params = {};
     if (filters.date) params.date = filters.date;
     if (filters.startDate) params.startDate = filters.startDate;
@@ -186,6 +186,13 @@ useEffect(() => {
   }
 }, [filters.date, filters.startDate, filters.endDate, filters.startTime, filters.endTime, filters.daypart, channelId]);
 
+useEffect(() => {
+  // Sync local time state with Redux filters
+  setLocalStartTime(filters.startTime?.substring(0, 5) || '');
+  setLocalEndTime(filters.endTime?.substring(0, 5) || '');
+  setLocalSearchText(filters.searchText || '');
+  setLocalSearchIn(filters.searchIn || 'transcription');
+}, [filters]); 
 
 // Add this useEffect for search-specific changes
 useEffect(() => {
@@ -420,8 +427,6 @@ const filteredSegments = segments.filter(segment => {
       date: selectedDate,
       startDate: null,
       endDate: null,
-      startTime: '',
-      endTime: '',
       daypart: 'none'
     }));
   };
@@ -434,8 +439,6 @@ const handleDateRangeSelect = (start, end) => {
     startDate: start,
     endDate: end,
     date: null, // Clear single date when using range
-    startTime: '', // Empty for entire day range
-    endTime: '',   // Empty for entire day range
     daypart: 'none'
   }));
 
