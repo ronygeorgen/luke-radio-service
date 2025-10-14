@@ -112,36 +112,15 @@ const handleDateRangeSelection = (startDate, endDate) => {
     handleDateRangeSelection(filters.startDate, endDate);
   };
 
-  // Handler for single date selection
-const handleSingleDateSelect = (date) => {
-  console.log('Single date selected:', date);
-  if (handleDateSelect) {
-    handleDateSelect(date);
-  } else {
-    // ✅ PRESERVE both Redux state AND local state
-    dispatch(setFilter({ 
-      date: date,
-      startDate: null,
-      endDate: null,
-      // Don't clear startTime and endTime - they stay in Redux state
-      daypart: 'none'
-    }));
-    
-    // ✅ Don't reset localStartTime and localEndTime - they stay as they are
-    
-    // Trigger API call with page 1
-    if (fetchAudioSegments) {
-      fetchAudioSegments({ 
-        channelId, 
-        date: date,
-        startTime: filters.startTime, // Use current startTime
-        endTime: filters.endTime,     // Use current endTime
-        daypart: 'none',
-        page: 1
-      });
+
+
+  // Prevent keyboard input but allow calendar selection
+  const preventKeyboardInput = (e) => {
+    // Only prevent if it's actual text input (not arrow keys for navigation)
+    if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
     }
-  }
-};
+  };
 
   // Compact version for header
   if (isInHeader) {
@@ -168,6 +147,7 @@ const handleSingleDateSelect = (date) => {
                   type="date"
                   value={filters.startDate || ''}
                   onChange={(e) => handleStartDateRange(e.target.value)}
+                  onKeyDown={preventKeyboardInput}
                   className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   max={new Date().toLocaleDateString('en-CA')}
                 />
@@ -178,93 +158,72 @@ const handleSingleDateSelect = (date) => {
                   type="date"
                   value={filters.endDate || ''}
                   onChange={(e) => handleEndDateRange(e.target.value)}
+                  onKeyDown={preventKeyboardInput}
                   className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   max={new Date().toLocaleDateString('en-CA')}
                 />
               </div>
-              {/* <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Time of Day</label>
-                <select
-                  value={filters.daypart || 'none'}
-                  onChange={(e) => handleDaypartChange(e.target.value)}
-                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {daypartOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label.length > 15 ? option.label.substring(0, 15) + '...' : option.label}
-                    </option>
-                  ))}
-                </select>
-              </div> */}
               <div>
-  <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
-  <input
-    type="time"
-    value={localStartTime}
-    onChange={(e) => setLocalStartTime(e.target.value)}
-    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-  />
-</div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
+                <input
+                  type="time"
+                  value={localStartTime}
+                  onChange={(e) => setLocalStartTime(e.target.value)}
+                  onKeyDown={preventKeyboardInput}
+                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
 
-<div>
-  <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
-  <input
-    type="time"
-    value={localEndTime}
-    onChange={(e) => setLocalEndTime(e.target.value)}
-    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-  />
-</div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
+                <input
+                  type="time"
+                  value={localEndTime}
+                  onChange={(e) => setLocalEndTime(e.target.value)}
+                  onKeyDown={preventKeyboardInput}
+                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
 
-{/* Add Apply Time Button in compact view */}
-<div className="flex flex-col justify-end">
-  <button
-    onClick={() => {
-      if (localStartTime || localEndTime) {
-        const newFilters = {
-          startTime: localStartTime ? localStartTime + ':00' : '',
-          endTime: localEndTime ? localEndTime + ':00' : '',
-          daypart: 'none',
-        };
-        
-        dispatch(setFilter(newFilters));
-        
-        const updatedFilters = { ...filters, ...newFilters };
-        if (fetchAudioSegments) {
-          fetchAudioSegments({ 
-            channelId, 
-            date: filters.date,
-            startDate: filters.startDate,
-            endDate: filters.endDate,
-            startTime: newFilters.startTime,
-            endTime: newFilters.endTime,
-            daypart: 'none',
-            searchText: filters.searchText,
-            searchIn: filters.searchIn,
-            page: 1
-          });
-        }
-      }
-    }}
-    disabled={!localStartTime && !localEndTime}
-    className="w-full p-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-  >
-    Apply Time
-  </button>
-</div>
+              {/* Add Apply Time Button in compact view */}
+              <div className="flex flex-col justify-end">
+                <button
+                  onClick={() => {
+                    if (localStartTime || localEndTime) {
+                      const newFilters = {
+                        startTime: localStartTime ? localStartTime + ':00' : '',
+                        endTime: localEndTime ? localEndTime + ':00' : '',
+                        daypart: 'none',
+                      };
+                      
+                      dispatch(setFilter(newFilters));
+                      
+                      const updatedFilters = { ...filters, ...newFilters };
+                      if (fetchAudioSegments) {
+                        fetchAudioSegments({ 
+                          channelId, 
+                          date: filters.date,
+                          startDate: filters.startDate,
+                          endDate: filters.endDate,
+                          startTime: newFilters.startTime,
+                          endTime: newFilters.endTime,
+                          daypart: 'none',
+                          searchText: filters.searchText,
+                          searchIn: filters.searchIn,
+                          page: 1
+                        });
+                      }
+                    }
+                  }}
+                  disabled={!localStartTime && !localEndTime}
+                  className="w-full p-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  Apply Time
+                </button>
+              </div>
             </div>
 
-            {/* Single Date Filter */}
-            {/* <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Single Date (Optional)</label>
-              <input
-                type="date"
-                value={filters.date || ''}
-                onChange={(e) => handleSingleDateSelect(e.target.value)}
-                className="w-full md:w-1/3 p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                max={new Date().toLocaleDateString('en-CA')}
-              />
-            </div> */}
+
 
             {/* Action Buttons */}
             <div className="flex justify-between items-center">
@@ -329,6 +288,7 @@ const handleSingleDateSelect = (date) => {
                         type="date"
                         value={filters.startDate || ''}
                         onChange={(e) => handleStartDateRange(e.target.value)}
+                        onKeyDown={preventKeyboardInput}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         max={new Date().toLocaleDateString('en-CA')}
                       />
@@ -339,28 +299,18 @@ const handleSingleDateSelect = (date) => {
                         type="date"
                         value={filters.endDate || ''}
                         onChange={(e) => handleEndDateRange(e.target.value)}
+                        onKeyDown={preventKeyboardInput}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                         max={new Date().toLocaleDateString('en-CA')}
                       />
                     </div>
-                    {/* <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Time of Day</label>
-                      <select
-                        value={filters.daypart || 'none'}
-                        onChange={(e) => handleDaypartChange(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      >
-                        {daypartOptions.map(option => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
-                    </div> */}
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
                       <input
                         type="time"
                         value={localStartTime}
                         onChange={(e) => setLocalStartTime(e.target.value)}
+                        onKeyDown={preventKeyboardInput}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
@@ -371,6 +321,7 @@ const handleSingleDateSelect = (date) => {
                         type="time"
                         value={localEndTime}
                         onChange={(e) => setLocalEndTime(e.target.value)}
+                        onKeyDown={preventKeyboardInput}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
@@ -414,18 +365,6 @@ const handleSingleDateSelect = (date) => {
                       </button>
                     </div>
                   </div>
-                </div>
-
-                {/* Single Date Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Single Date (Optional)</label>
-                  <input
-                    type="date"
-                    value={filters.date || ''}
-                    onChange={(e) => handleSingleDateSelect(e.target.value)}
-                    className="w-full md:w-1/3 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    max={new Date().toLocaleDateString('en-CA')}
-                  />
                 </div>
               </div>
             </div>
