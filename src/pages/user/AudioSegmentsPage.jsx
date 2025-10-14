@@ -1,5 +1,5 @@
 // pages/user/AudioSegmentsPage.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { fetchAudioSegments, setCurrentPlaying, setIsPlaying, setFilter } from '../../store/slices/audioSegmentsSlice';
@@ -27,6 +27,7 @@ const AudioSegmentsPage = () => {
   const startTime = searchParams.get('startTime');
   const endTime = searchParams.get('endTime');
   const daypart = searchParams.get('daypart');
+  
 
   // const [currentPage, setCurrentPage] = useState(0);
   
@@ -94,46 +95,136 @@ const AudioSegmentsPage = () => {
     return date.toLocaleDateString('en-US', options);
   };
 
+
+  const isInitialLoad = useRef(true);
+  const lastFilters = useRef(null);
+  const hasInitialFiltersSet = useRef(false);
+
 // Simplified useEffect for initial load
-useEffect(() => {
-  const today = new Date().toLocaleDateString('en-CA'); 
-  
-  setSearchParams({
-    date: today,
-    searchIn: 'transcription'
-  });
+ useEffect(() => {
+  if (isInitialLoad.current) {
+    isInitialLoad.current = false;
+    
+    const today = new Date().toLocaleDateString('en-CA'); 
+    
+    setSearchParams({
+      date: today,
+      searchIn: 'transcription'
+    });
 
-  dispatch(setFilter({ 
-    date: today,
-    startDate: today,
-    endDate: today,
-    startTime: '00:00',
-    endTime: '23:59',
-    daypart: 'none',
-    status: 'all',
-    recognition: 'all',
-    searchText: '',
-    searchIn: 'transcription'
-  }));
+    // Store current filters to detect changes
+    lastFilters.current = {
+      date: today,
+      startDate: today,
+      endDate: today,
+      startTime: '00:00:00',
+      endTime: '23:59:59',
+      daypart: 'none',
+      searchText: '',
+      searchIn: 'transcription'
+    };
 
-  setLocalStartTime('');
-  setLocalEndTime('');
-  setLocalSearchText('');
-  setLocalSearchIn('transcription');
-  
-  // Initial fetch without page parameter (defaults to page 1)
-  dispatch(fetchAudioSegments({ 
-    channelId, 
-    date: today,
-    startTime: '',
-    endTime: '',
-    daypart: 'none'
-  }));
+    dispatch(setFilter(lastFilters.current));
+
+    setLocalStartTime('');
+    setLocalEndTime('');
+    setLocalSearchText('');
+    setLocalSearchIn('transcription');
+    
+    // Set hasInitialFiltersSet to true after initial setup
+    hasInitialFiltersSet.current = true;
+    
+    // Make only ONE API call on initial load
+    dispatch(fetchAudioSegments({ 
+      channelId, 
+      date: today,
+      startTime: '00:00:00',
+      endTime: '23:59:59',
+      daypart: 'none',
+      page: 1
+    }));
+  }
 }, [channelId]);
 
 
+  
+// Simplified filter change handler
+ useEffect(() => {
+    if (!isInitialLoad.current) {
+      const params = {};
+      if (filters.date) params.date = filters.date;
+      if (filters.startDate) params.startDate = filters.startDate;
+      if (filters.endDate) params.endDate = filters.endDate;
+      if (filters.startTime) params.startTime = filters.startTime;
+      if (filters.endTime) params.endTime = filters.endTime;
+      if (filters.daypart && filters.daypart !== 'none') params.daypart = filters.daypart;
+      if (filters.searchText) params.searchText = filters.searchText;
+      if (filters.searchIn) params.searchIn = filters.searchIn;
+      
+      setSearchParams(params);
+    }
+  }, [filters.date, filters.startDate, filters.endDate, filters.startTime, filters.endTime, filters.daypart, filters.searchText, filters.searchIn]);
 
-const handlePageChange = (pageNumber) => {
+  useEffect(() => {
+    setLocalStartTime(filters.startTime?.substring(0, 5) || '');
+    setLocalEndTime(filters.endTime?.substring(0, 5) || '');
+    setLocalSearchText(filters.searchText || '');
+    setLocalSearchIn(filters.searchIn || 'transcription');
+  }, [filters]);
+
+  const handleFilterChange = (newFilters = null) => {
+    const filtersToUse = newFilters || filters;
+    
+    if ((filtersToUse.startDate && filtersToUse.endDate) || filtersToUse.date) {
+      console.log('Making API call with filters:', filtersToUse);
+      
+      dispatch(fetchAudioSegments({ 
+        channelId, 
+        date: filtersToUse.date,
+        startDate: filtersToUse.startDate,
+        endDate: filtersToUse.endDate,
+        startTime: filtersToUse.startTime,
+        endTime: filtersToUse.endTime,
+        daypart: filtersToUse.daypart,
+        searchText: filtersToUse.searchText,
+        searchIn: filtersToUse.searchIn,
+        page: 1
+      }));
+    }
+  };
+
+useEffect(() => {
+  // Sync local time state with Redux filters
+  setLocalStartTime(filters.startTime?.substring(0, 5) || '');
+  setLocalEndTime(filters.endTime?.substring(0, 5) || '');
+  setLocalSearchText(filters.searchText || '');
+  setLocalSearchIn(filters.searchIn || 'transcription');
+}, [filters]); 
+
+// Add this useEffect for search-specific changes
+ useEffect(() => {
+    if (hasInitialFiltersSet.current && (filters.searchText || (filters.searchIn && filters.searchIn !== 'transcription'))) {
+      console.log('Search filter changed:', {
+        searchText: filters.searchText,
+        searchIn: filters.searchIn
+      });
+      
+      dispatch(fetchAudioSegments({ 
+        channelId, 
+        date: filters.date,
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        startTime: filters.startTime,
+        endTime: filters.endTime,
+        daypart: filters.daypart,
+        searchText: filters.searchText,
+        searchIn: filters.searchIn,
+        page: 1
+      }));
+    }
+  }, [filters.searchText, filters.searchIn, channelId]);
+
+  const handlePageChange = (pageNumber) => {
   console.log('Page change requested to:', pageNumber);
   
   // Use the unified fetchAudioSegments with page parameter
@@ -151,149 +242,180 @@ const handlePageChange = (pageNumber) => {
   }));
 };
 
-  
-// Simplified filter change handler
+
 useEffect(() => {
-  if ((filters.startDate && filters.endDate) || filters.date) {
-    console.log('Fetching with filters:', filters);
+  if (!isInitialLoad.current && hasInitialFiltersSet.current) {
+    // Check if time filters have actually changed
+    const timeFiltersChanged = 
+      filters.startTime !== lastFilters.current?.startTime || 
+      filters.endTime !== lastFilters.current?.endTime;
     
-    // COMMENT OUT or REMOVE this automatic API call
-    // dispatch(fetchAudioSegments({ 
-    //   channelId, 
-    //   date: filters.date,
-    //   startDate: filters.startDate,
-    //   endDate: filters.endDate,
-    //   startTime: filters.startTime,
-    //   endTime: filters.endTime,
-    //   daypart: filters.daypart,
-    //   searchText: filters.searchText,
-    //   searchIn: filters.searchIn,
-    //   page: 1
-    // }));
-    
-    // Keep only the URL param updates if needed
-    const params = {};
-    if (filters.date) params.date = filters.date;
-    if (filters.startDate) params.startDate = filters.startDate;
-    if (filters.endDate) params.endDate = filters.endDate;
-    if (filters.startTime) params.startTime = filters.startTime;
-    if (filters.endTime) params.endTime = filters.endTime;
-    if (filters.daypart && filters.daypart !== 'none') params.daypart = filters.daypart;
-    if (filters.searchText) params.searchText = filters.searchText;
-    if (filters.searchIn) params.searchIn = filters.searchIn;
-    
-    setSearchParams(params);
+    if (timeFiltersChanged && (filters.startTime || filters.endTime)) {
+      console.log('Time filters changed, triggering API call:', {
+        startTime: filters.startTime,
+        endTime: filters.endTime
+      });
+      
+      dispatch(fetchAudioSegments({ 
+        channelId, 
+        date: filters.date,
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        startTime: filters.startTime,
+        endTime: filters.endTime,
+        daypart: filters.daypart,
+        searchText: filters.searchText,
+        searchIn: filters.searchIn,
+        page: 1
+      }));
+      
+      // Update last filters
+      lastFilters.current = { ...filters };
+    }
   }
-}, [filters.date, filters.startDate, filters.endDate, filters.startTime, filters.endTime, filters.daypart, channelId]);
+}, [filters.startTime, filters.endTime, channelId]);
 
-useEffect(() => {
-  // Sync local time state with Redux filters
-  setLocalStartTime(filters.startTime?.substring(0, 5) || '');
-  setLocalEndTime(filters.endTime?.substring(0, 5) || '');
-  setLocalSearchText(filters.searchText || '');
-  setLocalSearchIn(filters.searchIn || 'transcription');
-}, [filters]); 
 
-// Add this useEffect for search-specific changes
-useEffect(() => {
-  // Only trigger when search text or search category changes
-  if (filters.searchText || (filters.searchIn && filters.searchIn !== 'transcription')) {
-    console.log('Search filter changed:', {
-      searchText: filters.searchText,
-      searchIn: filters.searchIn
-    });
+// const handleSearch = () => {
+//   dispatch(setFilter({ 
+//     searchText: localSearchText,
+//     searchIn: localSearchIn
+//   }));
+  
+//   // First, fetch page 1 to get the pagination data
+//   dispatch(fetchAudioSegments({ 
+//     channelId, 
+//     date: filters.date,
+//     startDate: filters.startDate,
+//     endDate: filters.endDate,
+//     startTime: filters.startTime,
+//     endTime: filters.endTime,
+//     daypart: filters.daypart,
+//     searchText: localSearchText,
+//     searchIn: localSearchIn,
+//     page: 1
+//   })).then((action) => {
+//     if (action.payload && action.payload.pagination) {
+//       const availablePages = action.payload.pagination.available_pages || [];
+      
+//       // Find the first page that has segments in the current search
+//       // We need to check each page to see which one has the actual search results
+//       const findFirstPageWithSearchResults = async () => {
+//         for (const page of availablePages) {
+//           if (page.has_data) {
+//             try {
+//               // Fetch this specific page to check if it has segments
+//               const pageResult = await dispatch(fetchAudioSegments({
+//                 channelId,
+//                 date: filters.date,
+//                 startDate: filters.startDate,
+//                 endDate: filters.endDate,
+//                 startTime: filters.startTime,
+//                 endTime: filters.endTime,
+//                 daypart: filters.daypart,
+//                 searchText: localSearchText,
+//                 searchIn: localSearchIn,
+//                 page: page.page
+//               })).unwrap();
+              
+//               // If this page has segments with the search results, use it
+//               if (pageResult.data.segments && pageResult.data.segments.length > 0) {
+//                 console.log('Found search results on page:', page.page);
+//                 return page.page;
+//               }
+//             } catch (error) {
+//               console.error('Error checking page:', page.page, error);
+//             }
+//           }
+//         }
+//         return 1; // Fallback to page 1
+//       };
+      
+//       findFirstPageWithSearchResults().then(firstPageWithResults => {
+//         console.log('First page with search results:', firstPageWithResults);
+//         // The segments from the first page are already loaded, no need to fetch again
+//       });
+//     }
+//   });
+// };
+
+const handleSearch = () => {
+  const newFilters = {
+    searchText: localSearchText,
+    searchIn: localSearchIn
+  };
+  
+  dispatch(setFilter(newFilters));
+  
+  // Use the centralized handleFilterChange but with search-specific logic
+  handleSearchWithPagination({ ...filters, ...newFilters });
+};
+
+// Separate function for search with pagination logic
+const handleSearchWithPagination = (searchFilters) => {
+  if ((searchFilters.startDate && searchFilters.endDate) || searchFilters.date) {
+    console.log('Making search API call with filters:', searchFilters);
     
     dispatch(fetchAudioSegments({ 
       channelId, 
-      date: filters.date,
-      startDate: filters.startDate,
-      endDate: filters.endDate,
-      startTime: filters.startTime,
-      endTime: filters.endTime,
-      daypart: filters.daypart,
-      searchText: filters.searchText,
-      searchIn: filters.searchIn,
-      page: 1  // Always reset to page 1 when searching
-    }));
-  }
-}, [filters.searchText, filters.searchIn, channelId]);
-
-
-  useEffect(() => {
-    setLocalStartTime(filters.startTime?.substring(0, 5) || '');
-    setLocalEndTime(filters.endTime?.substring(0, 5) || '');
-    setLocalSearchText(filters.searchText || '');
-    setLocalSearchIn(filters.searchIn || 'transcription');
-  }, [filters]);
-
-  // const handleSearch = () => {
-  //   dispatch(setFilter({ 
-  //     searchText: localSearchText,
-  //     searchIn: localSearchIn
-  //   }));
-  // };
-
-const handleSearch = () => {
-  dispatch(setFilter({ 
-    searchText: localSearchText,
-    searchIn: localSearchIn
-  }));
-  
-  // First, fetch page 1 to get the pagination data
-  dispatch(fetchAudioSegments({ 
-    channelId, 
-    date: filters.date,
-    startDate: filters.startDate,
-    endDate: filters.endDate,
-    startTime: filters.startTime,
-    endTime: filters.endTime,
-    daypart: filters.daypart,
-    searchText: localSearchText,
-    searchIn: localSearchIn,
-    page: 1
-  })).then((action) => {
-    if (action.payload && action.payload.pagination) {
-      const availablePages = action.payload.pagination.available_pages || [];
-      
-      // Find the first page that has segments in the current search
-      // We need to check each page to see which one has the actual search results
-      const findFirstPageWithSearchResults = async () => {
-        for (const page of availablePages) {
-          if (page.has_data) {
-            try {
-              // Fetch this specific page to check if it has segments
-              const pageResult = await dispatch(fetchAudioSegments({
-                channelId,
-                date: filters.date,
-                startDate: filters.startDate,
-                endDate: filters.endDate,
-                startTime: filters.startTime,
-                endTime: filters.endTime,
-                daypart: filters.daypart,
-                searchText: localSearchText,
-                searchIn: localSearchIn,
-                page: page.page
-              })).unwrap();
-              
-              // If this page has segments with the search results, use it
-              if (pageResult.data.segments && pageResult.data.segments.length > 0) {
-                console.log('Found search results on page:', page.page);
-                return page.page;
-              }
-            } catch (error) {
-              console.error('Error checking page:', page.page, error);
-            }
-          }
+      date: searchFilters.date,
+      startDate: searchFilters.startDate,
+      endDate: searchFilters.endDate,
+      startTime: searchFilters.startTime,
+      endTime: searchFilters.endTime,
+      daypart: searchFilters.daypart,
+      searchText: searchFilters.searchText,
+      searchIn: searchFilters.searchIn,
+      page: 1
+    })).then((action) => {
+      if (action.payload && action.payload.pagination) {
+        const availablePages = action.payload.pagination.available_pages || [];
+        
+        // Only check for first page with results if no segments on page 1
+        if (action.payload.data.segments.length === 0 && availablePages.length > 0) {
+          findFirstPageWithSearchResults(searchFilters, availablePages);
         }
-        return 1; // Fallback to page 1
-      };
-      
-      findFirstPageWithSearchResults().then(firstPageWithResults => {
-        console.log('First page with search results:', firstPageWithResults);
-        // The segments from the first page are already loaded, no need to fetch again
-      });
+      }
+    });
+  }
+};
+
+// Optimized version that only makes ONE additional API call if needed
+const findFirstPageWithSearchResults = async (searchFilters, availablePages) => {
+  // Filter to only pages that have data
+  const pagesWithData = availablePages.filter(page => page.has_data);
+  
+  if (pagesWithData.length === 0) return 1;
+  
+  // Try the first page that has data (most likely to have results)
+  const firstPageWithData = pagesWithData[0];
+  
+  try {
+    const pageResult = await dispatch(fetchAudioSegments({
+      channelId,
+      date: searchFilters.date,
+      startDate: searchFilters.startDate,
+      endDate: searchFilters.endDate,
+      startTime: searchFilters.startTime,
+      endTime: searchFilters.endTime,
+      daypart: searchFilters.daypart,
+      searchText: searchFilters.searchText,
+      searchIn: searchFilters.searchIn,
+      page: firstPageWithData.page
+    })).unwrap();
+    
+    if (pageResult.data.segments && pageResult.data.segments.length > 0) {
+      console.log('Found search results on page:', firstPageWithData.page);
+      return firstPageWithData.page;
     }
-  });
+    
+    // If first page doesn't have results, show "no results" message
+    console.log('No search results found in any page');
+    return 1;
+  } catch (error) {
+    console.error('Error checking page:', firstPageWithData.page, error);
+    return 1;
+  }
 };
 
 
@@ -301,26 +423,15 @@ const handleClearSearch = () => {
   setLocalSearchText('');
   setLocalSearchIn('transcription');
   
-  // First update the filter to clear search
-  dispatch(setFilter({ 
+  const newFilters = {
     searchText: '',
     searchIn: 'transcription'
-  }));
+  };
   
-  // Then fetch all segments without search filters
-  dispatch(fetchAudioSegments({ 
-    channelId, 
-    date: filters.date,
-    startDate: filters.startDate,
-    endDate: filters.endDate,
-    startTime: filters.startTime,
-    endTime: filters.endTime,
-    daypart: filters.daypart,
-    searchText: '', // Clear search text
-    searchIn: 'transcription', // Reset to default
-    page: 1  // Reset to page 1 when clearing search
-  }));
+  dispatch(setFilter(newFilters));
+  handleFilterChange({ ...filters, ...newFilters });
 };
+
 
   // Filter segments (client-side filtering for status and recognition)
 const filteredSegments = segments.filter(segment => {
@@ -392,104 +503,96 @@ const filteredSegments = segments.filter(segment => {
     }
   };
 
-  const handleDaypartChange = (selectedDaypart) => {
+const handleDaypartChange = (selectedDaypart) => {
     const today = new Date().toISOString().split('T')[0];
     
     if (selectedDaypart === 'none') {
-      dispatch(setFilter({ 
+      const newFilters = {
         daypart: 'none', 
         startTime: '', 
         endTime: '',
-      }));
+      };
+      dispatch(setFilter(newFilters));
+      handleFilterChange({ ...filters, ...newFilters });
     } else {
       const daypart = daypartOptions.find(opt => opt.value === selectedDaypart);
-      dispatch(setFilter({ 
+      const newFilters = {
         daypart: selectedDaypart, 
         startTime: daypart.startTime, 
         endTime: daypart.endTime,
         date: today,
         startDate: null,
         endDate: null
-      }));
+      };
+      dispatch(setFilter(newFilters));
+      handleFilterChange({ ...filters, ...newFilters });
     }
   };
 
-  const handleSearchWithCustomTime = () => {
-    dispatch(setFilter({ 
+ const handleSearchWithCustomTime = () => {
+    const newFilters = {
       startTime: localStartTime ? localStartTime + ':00' : '',
       endTime: localEndTime ? localEndTime + ':00' : '',
       daypart: 'none',
-    }));
+    };
+    dispatch(setFilter(newFilters));
+    handleFilterChange({ ...filters, ...newFilters });
   };
 
   const handleDateSelect = (selectedDate) => {
-    dispatch(setFilter({ 
+    const newFilters = {
       date: selectedDate,
       startDate: null,
       endDate: null,
       daypart: 'none'
-    }));
+    };
+    dispatch(setFilter(newFilters));
+    handleFilterChange({ ...filters, ...newFilters });
   };
 
-const handleDateRangeSelect = (start, end) => {
-  console.log('Date range selected:', start, 'to', end);
-  
-  // For date range, fetch the entire range from start 00:00 to end 23:59
-  dispatch(setFilter({ 
-    startDate: start,
-    endDate: end,
-    date: null, // Clear single date when using range
-    daypart: 'none'
-  }));
-
-  const params = {
-    startDate: start,
-    endDate: end
+ const handleDateRangeSelect = (start, end) => {
+    const newFilters = {
+      startDate: start,
+      endDate: end,
+      date: null,
+      daypart: 'none'
+    };
+    dispatch(setFilter(newFilters));
+    handleFilterChange({ ...filters, ...newFilters });
   };
-  setSearchParams(params);
 
-  setCurrentPage(0);
-};
-
-const handleResetFilters = () => {
-  // Use local date instead of UTC
-  const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
-  
-  const defaultStartTime = '00:00:00';
-  const defaultEndTime = '23:59:59';
-  
-  dispatch(setFilter({ 
-    date: today, 
-    startDate: today, 
-    endDate: today,
-    startTime: defaultStartTime, 
-    endTime: defaultEndTime, 
-    daypart: 'none', 
-    status: 'all', 
-    recognition: 'all',
-    searchText: '',
-    searchIn: 'transcription'
-  }));
-  setLocalStartTime('');
-  setLocalEndTime('');
-  setLocalSearchText('');
-  setLocalSearchIn('transcription');
-  setSearchParams({ 
-    date: today,
-    startTime: defaultStartTime,
-    endTime: defaultEndTime,
-    searchIn: 'transcription'
-  });
-  
-  // Use the unified fetchAudioSegments
-  dispatch(fetchAudioSegments({ 
-    channelId, 
-    date: today, 
-    startTime: defaultStartTime, 
-    endTime: defaultEndTime, 
-    daypart: 'none' 
-  }));
-};
+ const handleResetFilters = () => {
+    const today = new Date().toLocaleDateString('en-CA');
+    const defaultStartTime = '00:00:00';
+    const defaultEndTime = '23:59:59';
+    
+    const newFilters = {
+      date: today, 
+      startDate: today, 
+      endDate: today,
+      startTime: defaultStartTime, 
+      endTime: defaultEndTime, 
+      daypart: 'none', 
+      status: 'all', 
+      recognition: 'all',
+      searchText: '',
+      searchIn: 'transcription'
+    };
+    
+    dispatch(setFilter(newFilters));
+    setLocalStartTime('');
+    setLocalEndTime('');
+    setLocalSearchText('');
+    setLocalSearchIn('transcription');
+    setSearchParams({ 
+      date: today,
+      startTime: defaultStartTime,
+      endTime: defaultEndTime,
+      searchIn: 'transcription'
+    });
+    
+    handleFilterChange(newFilters);
+  };
 
   const handleSummaryClick = (segment) => {
     setSelectedSegment(segment);
