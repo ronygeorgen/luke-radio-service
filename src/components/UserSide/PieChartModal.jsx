@@ -33,23 +33,45 @@ const PieChartModal = ({ isOpen, onClose }) => {
     unrecognised_not_active: 'Unrecognized (Not Active)'
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      const channelId = localStorage.getItem("channelId");
+ // In PieChartModal, use the current page's time range
+useEffect(() => {
+  if (isOpen) {
+    const channelId = localStorage.getItem("channelId");
 
-      const params = {
-        channelId,
+    // Get current page data from Redux
+    const currentPageData = useSelector((state) => state.audioSegments.pagination?.current_page);
+    const availablePages = useSelector((state) => state.audioSegments.pagination?.available_pages);
+    
+    let pageTimeRange = null;
+    if (currentPageData && availablePages) {
+      const pageInfo = availablePages.find(page => page.page === currentPageData);
+      if (pageInfo) {
+        pageTimeRange = {
+          startTime: pageInfo.start_time,
+          endTime: pageInfo.end_time
+        };
+      }
+    }
+
+    const params = {
+      channelId,
+      // Use page time range if available, otherwise use filters
+      ...(pageTimeRange ? {
+        startTime: pageTimeRange.startTime,
+        endTime: pageTimeRange.endTime
+      } : {
         date: filters.date,
         startDate: filters.startDate,
         endDate: filters.endDate,
         startTime: filters.startTime,
         endTime: filters.endTime,
         daypart: filters.daypart
-      };
+      })
+    };
 
-      dispatch(fetchPieChartData(params));
-    }
-  }, [isOpen, dispatch, filters]);
+    dispatch(fetchPieChartData(params));
+  }
+}, [isOpen, dispatch, filters]);
 
   useEffect(() => {
     if (pieChartData && pieChartData.length > 0) {

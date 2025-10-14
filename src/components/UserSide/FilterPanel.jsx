@@ -24,7 +24,7 @@ const FilterPanel = ({
   handleClearSearch,
   handleDateSelect,
   handleDateRangeSelect,
-  fetchAudioSegments={fetchAudioSegmentsWithFilter}
+  fetchAudioSegments={fetchAudioSegments}
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const filterRef = useRef(null);
@@ -61,24 +61,37 @@ const FilterPanel = ({
   const unrecognizedWithContentCount = segments.filter(s => !s.is_recognized && (s.analysis?.summary || s.transcription?.transcript)).length;
   const unrecognizedWithoutContentCount = segments.filter(s => !s.is_recognized && !s.analysis?.summary && !s.transcription?.transcript).length;
 
-  // Handler for date range selection
-  const handleDateRangeSelection = (startDate, endDate) => {
-    console.log('Date range selected in FilterPanel:', startDate, 'to', endDate);
+// Handler for date range selection
+const handleDateRangeSelection = (startDate, endDate) => {
+  console.log('Date range selected in FilterPanel:', startDate, 'to', endDate);
+  
+  if (handleDateRangeSelect) {
+    handleDateRangeSelect(startDate, endDate);
+  } else {
+    // Fallback: set the date range and clear single date
+    dispatch(setFilter({ 
+      startDate: startDate,
+      endDate: endDate,
+      date: null, // Clear single date
+      startTime: '', // Empty for entire day range
+      endTime: '',   // Empty for entire day range
+      daypart: 'none'
+    }));
     
-    if (handleDateRangeSelect) {
-      handleDateRangeSelect(startDate, endDate);
-    } else {
-      // Fallback: set the date range and clear single date
-      dispatch(setFilter({ 
+    // Trigger API call with page 1
+    if (fetchAudioSegments) {
+      fetchAudioSegments({ 
+        channelId, 
         startDate: startDate,
         endDate: endDate,
-        date: null, // Clear single date
-        startTime: '00:00:00', // Set default time for first page
-        endTime: '01:00:00',
-        daypart: 'none'
-      }));
+        startTime: '',
+        endTime: '',
+        daypart: 'none',
+        page: 1  // Reset to page 1 on filter change
+      });
     }
-  };
+  }
+};
 
   // Handler for start date range selection
   const handleStartDateRange = (startDate) => {
@@ -93,22 +106,34 @@ const FilterPanel = ({
   };
 
   // Handler for single date selection
-  const handleSingleDateSelect = (date) => {
-    console.log('Single date selected:', date);
-    if (handleDateSelect) {
-      handleDateSelect(date);
-    } else {
-      // Fallback: clear date range when single date is selected
-      dispatch(setFilter({ 
+const handleSingleDateSelect = (date) => {
+  console.log('Single date selected:', date);
+  if (handleDateSelect) {
+    handleDateSelect(date);
+  } else {
+    // Fallback: clear date range when single date is selected
+    dispatch(setFilter({ 
+      date: date,
+      startDate: null,
+      endDate: null,
+      startTime: '',
+      endTime: '',
+      daypart: 'none'
+    }));
+    
+    // Trigger API call with page 1
+    if (fetchAudioSegments) {
+      fetchAudioSegments({ 
+        channelId, 
         date: date,
-        startDate: null,
-        endDate: null,
-        startTime: '00:00:00',
-        endTime: '01:00:00',
-        daypart: 'none'
-      }));
+        startTime: '',
+        endTime: '',
+        daypart: 'none',
+        page: 1  // Reset to page 1 on filter change
+      });
     }
-  };
+  }
+};
 
   // Compact version for header
   if (isInHeader) {
@@ -174,6 +199,19 @@ const FilterPanel = ({
                       dispatch(setFilter({ 
                         startTime: e.target.value + ':00'
                       }));
+                      // Trigger API call with page 1 when time changes
+                      if (fetchAudioSegments && (filters.date || (filters.startDate && filters.endDate))) {
+                        fetchAudioSegments({ 
+                          channelId, 
+                          date: filters.date,
+                          startDate: filters.startDate,
+                          endDate: filters.endDate,
+                          startTime: e.target.value + ':00',
+                          endTime: filters.endTime,
+                          daypart: filters.daypart,
+                          page: 1  // Reset to page 1 on filter change
+                        });
+                      }
                     }
                   }}
                   className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
@@ -191,6 +229,19 @@ const FilterPanel = ({
                       dispatch(setFilter({ 
                         endTime: e.target.value + ':00'
                       }));
+                    // Trigger API call with page 1 when time changes
+                      if (fetchAudioSegments && (filters.date || (filters.startDate && filters.endDate))) {
+                        fetchAudioSegments({ 
+                          channelId, 
+                          date: filters.date,
+                          startDate: filters.startDate,
+                          endDate: filters.endDate,
+                          startTime: filters.startTime,
+                          endTime: e.target.value + ':00',
+                          daypart: filters.daypart,
+                          page: 1  // Reset to page 1 on filter change
+                        });
+                      }
                     }
                   }}
                   className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"

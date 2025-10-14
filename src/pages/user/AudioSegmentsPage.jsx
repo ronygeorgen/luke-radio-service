@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { fetchAudioSegmentsWithFilter, fetchAudioSegmentsForPage,  setCurrentPlaying, setIsPlaying, setFilter } from '../../store/slices/audioSegmentsSlice';
+import { fetchAudioSegments, setCurrentPlaying, setIsPlaying, setFilter } from '../../store/slices/audioSegmentsSlice';
 import Header from '../../components/UserSide/Header';
 import FilterPanel from '../../components/UserSide/FilterPanel';
 import SegmentCard from '../../components/UserSide/SegmentCard';
@@ -28,9 +28,8 @@ const AudioSegmentsPage = () => {
   const endTime = searchParams.get('endTime');
   const daypart = searchParams.get('daypart');
 
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pageLabels, setPageLabels] = useState([]);
-  const [totalPages, setTotalPages] = useState(0);
+  // const [currentPage, setCurrentPage] = useState(0);
+  
   // const [localAvailablePages, setLocalAvailablePages] = useState([]);
 
   const [localSearchText, setLocalSearchText] = useState('');
@@ -70,6 +69,9 @@ const AudioSegmentsPage = () => {
   pagination,        // Current page data
   availablePages     // Original pagination from filter
 } = useSelector((state) => state.audioSegments);
+
+  const currentPage = pagination?.current_page || 1;
+  const totalPages = pagination?.total_pages || 0;  
   
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
@@ -92,10 +94,10 @@ const AudioSegmentsPage = () => {
     return date.toLocaleDateString('en-US', options);
   };
 
+// Simplified useEffect for initial load
 useEffect(() => {
   const today = new Date().toISOString().split('T')[0];
   
-  // Set URL parameters for the entire day
   setSearchParams({
     date: today,
     searchIn: 'transcription'
@@ -103,10 +105,10 @@ useEffect(() => {
 
   dispatch(setFilter({ 
     date: today,
-    startDate: null, // Clear date range initially
-    endDate: null,   // Clear date range initially
-    startTime: '', // Empty for entire day
-    endTime: '',   // Empty for entire day
+    startDate: null,
+    endDate: null,
+    startTime: '',
+    endTime: '',
     daypart: 'none',
     status: 'all',
     recognition: 'all',
@@ -114,185 +116,134 @@ useEffect(() => {
     searchIn: 'transcription'
   }));
 
-  
   setLocalStartTime('');
   setLocalEndTime('');
   setLocalSearchText('');
   setLocalSearchIn('transcription');
   
-  // Initial fetch for the entire day (single date)
-  dispatch(fetchAudioSegmentsWithFilter({ 
+  // Initial fetch without page parameter (defaults to page 1)
+  dispatch(fetchAudioSegments({ 
     channelId, 
     date: today,
-    startTime: '', // Empty for entire day
-    endTime: '',   // Empty for entire day
+    startTime: '',
+    endTime: '',
     daypart: 'none'
   }));
-
-  setCurrentPage(0);
 }, [channelId]);
 
 
 
 // Update the useEffect to use availablePages instead of pagination
-useEffect(() => {
-  console.log('🔄 Processing pagination data...');
-  console.log('🔍 Available pages from Redux:', availablePages);
-  console.log('🔍 Current page state:', currentPage);
-  console.log('🔍 Pagination from API:', pagination);
+// useEffect(() => {
+//   console.log('🔄 Processing pagination data...');
+//   console.log('🔍 Available pages from Redux:', availablePages);
+//   console.log('🔍 Current page state:', currentPage);
+//   console.log('🔍 Pagination from API:', pagination);
   
-  if (!availablePages || !availablePages.available_pages) {
-    console.log('❌ No pagination data available');
-    setTotalPages(0);
-    setPageLabels([]);
-    return;
-  }
+//   if (!availablePages || !availablePages.available_pages) {
+//     console.log('❌ No pagination data available');
+//     setTotalPages(0);
+//     setPageLabels([]);
+//     return;
+//   }
 
-  // Filter pages that have data and create labels - use availablePages from Redux
-  const pagesWithData = availablePages.available_pages.filter(page => page.has_data);
-  console.log('📄 Pages with data:', pagesWithData);
+//   // Filter pages that have data and create labels - use availablePages from Redux
+//   const pagesWithData = availablePages.available_pages.filter(page => page.has_data);
+//   console.log('📄 Pages with data:', pagesWithData);
   
-  if (pagesWithData.length === 0) {
-    console.log('❌ No pages with data found');
-    setTotalPages(0);
-    setPageLabels([]);
-    return;
-  }
+//   if (pagesWithData.length === 0) {
+//     console.log('❌ No pages with data found');
+//     setTotalPages(0);
+//     setPageLabels([]);
+//     return;
+//   }
   
-  const labels = [];
+//   const labels = [];
   
-  pagesWithData.forEach((page, index) => {
-    const startTime = new Date(page.start_time);
-    const endTime = new Date(page.end_time);
+//   pagesWithData.forEach((page, index) => {
+//     const startTime = new Date(page.start_time);
+//     const endTime = new Date(page.end_time);
     
-    // Format: "Oct 7, 18:30-19:30" in local time
-    const startDateStr = startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const endDateStr = endTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+//     // Format: "Oct 7, 18:30-19:30" in local time
+//     const startDateStr = startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+//     const endDateStr = endTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     
-    const startTimeStr = startTime.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    });
-    const endTimeStr = endTime.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    });
+//     const startTimeStr = startTime.toLocaleTimeString('en-US', { 
+//       hour: '2-digit', 
+//       minute: '2-digit',
+//       hour12: false 
+//     });
+//     const endTimeStr = endTime.toLocaleTimeString('en-US', { 
+//       hour: '2-digit', 
+//       minute: '2-digit',
+//       hour12: false 
+//     });
     
-    let label;
-    if (startDateStr === endDateStr) {
-      label = `${startDateStr}, ${startTimeStr}-${endTimeStr}`;
-    } else {
-      label = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
-    }
+//     let label;
+//     if (startDateStr === endDateStr) {
+//       label = `${startDateStr}, ${startTimeStr}-${endTimeStr}`;
+//     } else {
+//       label = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
+//     }
     
-    labels.push(label);
-  });
+//     labels.push(label);
+//   });
 
-  console.log('✅ Generated labels:', labels);
+//   console.log('✅ Generated labels:', labels);
 
-  setTotalPages(pagesWithData.length);
-  setPageLabels(labels);
+//   setTotalPages(pagesWithData.length);
+//   setPageLabels(labels);
   
-  // ONLY update current page if this is a filter change, not page navigation
-  // Check if the pagination response has the same structure as our availablePages
-  const isPageNavigationResponse = pagination?.available_pages?.length === 1;
+//   // ONLY update current page if this is a filter change, not page navigation
+//   // Check if the pagination response has the same structure as our availablePages
+//   const isPageNavigationResponse = pagination?.available_pages?.length === 1;
   
-  if (!isPageNavigationResponse) {
-    // This is a filter change - update current page based on API response
-    const currentPageFromAPI = pagination?.current_page || 1;
-    console.log('🔍 Current page from API:', currentPageFromAPI);
+//   if (!isPageNavigationResponse) {
+//     // This is a filter change - update current page based on API response
+//     const currentPageFromAPI = pagination?.current_page || 1;
+//     console.log('🔍 Current page from API:', currentPageFromAPI);
     
-    const currentPageData = pagesWithData.find(page => page.page === currentPageFromAPI);
-    if (currentPageData) {
-      const pageIndex = pagesWithData.indexOf(currentPageData);
-      console.log('✅ Setting current page to:', pageIndex);
-      setCurrentPage(pageIndex);
-    } else {
-      console.log('⚠️ Current page not found, defaulting to 0');
-      setCurrentPage(0);
-    }
-  } else {
-    console.log('🔄 Page navigation response - keeping current page:', currentPage);
-    // Don't update current page for page navigation responses
-  }
-}, [availablePages, pagination]); // Only depend on Redux state
+//     const currentPageData = pagesWithData.find(page => page.page === currentPageFromAPI);
+//     if (currentPageData) {
+//       const pageIndex = pagesWithData.indexOf(currentPageData);
+//       console.log('✅ Setting current page to:', pageIndex);
+//       setCurrentPage(pageIndex);
+//     } else {
+//       console.log('⚠️ Current page not found, defaulting to 0');
+//       setCurrentPage(0);
+//     }
+//   } else {
+//     console.log('🔄 Page navigation response - keeping current page:', currentPage);
+//     // Don't update current page for page navigation responses
+//   }
+// }, [availablePages, pagination]); // Only depend on Redux state
 
-const handlePageChange = (pageIndex) => {
-  console.log('Page change requested:', pageIndex);
+const handlePageChange = (pageNumber) => {
+  console.log('Page change requested to:', pageNumber);
   
-  if (!availablePages || !availablePages.available_pages) {
-    console.log('No available pages in Redux');
-    return;
-  }
-  
-  // Get pages with data from Redux availablePages
-  const pagesWithData = availablePages.available_pages.filter(page => page.has_data);
-  
-  if (!pagesWithData[pageIndex]) {
-    console.log('Page index not available:', pageIndex);
-    return;
-  }
-  
-  const pageData = pagesWithData[pageIndex];
-  console.log('Page data for navigation:', pageData);
-  
-  setCurrentPage(pageIndex);
-  
-  // Use the exact UTC timestamps from the Redux availablePages
-  const startDateTime = pageData.start_time; // "2025-10-07T01:00:00+00:00"
-  const endDateTime = pageData.end_time;     // "2025-10-07T02:00:00+00:00"
-  
-  // Parse the UTC timestamps
-  const startDateObj = new Date(startDateTime);
-  const endDateObj = new Date(endDateTime);
-  
-  // Convert to local date string (YYYY-MM-DD)
-  const localDateStr = startDateObj.toLocaleDateString('en-CA'); // "2025-10-07"
-  
-  // Convert to local time strings (HH:MM:SS)
-  const startTimeStr = `${startDateObj.getHours().toString().padStart(2, '0')}:${startDateObj.getMinutes().toString().padStart(2, '0')}:${startDateObj.getSeconds().toString().padStart(2, '0')}`;
-  const endTimeStr = `${endDateObj.getHours().toString().padStart(2, '0')}:${endDateObj.getMinutes().toString().padStart(2, '0')}:${endDateObj.getSeconds().toString().padStart(2, '0')}`;
-  
-  console.log('Making Page Navigation API call with:', {
-    date: localDateStr,
-    startTime: startTimeStr,
-    endTime: endTimeStr,
-    originalUTC: {
-      start: startDateTime,
-      end: endDateTime
-    }
-  });
-  
-  // Use page navigation API
-  dispatch(fetchAudioSegmentsForPage({ 
+  // Use the unified fetchAudioSegments with page parameter
+  dispatch(fetchAudioSegments({ 
     channelId, 
-    date: localDateStr,
-    startTime: startTimeStr,
-    endTime: endTimeStr,
+    date: filters.date,
+    startDate: filters.startDate,
+    endDate: filters.endDate,
+    startTime: filters.startTime,
+    endTime: filters.endTime,
+    daypart: filters.daypart,
     searchText: filters.searchText,
     searchIn: filters.searchIn,
-    startDate: filters.startDate,
-    endDate: filters.endDate
+    page: pageNumber  // Pass the page number directly
   }));
 };
 
   
+// Simplified filter change handler
 useEffect(() => {
-  // Only fetch if we have a date range OR a single date
   if ((filters.startDate && filters.endDate) || filters.date) {
-    console.log('Fetching with filters:', {
-      date: filters.date,
-      startDate: filters.startDate,
-      endDate: filters.endDate,
-      startTime: filters.startTime,
-      endTime: filters.endTime,
-      daypart: filters.daypart
-    });
+    console.log('Fetching with filters:', filters);
     
-    // Use filter API for filter changes
-    dispatch(fetchAudioSegmentsWithFilter({ 
+    // Always fetch page 1 when filters change
+    dispatch(fetchAudioSegments({ 
       channelId, 
       date: filters.date,
       startDate: filters.startDate,
@@ -301,7 +252,8 @@ useEffect(() => {
       endTime: filters.endTime,
       daypart: filters.daypart,
       searchText: filters.searchText,
-      searchIn: filters.searchIn
+      searchIn: filters.searchIn,
+      page: 1  // Reset to page 1 on filter change
     }));
     
     // Update URL params
@@ -317,7 +269,32 @@ useEffect(() => {
     
     setSearchParams(params);
   }
-}, [filters.date, filters.startDate, filters.endDate, filters.startTime, filters.endTime, filters.daypart, filters.searchText, filters.searchIn, channelId]);
+}, [filters.date, filters.startDate, filters.endDate, filters.startTime, filters.endTime, filters.daypart, channelId]);
+
+
+// Add this useEffect for search-specific changes
+useEffect(() => {
+  // Only trigger when search text or search category changes
+  if (filters.searchText || (filters.searchIn && filters.searchIn !== 'transcription')) {
+    console.log('Search filter changed:', {
+      searchText: filters.searchText,
+      searchIn: filters.searchIn
+    });
+    
+    dispatch(fetchAudioSegments({ 
+      channelId, 
+      date: filters.date,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      startTime: filters.startTime,
+      endTime: filters.endTime,
+      daypart: filters.daypart,
+      searchText: filters.searchText,
+      searchIn: filters.searchIn,
+      page: 1  // Always reset to page 1 when searching
+    }));
+  }
+}, [filters.searchText, filters.searchIn, channelId]);
 
 
   useEffect(() => {
@@ -327,21 +304,101 @@ useEffect(() => {
     setLocalSearchIn(filters.searchIn || 'transcription');
   }, [filters]);
 
-  const handleSearch = () => {
-    dispatch(setFilter({ 
-      searchText: localSearchText,
-      searchIn: localSearchIn
-    }));
-  };
+  // const handleSearch = () => {
+  //   dispatch(setFilter({ 
+  //     searchText: localSearchText,
+  //     searchIn: localSearchIn
+  //   }));
+  // };
 
-  const handleClearSearch = () => {
-    setLocalSearchText('');
-    setLocalSearchIn('transcription');
-    dispatch(setFilter({ 
-      searchText: '',
-      searchIn: 'transcription'
-    }));
-  };
+const handleSearch = () => {
+  dispatch(setFilter({ 
+    searchText: localSearchText,
+    searchIn: localSearchIn
+  }));
+  
+  // First, fetch page 1 to get the pagination data
+  dispatch(fetchAudioSegments({ 
+    channelId, 
+    date: filters.date,
+    startDate: filters.startDate,
+    endDate: filters.endDate,
+    startTime: filters.startTime,
+    endTime: filters.endTime,
+    daypart: filters.daypart,
+    searchText: localSearchText,
+    searchIn: localSearchIn,
+    page: 1
+  })).then((action) => {
+    if (action.payload && action.payload.pagination) {
+      const availablePages = action.payload.pagination.available_pages || [];
+      
+      // Find the first page that has segments in the current search
+      // We need to check each page to see which one has the actual search results
+      const findFirstPageWithSearchResults = async () => {
+        for (const page of availablePages) {
+          if (page.has_data) {
+            try {
+              // Fetch this specific page to check if it has segments
+              const pageResult = await dispatch(fetchAudioSegments({
+                channelId,
+                date: filters.date,
+                startDate: filters.startDate,
+                endDate: filters.endDate,
+                startTime: filters.startTime,
+                endTime: filters.endTime,
+                daypart: filters.daypart,
+                searchText: localSearchText,
+                searchIn: localSearchIn,
+                page: page.page
+              })).unwrap();
+              
+              // If this page has segments with the search results, use it
+              if (pageResult.data.segments && pageResult.data.segments.length > 0) {
+                console.log('Found search results on page:', page.page);
+                return page.page;
+              }
+            } catch (error) {
+              console.error('Error checking page:', page.page, error);
+            }
+          }
+        }
+        return 1; // Fallback to page 1
+      };
+      
+      findFirstPageWithSearchResults().then(firstPageWithResults => {
+        console.log('First page with search results:', firstPageWithResults);
+        // The segments from the first page are already loaded, no need to fetch again
+      });
+    }
+  });
+};
+
+
+const handleClearSearch = () => {
+  setLocalSearchText('');
+  setLocalSearchIn('transcription');
+  
+  // First update the filter to clear search
+  dispatch(setFilter({ 
+    searchText: '',
+    searchIn: 'transcription'
+  }));
+  
+  // Then fetch all segments without search filters
+  dispatch(fetchAudioSegments({ 
+    channelId, 
+    date: filters.date,
+    startDate: filters.startDate,
+    endDate: filters.endDate,
+    startTime: filters.startTime,
+    endTime: filters.endTime,
+    daypart: filters.daypart,
+    searchText: '', // Clear search text
+    searchIn: 'transcription', // Reset to default
+    page: 1  // Reset to page 1 when clearing search
+  }));
+};
 
   // Filter segments (client-side filtering for status and recognition)
 const filteredSegments = segments.filter(segment => {
@@ -476,7 +533,7 @@ const handleDateRangeSelect = (start, end) => {
   setCurrentPage(0);
 };
 
- const handleResetFilters = () => {
+const handleResetFilters = () => {
   const today = new Date().toISOString().split('T')[0];
   const defaultStartTime = '00:00:00';
   const defaultEndTime = '01:00:00';
@@ -503,10 +560,9 @@ const handleDateRangeSelect = (start, end) => {
     endTime: defaultEndTime,
     searchIn: 'transcription'
   });
-  setCurrentPage(0);
   
-  // Use filter API for reset
-  dispatch(fetchAudioSegmentsWithFilter({ 
+  // Use the unified fetchAudioSegments
+  dispatch(fetchAudioSegments({ 
     channelId, 
     date: today, 
     startTime: defaultStartTime, 
@@ -536,7 +592,7 @@ const handleDateRangeSelect = (start, end) => {
           dispatch={dispatch}
           segments={segments}
           channelId={channelId}
-          fetchAudioSegments={fetchAudioSegmentsWithFilter}
+          fetchAudioSegments={fetchAudioSegments}
           handleDaypartChange={handleDaypartChange}
           handleSearchWithCustomTime={handleSearchWithCustomTime}
           localStartTime={localStartTime}
@@ -584,7 +640,7 @@ const handleDateRangeSelect = (start, end) => {
         segments={filteredSegments} 
         // segments={segments}
         channelId={channelId}
-        fetchAudioSegments={fetchAudioSegmentsWithFilter}
+        fetchAudioSegments={fetchAudioSegments}
         handleDaypartChange={handleDaypartChange}
         handleSearchWithCustomTime={handleSearchWithCustomTime}
         localStartTime={localStartTime}
@@ -606,24 +662,35 @@ const handleDateRangeSelect = (start, end) => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-32 mt-28">
 
 {/* Show pagination if we have pages with data in Redux */}
-  {totalPages > 1 && availablePages && availablePages.available_pages && (
-    <div className="mb-6">
-      <TimePagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={handlePageChange}
-        pageLabels={pageLabels}
-        availablePages={availablePages.available_pages.filter(page => page.has_data)}
-      />
-    </div>
-  )}
+{totalPages > 1 && (
+  <div className="mb-6">
+    <TimePagination
+      currentPage={currentPage}
+      totalPages={totalPages}
+      onPageChange={handlePageChange}
+      availablePages={pagination?.available_pages || []}
+    />
+  </div>
+)}
 
         {/* Show current page info */}
-  {availablePages && availablePages.available_pages && (
-    <div className="mb-4 text-sm text-gray-600">
-      Showing {availablePages.available_pages.filter(page => page.has_data)[currentPage]?.segment_count || 0} segments for {pageLabels[currentPage]}
-    </div>
-  )}
+        {pagination && (
+          <div className="mb-4 text-sm text-gray-600">
+            {(() => {
+              const currentPageData = pagination.available_pages?.find(page => page.page === currentPage);
+              const pagesWithData = pagination.available_pages?.filter(page => page.has_data) || [];
+              const currentPageIndex = pagesWithData.findIndex(page => page.page === currentPage) + 1;
+              
+              return (
+                <>
+                  Time slot {currentPageIndex} of {pagesWithData.length} • 
+                  Showing {segments.length} segments • 
+                  {currentPageData?.segment_count || 0} segments in this time slot
+                </>
+              );
+            })()}
+          </div>
+        )}
 
         {loading && segments.length > 0 && (
           <div className="mb-6">

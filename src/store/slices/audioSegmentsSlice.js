@@ -140,36 +140,48 @@ export const fetchAudioSegmentsForPage = createAsyncThunk(
   }
 );
 
+// Replace both fetchAudioSegmentsWithFilter and fetchAudioSegmentsForPage with this:
 export const fetchAudioSegments = createAsyncThunk(
   'audioSegments/fetchAudioSegments',
-  async ({ channelId, date, startTime, endTime, daypart, searchText, searchIn, startDate, endDate }, { rejectWithValue }) => {
+  async ({ 
+    channelId, 
+    date, 
+    startTime, 
+    endTime, 
+    daypart, 
+    searchText, 
+    searchIn, 
+    startDate, 
+    endDate,
+    page = 1  // Add page parameter with default value
+  }, { rejectWithValue }) => {
     try {
       let startDatetime = null;
       let endDatetime = null;
       
       console.log('API Request - Received params:', {
-        channelId, date, startTime, endTime, startDate, endDate, daypart
+        channelId, date, startTime, endTime, startDate, endDate, daypart, page
       });
 
-      // Handle date range (startDate and endDate take priority)
-      if (startDate && endDate) {
-        // For date range, we need to handle the full range
-        // The pagination will handle the specific time slices
-        if (startTime && endTime) {
-          // If we have specific time from pagination, use that with the specific date
-          startDatetime = convertLocalToUTC(date, startTime);
-          endDatetime = convertLocalToUTC(date, endTime);
-        } else {
-          // For initial date range load, show the entire range
-          // The API will return pagination for the full range
-          startDatetime = convertLocalToUTC(startDate, '00:00:00');
-          endDatetime = convertLocalToUTC(endDate, '23:59:59');
-        }
+      // Handle date range with specific time
+      if (startDate && endDate && startTime && endTime) {
+        startDatetime = convertLocalToUTC(startDate, startTime);
+        endDatetime = convertLocalToUTC(endDate, endTime);
       }
-      // If we have a specific date with time (from pagination), use that
+      // Handle date range without specific time (entire days)
+      else if (startDate && endDate) {
+        startDatetime = convertLocalToUTC(startDate, '00:00:00');
+        endDatetime = convertLocalToUTC(endDate, '23:59:59');
+      }
+      // Handle single date with specific time
       else if (date && startTime && endTime) {
         startDatetime = convertLocalToUTC(date, startTime);
         endDatetime = convertLocalToUTC(date, endTime);
+      }
+      // Handle single date without specific time (entire day)
+      else if (date && (!startTime || !endTime)) {
+        startDatetime = convertLocalToUTC(date, '00:00:00');
+        endDatetime = convertLocalToUTC(date, '23:59:59');
       }
       else if (date) {
         let useDate = date;
@@ -182,9 +194,6 @@ export const fetchAudioSegments = createAsyncThunk(
             startDatetime = convertLocalToUTC(useDate, '00:00:00');
             endDatetime = convertLocalToUTC(useDate, '23:59:59');
           }
-        } else if (startTime && endTime) {
-          startDatetime = convertLocalToUTC(useDate, startTime);
-          endDatetime = convertLocalToUTC(useDate, endTime);
         } else if (daypart !== 'none') {
           const daypartTimes = {
             'morning': { start: '06:00:00', end: '10:00:00' },
@@ -213,6 +222,9 @@ export const fetchAudioSegments = createAsyncThunk(
       if (startDatetime) params.start_datetime = startDatetime;
       if (endDatetime) params.end_datetime = endDatetime;
       
+      // Add page parameter to API call
+      if (page) params.page = page;
+      
       console.log('API Request - Final params:', params);
       
       // Search validation
@@ -231,6 +243,98 @@ export const fetchAudioSegments = createAsyncThunk(
     }
   }
 );
+
+// export const fetchAudioSegments = createAsyncThunk(
+//   'audioSegments/fetchAudioSegments',
+//   async ({ channelId, date, startTime, endTime, daypart, searchText, searchIn, startDate, endDate }, { rejectWithValue }) => {
+//     try {
+//       let startDatetime = null;
+//       let endDatetime = null;
+      
+//       console.log('API Request - Received params:', {
+//         channelId, date, startTime, endTime, startDate, endDate, daypart
+//       });
+
+//       // Handle date range (startDate and endDate take priority)
+//       if (startDate && endDate) {
+//         // For date range, we need to handle the full range
+//         // The pagination will handle the specific time slices
+//         if (startTime && endTime) {
+//           // If we have specific time from pagination, use that with the specific date
+//           startDatetime = convertLocalToUTC(date, startTime);
+//           endDatetime = convertLocalToUTC(date, endTime);
+//         } else {
+//           // For initial date range load, show the entire range
+//           // The API will return pagination for the full range
+//           startDatetime = convertLocalToUTC(startDate, '00:00:00');
+//           endDatetime = convertLocalToUTC(endDate, '23:59:59');
+//         }
+//       }
+//       // If we have a specific date with time (from pagination), use that
+//       else if (date && startTime && endTime) {
+//         startDatetime = convertLocalToUTC(date, startTime);
+//         endDatetime = convertLocalToUTC(date, endTime);
+//       }
+//       else if (date) {
+//         let useDate = date;
+        
+//         if (daypart === 'weekend') {
+//           const dateObj = new Date(useDate);
+//           const dayOfWeek = dateObj.getDay();
+          
+//           if (dayOfWeek === 0 || dayOfWeek === 6) {
+//             startDatetime = convertLocalToUTC(useDate, '00:00:00');
+//             endDatetime = convertLocalToUTC(useDate, '23:59:59');
+//           }
+//         } else if (startTime && endTime) {
+//           startDatetime = convertLocalToUTC(useDate, startTime);
+//           endDatetime = convertLocalToUTC(useDate, endTime);
+//         } else if (daypart !== 'none') {
+//           const daypartTimes = {
+//             'morning': { start: '06:00:00', end: '10:00:00' },
+//             'midday': { start: '10:00:00', end: '15:00:00' },
+//             'afternoon': { start: '15:00:00', end: '19:00:00' },
+//             'evening': { start: '19:00:00', end: '23:59:59' },
+//             'overnight': { start: '00:00:00', end: '06:00:00' },
+//             'weekend': { start: '00:00:00', end: '23:59:59' }
+//           };
+          
+//           const times = daypartTimes[daypart];
+//           if (times) {
+//             startDatetime = convertLocalToUTC(useDate, times.start);
+//             endDatetime = convertLocalToUTC(useDate, times.end);
+//           }
+//         } else {
+//           startDatetime = convertLocalToUTC(useDate, '00:00:00');
+//           endDatetime = convertLocalToUTC(useDate, '23:59:59');
+//         }
+//       }
+      
+//       const params = { 
+//         channel_id: channelId
+//       };
+      
+//       if (startDatetime) params.start_datetime = startDatetime;
+//       if (endDatetime) params.end_datetime = endDatetime;
+      
+//       console.log('API Request - Final params:', params);
+      
+//       // Search validation
+//       if (searchText && searchIn) {
+//         params.search_text = searchText;
+//         params.search_in = searchIn;
+//       }
+      
+//       const response = await axiosInstance.get('/audio_segments', {
+//         params
+//       });
+//       console.log('API Response:', response.data);
+//       return response.data;
+//     } catch (err) {
+//       return rejectWithValue(err.response?.data || err.message);
+//     }
+//   }
+// );
 
 export const transcribeAudioSegment = createAsyncThunk(
   'audioSegments/transcribeAudioSegment',
@@ -402,85 +506,6 @@ const audioSegmentsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-    // Filter-based fetch - updates availablePages
-    .addCase(fetchAudioSegmentsWithFilter.pending, (state) => {
-      state.loading = true;
-    })
-    .addCase(fetchAudioSegmentsWithFilter.fulfilled, (state, action) => {
-      state.loading = false;
-      state.segments = action.payload.data.segments;
-      state.channelInfo = action.payload.data.channel_info;
-      state.pagination = action.payload.pagination;
-
-      console.log('🔍 Filter API Response - Full pagination:', action.payload.pagination);
-      
-      // ALWAYS update availablePages for filter-based fetches
-      if (action.payload.pagination) {
-        state.availablePages = action.payload.pagination;
-        console.log('✅ Updated availablePages from filter:', state.availablePages);
-      }
-      
-      // Update totals
-      const segments = action.payload.data.segments;
-      const unrecognizedSegments = segments.filter(s => !s.is_recognized);
-      
-      state.totals = {
-        total: action.payload.data.total_segments,
-        recognized: action.payload.data.total_recognized,
-        unrecognized: action.payload.data.total_unrecognized,
-        unrecognizedWithContent: unrecognizedSegments.filter(s => 
-          s.analysis?.summary || s.transcription?.transcript
-        ).length,
-        unrecognizedWithoutContent: unrecognizedSegments.filter(s => 
-          !s.analysis?.summary && !s.transcription?.transcript
-        ).length,
-        withTranscription: action.payload.data.total_with_transcription,
-        withAnalysis: action.payload.data.total_with_analysis
-      };
-    })
-    .addCase(fetchAudioSegmentsWithFilter.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload || 'Failed to fetch audio segments';
-    })
-    
-    // Page navigation fetch - does NOT update availablePages
-    .addCase(fetchAudioSegmentsForPage.pending, (state) => {
-      state.loading = true;
-    })
-    .addCase(fetchAudioSegmentsForPage.fulfilled, (state, action) => {
-      state.loading = false;
-      state.segments = action.payload.data.segments;
-      state.channelInfo = action.payload.data.channel_info;
-      state.pagination = action.payload.pagination;
-
-      console.log('🔍 Page Navigation API Response - Full pagination:', action.payload.pagination);
-      console.log('🔄 Page navigation - keeping existing availablePages');
-      
-      // Do NOT update availablePages for page navigation
-      // Keep the existing availablePages from the filter
-      
-      // Update totals
-      const segments = action.payload.data.segments;
-      const unrecognizedSegments = segments.filter(s => !s.is_recognized);
-      
-      state.totals = {
-        total: action.payload.data.total_segments,
-        recognized: action.payload.data.total_recognized,
-        unrecognized: action.payload.data.total_unrecognized,
-        unrecognizedWithContent: unrecognizedSegments.filter(s => 
-          s.analysis?.summary || s.transcription?.transcript
-        ).length,
-        unrecognizedWithoutContent: unrecognizedSegments.filter(s => 
-          !s.analysis?.summary && !s.transcription?.transcript
-        ).length,
-        withTranscription: action.payload.data.total_with_transcription,
-        withAnalysis: action.payload.data.total_with_analysis
-      };
-    })
-    .addCase(fetchAudioSegmentsForPage.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload || 'Failed to fetch audio segments';
-    })
       .addCase(fetchAudioSegments.pending, (state) => {
         state.loading = true;
       })
@@ -491,21 +516,12 @@ const audioSegmentsSlice = createSlice({
         state.pagination = action.payload.pagination;
 
         console.log('🔍 API Response - Full pagination:', action.payload.pagination);
-        console.log('🔍 API Response - Available pages:', action.payload.pagination?.available_pages);
         
-        // Store availablePages only when it's a filter change (not page navigation)
-  const isFilterChange = action.payload.pagination.current_page === 1 || 
-                        !state.availablePages ||
-                        (state.availablePages.time_range?.start !== action.payload.pagination.time_range?.start);
-  
-  console.log('🔍 Is filter change?', isFilterChange);
-  
-  if (isFilterChange) {
-    state.availablePages = action.payload.pagination;
-    console.log('✅ Stored availablePages in state:', state.availablePages);
-  } else {
-    console.log('🔄 Page navigation - keeping existing availablePages');
-  }
+        // Always update availablePages with the full pagination data
+        if (action.payload.pagination) {
+          state.availablePages = action.payload.pagination;
+          console.log('✅ Updated availablePages:', state.availablePages);
+        }
         
         const segments = action.payload.data.segments;
         const unrecognizedSegments = segments.filter(s => !s.is_recognized);

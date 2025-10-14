@@ -5,66 +5,125 @@ const TimePagination = ({
   currentPage, 
   totalPages, 
   onPageChange,
-  pageLabels,
   availablePages = []
 }) => {
   console.log('🎯 TimePagination - currentPage:', currentPage);
   console.log('🎯 TimePagination - totalPages:', totalPages);
-  console.log('🎯 TimePagination - pageLabels:', pageLabels);
+  console.log('🎯 TimePagination - availablePages:', availablePages);
+
+  // Filter out pages without data and create page labels
+  const pagesWithData = availablePages.filter(page => page.has_data);
+  console.log('🎯 Pages with data:', pagesWithData);
+
+  // Create page labels with date and time
+  const pageLabels = pagesWithData.map(page => {
+    const startTime = new Date(page.start_time);
+    const endTime = new Date(page.end_time);
+    
+    // Format: "Oct 7, 18:30-19:30" in local time
+    const startDateStr = startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endDateStr = endTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    
+    const startTimeStr = startTime.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+    const endTimeStr = endTime.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+    
+    let label;
+    if (startDateStr === endDateStr) {
+      label = `${startDateStr}, ${startTimeStr}-${endTimeStr}`;
+    } else {
+      label = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
+    }
+    
+    return {
+      pageNumber: page.page,
+      label,
+      segmentCount: page.segment_count
+    };
+  });
+
+  console.log('🎯 Generated page labels:', pageLabels);
 
   const getVisiblePages = () => {
-    // Show more pages - increased from 7 to 11
-    if (totalPages <= 11) {
-      return Array.from({ length: totalPages }, (_, i) => i);
+    const totalVisiblePages = pageLabels.length;
+    
+    if (totalVisiblePages <= 7) {
+      return Array.from({ length: totalVisiblePages }, (_, i) => i);
     }
 
+    const currentIndex = pageLabels.findIndex(p => p.pageNumber === currentPage);
     const pages = [];
     
-    // Always show first 3 pages
-    pages.push(0, 1, 2);
+    // Always show first page
+    pages.push(0);
     
-    if (currentPage > 4) {
+    if (currentIndex > 3) {
       pages.push('ellipsis-start');
     }
     
-    // Show more pages around current page (increased range)
-    const start = Math.max(3, currentPage - 2);
-    const end = Math.min(totalPages - 4, currentPage + 2);
+    // Show pages around current page
+    const start = Math.max(1, currentIndex - 1);
+    const end = Math.min(totalVisiblePages - 2, currentIndex + 1);
     
     for (let i = start; i <= end; i++) {
       pages.push(i);
     }
     
-    if (currentPage < totalPages - 5) {
+    if (currentIndex < totalVisiblePages - 4) {
       pages.push('ellipsis-end');
     }
     
-    // Always show last 3 pages
-    if (totalPages > 3) {
-      pages.push(totalPages - 3, totalPages - 2, totalPages - 1);
+    // Always show last page
+    if (totalVisiblePages > 1) {
+      pages.push(totalVisiblePages - 1);
     }
     
     return pages;
   };
 
   const visiblePages = getVisiblePages();
-  console.log('🎯 TimePagination - visiblePages:', visiblePages);
+
+  const handlePageClick = (index) => {
+    const pageData = pageLabels[index];
+    if (pageData && pageData.pageNumber) {
+      onPageChange(pageData.pageNumber);
+    }
+  };
+
+  const getCurrentPageIndex = () => {
+    return pageLabels.findIndex(p => p.pageNumber === currentPage);
+  };
+
+  const canGoPrevious = getCurrentPageIndex() > 0;
+  const canGoNext = getCurrentPageIndex() < pageLabels.length - 1;
 
   return (
     <div className="flex items-center justify-between space-x-1 py-4 w-full">
       {/* Previous button */}
       <button
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 0}
+        onClick={() => {
+          const currentIndex = getCurrentPageIndex();
+          if (currentIndex > 0) {
+            handlePageClick(currentIndex - 1);
+          }
+        }}
+        disabled={!canGoPrevious}
         className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex-shrink-0"
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
 
-      {/* Page buttons - now taking full available width */}
+      {/* Page buttons */}
       <div className="flex items-center justify-center space-x-1 flex-1 overflow-x-auto">
-        {visiblePages.map((page, index) => {
-          if (page === 'ellipsis-start' || page === 'ellipsis-end') {
+        {visiblePages.map((pageIndex, index) => {
+          if (pageIndex === 'ellipsis-start' || pageIndex === 'ellipsis-end') {
             return (
               <span key={`ellipsis-${index}`} className="px-2 py-1 flex-shrink-0">
                 <MoreHorizontal className="w-4 h-4 text-gray-400" />
@@ -72,25 +131,25 @@ const TimePagination = ({
             );
           }
 
-          const pageData = availablePages[page];
-          const segmentCount = pageData?.segment_count || 0;
+          const pageData = pageLabels[pageIndex];
+          if (!pageData) return null;
 
-          console.log(`🎯 Rendering page ${page}, isCurrent: ${currentPage === page}`);
+          const isCurrentPage = pageData.pageNumber === currentPage;
 
           return (
             <button
-              key={page}
-              onClick={() => onPageChange(page)}
-              className={`px-4 py-2 rounded-lg border text-sm font-medium min-w-[140px] flex-shrink-0 ${
-                currentPage === page
+              key={pageData.pageNumber}
+              onClick={() => handlePageClick(pageIndex)}
+              className={`px-4 py-2 rounded-lg border text-sm font-medium min-w-[160px] flex-shrink-0 ${
+                isCurrentPage
                   ? 'bg-blue-500 text-white border-blue-500'
                   : 'border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
-              title={`${pageLabels[page]} (${segmentCount} segments)`}
+              title={`${pageData.label} (${pageData.segmentCount} segments)`}
             >
-              <div className="text-xs whitespace-nowrap">{pageLabels[page]}</div>
+              <div className="text-xs whitespace-nowrap">{pageData.label}</div>
               <div className="text-xs opacity-75">
-                {segmentCount} segments
+                {pageData.segmentCount} segments
               </div>
             </button>
           );
@@ -99,8 +158,13 @@ const TimePagination = ({
 
       {/* Next button */}
       <button
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages - 1}
+        onClick={() => {
+          const currentIndex = getCurrentPageIndex();
+          if (currentIndex < pageLabels.length - 1) {
+            handlePageClick(currentIndex + 1);
+          }
+        }}
+        disabled={!canGoNext}
         className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex-shrink-0"
       >
         <ChevronRight className="w-4 h-4" />
