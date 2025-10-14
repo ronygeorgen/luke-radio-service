@@ -161,7 +161,7 @@ const handleSingleDateSelect = (date) => {
                   value={filters.startDate || ''}
                   onChange={(e) => handleStartDateRange(e.target.value)}
                   className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  max={new Date().toISOString().split('T')[0]}
+                  max={new Date().toLocaleDateString('en-CA')}
                 />
               </div>
               <div>
@@ -171,7 +171,7 @@ const handleSingleDateSelect = (date) => {
                   value={filters.endDate || ''}
                   onChange={(e) => handleEndDateRange(e.target.value)}
                   className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  max={new Date().toISOString().split('T')[0]}
+                  max={new Date().toLocaleDateString('en-CA')}
                 />
               </div>
               {/* <div>
@@ -258,7 +258,7 @@ const handleSingleDateSelect = (date) => {
                 value={filters.date || ''}
                 onChange={(e) => handleSingleDateSelect(e.target.value)}
                 className="w-full md:w-1/3 p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                max={new Date().toISOString().split('T')[0]}
+                max={new Date().toLocaleDateString('en-CA')}
               />
             </div> */}
 
@@ -326,7 +326,7 @@ const handleSingleDateSelect = (date) => {
                         value={filters.startDate || ''}
                         onChange={(e) => handleStartDateRange(e.target.value)}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        max={new Date().toISOString().split('T')[0]}
+                        max={new Date().toLocaleDateString('en-CA')}
                       />
                     </div>
                     <div>
@@ -336,7 +336,7 @@ const handleSingleDateSelect = (date) => {
                         value={filters.endDate || ''}
                         onChange={(e) => handleEndDateRange(e.target.value)}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                        max={new Date().toISOString().split('T')[0]}
+                        max={new Date().toLocaleDateString('en-CA')}
                       />
                     </div>
                     {/* <div>
@@ -396,7 +396,7 @@ const handleSingleDateSelect = (date) => {
                     value={filters.date || ''}
                     onChange={(e) => handleSingleDateSelect(e.target.value)}
                     className="w-full md:w-1/3 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    max={new Date().toISOString().split('T')[0]}
+                    max={new Date().toLocaleDateString('en-CA')}
                   />
                 </div>
               </div>

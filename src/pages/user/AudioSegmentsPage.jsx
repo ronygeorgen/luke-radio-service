@@ -96,7 +96,7 @@ const AudioSegmentsPage = () => {
 
 // Simplified useEffect for initial load
 useEffect(() => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('en-CA'); 
   
   setSearchParams({
     date: today,
@@ -105,10 +105,10 @@ useEffect(() => {
 
   dispatch(setFilter({ 
     date: today,
-    startDate: null,
-    endDate: null,
-    startTime: '',
-    endTime: '',
+    startDate: today,
+    endDate: today,
+    startTime: '00:00',
+    endTime: '23:59',
     daypart: 'none',
     status: 'all',
     recognition: 'all',
@@ -534,14 +534,16 @@ const handleDateRangeSelect = (start, end) => {
 };
 
 const handleResetFilters = () => {
-  const today = new Date().toISOString().split('T')[0];
+  // Use local date instead of UTC
+  const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
+  
   const defaultStartTime = '00:00:00';
-  const defaultEndTime = '01:00:00';
+  const defaultEndTime = '23:59:59';
   
   dispatch(setFilter({ 
     date: today, 
-    startDate: null, 
-    endDate: null,
+    startDate: today, 
+    endDate: today,
     startTime: defaultStartTime, 
     endTime: defaultEndTime, 
     daypart: 'none', 
