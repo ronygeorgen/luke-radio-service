@@ -3,9 +3,21 @@ import { dashboardApi } from '../../services/dashboardApi';
 
 export const fetchDashboardStats = createAsyncThunk(
   'dashboard/fetchStats',
-  async ({ startDate, endDate, showAllTopics = false }, { rejectWithValue }) => {
+  async ({ startDate, endDate, showAllTopics = false, predefinedFilterId = null }, { rejectWithValue }) => {
     try {
-      const response = await dashboardApi.getDashboardStats(startDate, endDate, showAllTopics);
+      const response = await dashboardApi.getDashboardStats(startDate, endDate, showAllTopics, predefinedFilterId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const fetchPredefinedFilters = createAsyncThunk(
+  'dashboard/fetchPredefinedFilters',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await dashboardApi.getPredefinedFilters(params);
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -23,6 +35,8 @@ const initialState = {
   topicsDistribution: [],
   topTopicsRanking: [],
   sentimentData: [],
+  predefinedFilters: [],
+  selectedPredefinedFilter: null,
   dateRange: {
     startDate: '',
     endDate: ''
@@ -40,6 +54,12 @@ const dashboardSlice = createSlice({
     },
     setDateRange: (state, action) => {
       state.dateRange = action.payload;
+    },
+    setSelectedPredefinedFilter: (state, action) => {
+      state.selectedPredefinedFilter = action.payload;
+    },
+    clearPredefinedFilter: (state) => {
+      state.selectedPredefinedFilter = null;
     }
   },
   extraReducers: (builder) => {
@@ -84,9 +104,19 @@ const dashboardSlice = createSlice({
       .addCase(fetchDashboardStats.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      .addCase(fetchPredefinedFilters.fulfilled, (state, action) => {
+        state.predefinedFilters = action.payload;
       });
   }
 });
 
-export const { clearError, setDateRange } = dashboardSlice.actions;
+export const { 
+  clearError, 
+  setDateRange, 
+  setSelectedPredefinedFilter, 
+  clearPredefinedFilter 
+} = dashboardSlice.actions;
+
+// ✅ CORRECTED: Export the reducer as default
 export default dashboardSlice.reducer;

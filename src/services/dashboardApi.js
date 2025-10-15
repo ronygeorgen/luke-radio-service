@@ -1,7 +1,24 @@
 import { axiosInstance } from './api';
 
 export const dashboardApi = {
-  getDashboardStats: async (startDate, endDate, showAllTopics = false) => {
+
+  getPredefinedFilters: async (params = {}) => {
+    try {
+      const response = await axiosInstance.get('/shift-analysis/predefined-filters/', {
+        params: {
+          is_active: true,
+          channel: localStorage.getItem("channelId"),
+          ...params
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching predefined filters:', error);
+      throw error;
+    }
+  },
+  
+  getDashboardStats: async (startDate, endDate, showAllTopics = false, predefinedFilterId = null) => {
     try {
       const channelId = localStorage.getItem("channelId");
 
@@ -23,13 +40,20 @@ export const dashboardApi = {
       const startDateTime = formatDateTime(startDate, false);
       const endDateTime = formatDateTime(endDate, true);
 
+      const requestParams = {
+        start_datetime: startDateTime,
+        end_datetime: endDateTime,
+        channel_id: channelId,
+        show_all_topics: showAllTopics
+      };
+
+      // Add predefined_filter_id if provided
+      if (predefinedFilterId) {
+        requestParams.predefined_filter_id = predefinedFilterId;
+      }
+
       const response = await axiosInstance.get('/dashboard/stats/', {
-        params: {
-          start_datetime: startDateTime,
-          end_datetime: endDateTime,
-          channel_id: channelId,
-          show_all_topics: showAllTopics
-        }
+        params: requestParams
       });
       return response.data;
     } catch (error) {
@@ -111,5 +135,7 @@ export const dashboardApi = {
       console.error('Error fetching audio segments by topic:', error);
       throw error;
     }
-  }
+  },
 };
+
+

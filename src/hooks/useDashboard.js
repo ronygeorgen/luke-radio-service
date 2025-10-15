@@ -1,6 +1,12 @@
 import { useSelector, useDispatch } from 'react-redux';
 import { useCallback } from 'react';
-import { fetchDashboardStats, setDateRange, clearError } from '../store/slices/dashboardSlice';
+import { 
+  fetchDashboardStats, 
+  setDateRange, 
+  clearError,
+  setSelectedPredefinedFilter,
+  clearPredefinedFilter
+} from '../store/slices/dashboardSlice';
 
 export const useDashboard = () => {
   const dispatch = useDispatch();
@@ -15,6 +21,8 @@ export const useDashboard = () => {
     topicsDistribution: [],
     topTopicsRanking: [],
     sentimentData: [],
+    predefinedFilters: [],
+    selectedPredefinedFilter: null,
     dateRange: {
       startDate: '',
       endDate: ''
@@ -26,14 +34,33 @@ export const useDashboard = () => {
   // Get showAllTopics from Redux store
   const showAllTopics = useSelector((state) => state.dashboardSettings?.showAllTopics || false);
 
-  // Memoize the load function with showAllTopics parameter
-  const loadDashboardData = useCallback((startDate, endDate, showAllTopicsParam = showAllTopics) => {
+  // Memoize the load function with predefinedFilterId parameter
+  const loadDashboardData = useCallback((startDate, endDate, showAllTopicsParam = showAllTopics, predefinedFilterId = null) => {
     dispatch(fetchDashboardStats({ 
       startDate, 
       endDate, 
-      showAllTopics: showAllTopicsParam 
+      showAllTopics: showAllTopicsParam,
+      predefinedFilterId 
     }));
-  }, [dispatch, showAllTopics]); // Add showAllTopics to dependencies
+  }, [dispatch, showAllTopics]);
+
+  // Add function to load predefined filters - FIXED
+  const loadPredefinedFilters = useCallback((params = {}) => {
+    // Import the action directly in the callback to avoid circular dependencies
+    import('../store/slices/dashboardSlice').then(({ fetchPredefinedFilters }) => {
+      dispatch(fetchPredefinedFilters(params));
+    });
+  }, [dispatch]);
+
+  // Add function to select predefined filter
+  const selectPredefinedFilter = useCallback((filter) => {
+    dispatch(setSelectedPredefinedFilter(filter));
+  }, [dispatch]);
+
+  // Add function to clear predefined filter
+  const clearPredefinedFilterSelection = useCallback(() => {
+    dispatch(clearPredefinedFilter());
+  }, [dispatch]);
 
   const updateDateRange = useCallback((dateRange) => {
     dispatch(setDateRange(dateRange));
@@ -48,11 +75,16 @@ export const useDashboard = () => {
     topicsDistribution: dashboardState.topicsDistribution,
     topTopicsRanking: dashboardState.topTopicsRanking,
     sentimentData: dashboardState.sentimentData,
+    predefinedFilters: dashboardState.predefinedFilters,
+    selectedPredefinedFilter: dashboardState.selectedPredefinedFilter,
     dateRange: dashboardState.dateRange,
     loading: dashboardState.loading,
     error: dashboardState.error,
-    showAllTopics, // Return showAllTopics for use in components
+    showAllTopics,
     loadDashboardData,
+    loadPredefinedFilters,
+    selectPredefinedFilter,
+    clearPredefinedFilterSelection,
     updateDateRange,
     clearDashboardError
   };

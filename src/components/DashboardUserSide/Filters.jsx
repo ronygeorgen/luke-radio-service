@@ -1,14 +1,24 @@
+// Updated Filters.jsx
 import { useState, useRef, useEffect } from "react";
-import { Filter, Calendar, TrendingUp, RotateCcw } from "lucide-react";
+import { Filter, Calendar, TrendingUp, RotateCcw, X } from "lucide-react";
 import { useDashboard } from "../../hooks/useDashboard";
 import { useDispatch } from "react-redux";
 import { fetchShiftAnalytics } from "../../store/slices/shiftAnalyticsSlice";
 
 const Filters = () => {
-  const { dateRange = {}, loadDashboardData } = useDashboard();
-  const dispatch = useDispatch(); // Add this
+  const { 
+    dateRange = {}, 
+    loadDashboardData, 
+    predefinedFilters,
+    selectedPredefinedFilter,
+    loadPredefinedFilters,
+    selectPredefinedFilter,
+    clearPredefinedFilterSelection
+  } = useDashboard();
+  const dispatch = useDispatch();
 
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [tempStartDate, setTempStartDate] = useState(
     dateRange.startDateOrDateTime ? dateRange.startDateOrDateTime.split(' ')[0] : ""
   );
@@ -16,28 +26,31 @@ const Filters = () => {
     dateRange.endDateOrDateTime ? dateRange.endDateOrDateTime.split(' ')[0] : ""
   );
   const datePickerRef = useRef(null);
+  const filterDropdownRef = useRef(null);
 
+  // Load predefined filters on component mount
+  useEffect(() => {
+    loadPredefinedFilters();
+  }, [loadPredefinedFilters]);
 
   useEffect(() => {
-      if (!dateRange.startDateOrDateTime && !dateRange.endDateOrDateTime) {
-        const today = new Date();
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(today.getDate() - 7);
-        
-        const formatDate = (date) => date.toISOString().split('T')[0];
-        setTempStartDate(formatDate(sevenDaysAgo));
-        setTempEndDate(formatDate(today));
-      } else {
-        // Extract date part from datetime string (YYYY-MM-DD HH:MM:SS -> YYYY-MM-DD)
-        setTempStartDate(dateRange.startDateOrDateTime ? dateRange.startDateOrDateTime.split(' ')[0] : "");
-        setTempEndDate(dateRange.endDateOrDateTime ? dateRange.endDateOrDateTime.split(' ')[0] : "");
-      }
-    }, [dateRange]);
+    if (!dateRange.startDateOrDateTime && !dateRange.endDateOrDateTime) {
+      const today = new Date();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(today.getDate() - 7);
+      
+      const formatDate = (date) => date.toISOString().split('T')[0];
+      setTempStartDate(formatDate(sevenDaysAgo));
+      setTempEndDate(formatDate(today));
+    } else {
+      setTempStartDate(dateRange.startDateOrDateTime ? dateRange.startDateOrDateTime.split(' ')[0] : "");
+      setTempEndDate(dateRange.endDateOrDateTime ? dateRange.endDateOrDateTime.split(' ')[0] : "");
+    }
+  }, [dateRange]);
 
   const formatDateForDisplay = (dateTimeString) => {
     if (!dateTimeString) return "N/A";
     
-    // Extract date part if it's a datetime string
     const dateString = dateTimeString.includes(' ') 
       ? dateTimeString.split(' ')[0] 
       : dateTimeString;
@@ -56,11 +69,51 @@ const Filters = () => {
     }
   };
 
-  const handleApply = () => {
+  const handleApplyDateRange = () => {
+    if (tempStartDate && tempEndDate) {
+      loadDashboardData(
+        tempStartDate, 
+        tempEndDate, 
+        undefined, // showAllTopics will use the default from hook
+        selectedPredefinedFilter?.id // pass the selected filter ID
+      );
+      dispatch(fetchShiftAnalytics({ 
+        startDate: tempStartDate, 
+        endDate: tempEndDate 
+      }));
+      setShowDatePicker(false);
+    }
+  };
+
+  const handleFilterSelect = (filter) => {
+    selectPredefinedFilter(filter);
+    setShowFilterDropdown(false);
+    
+    // Apply the filter immediately
+    if (tempStartDate && tempEndDate) {
+      loadDashboardData(
+        tempStartDate, 
+        tempEndDate, 
+        undefined, 
+        filter.id
+      );
+      dispatch(fetchShiftAnalytics({ 
+        startDate: tempStartDate, 
+        endDate: tempEndDate 
+      }));
+    }
+  };
+
+  const handleClearFilter = () => {
+    clearPredefinedFilterSelection();
+    
+    // Reload data without the filter
     if (tempStartDate && tempEndDate) {
       loadDashboardData(tempStartDate, tempEndDate);
-      dispatch(fetchShiftAnalytics({ startDate: tempStartDate, endDate: tempEndDate }));
-      setShowDatePicker(false);
+      dispatch(fetchShiftAnalytics({ 
+        startDate: tempStartDate, 
+        endDate: tempEndDate 
+      }));
     }
   };
 
@@ -75,6 +128,7 @@ const Filters = () => {
     
     setTempStartDate(startDate);
     setTempEndDate(endDate);
+    clearPredefinedFilterSelection();
     loadDashboardData(startDate, endDate);
     dispatch(fetchShiftAnalytics({ startDate, endDate }));
   };
@@ -101,14 +155,17 @@ const Filters = () => {
     return startDate === expectedStartDate && endDate === expectedEndDate;
   };
 
-  // Close on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
         datePickerRef.current &&
-        !datePickerRef.current.contains(event.target)
+        !datePickerRef.current.contains(event.target) &&
+        filterDropdownRef.current &&
+        !filterDropdownRef.current.contains(event.target)
       ) {
         setShowDatePicker(false);
+        setShowFilterDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -125,6 +182,56 @@ const Filters = () => {
           <div className="flex items-center space-x-2">
             <Filter className="w-5 h-5 text-gray-600" />
             <span className="font-medium text-gray-700">Filters:</span>
+          </div>
+
+          {/* Predefined Filters Dropdown */}
+          <div className="flex items-center space-x-2 relative" ref={filterDropdownRef}>
+            <span className="text-sm text-gray-600">Predefined Filter:</span>
+            <button
+              onClick={() => setShowFilterDropdown((prev) => !prev)}
+              className="font-medium text-gray-900 hover:text-blue-600 focus:outline-none flex items-center space-x-1"
+            >
+              <span>
+                {selectedPredefinedFilter ? selectedPredefinedFilter.name : "Select Filter"}
+              </span>
+              {selectedPredefinedFilter && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClearFilter();
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </button>
+
+            {/* Predefined Filters Dropdown */}
+            {showFilterDropdown && (
+              <div className="absolute top-full left-0 mt-2 bg-white border rounded-lg shadow-lg z-20 p-2 w-64 max-h-60 overflow-y-auto">
+                {predefinedFilters.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-gray-500">
+                    No filters available
+                  </div>
+                ) : (
+                  predefinedFilters.map((filter) => (
+                    <button
+                      key={filter.id}
+                      onClick={() => handleFilterSelect(filter)}
+                      className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-100 ${
+                        selectedPredefinedFilter?.id === filter.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      <div className="font-medium">{filter.name}</div>
+                      <div className="text-xs text-gray-500">
+                        {filter.schedule_count} schedules • {filter.channel_name}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           {/* Date Range */}
@@ -180,7 +287,7 @@ const Filters = () => {
                   </div>
                 </div>
                 <button
-                  onClick={handleApply}
+                  onClick={handleApplyDateRange}
                   className="mt-3 bg-blue-500 text-white px-3 py-1 rounded w-full hover:bg-blue-600"
                 >
                   Apply
@@ -188,13 +295,6 @@ const Filters = () => {
               </div>
             )}
           </div>
-
-          {/* Sentiment */}
-          {/* <div className="flex items-center space-x-2">
-            <TrendingUp className="w-4 h-4 text-gray-500" />
-            <span className="text-sm text-gray-600">Sentiment:</span>
-            <span className="font-medium text-gray-900">0 to 100</span>
-          </div> */}
         </div>
 
         {/* Reset Button */}
@@ -206,6 +306,33 @@ const Filters = () => {
           <span>Reset</span>
         </button>
       </div>
+
+      {/* Selected Filter Info */}
+      {selectedPredefinedFilter && (
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex justify-between items-start">
+            <div>
+              <h4 className="font-medium text-blue-900">
+                {selectedPredefinedFilter.name}
+              </h4>
+              <p className="text-sm text-blue-700 mt-1">
+                {selectedPredefinedFilter.description}
+              </p>
+              <div className="flex items-center space-x-4 mt-2 text-xs text-blue-600">
+                <span>Channel: {selectedPredefinedFilter.channel_name}</span>
+                <span>Schedules: {selectedPredefinedFilter.schedule_count}</span>
+                <span>Created by: {selectedPredefinedFilter.created_by_name}</span>
+              </div>
+            </div>
+            <button
+              onClick={handleClearFilter}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            >
+              Clear Filter
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
