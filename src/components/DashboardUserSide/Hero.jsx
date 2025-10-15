@@ -1,10 +1,11 @@
-import { BarChart3, Settings, ChevronDown, Eye, EyeOff } from 'lucide-react';
+import { BarChart3, Settings, ChevronDown, Eye, EyeOff, Users, FileText, ArrowLeft, LogOut } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { setShowAllTopics } from '../../store/slices/dashboardSettingsSlice';
 import { fetchShiftAnalytics } from '../../store/slices/shiftAnalyticsSlice';
 import { useDashboard } from '../../hooks/useDashboard';
+import { logout } from '../../store/slices/authSlice';
 
 const Hero = ({ onToggleChange }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -30,6 +31,11 @@ const Hero = ({ onToggleChange }) => {
     
     // Notify parent component that toggle change is complete
     if (onToggleChange) onToggleChange(false);
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
+    setIsDropdownOpen(false);
   };
 
   return (
@@ -91,21 +97,52 @@ const Hero = ({ onToggleChange }) => {
             </button>
             
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-10">
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg py-2 z-10 border border-gray-200">
                 <Link
                   to="/dashboard/settings"
-                  className="block px-4 py-2 text-gray-800 hover:bg-gray-100"
+                  className="flex items-center px-4 py-2.5 text-gray-800 hover:bg-gray-100 text-sm font-medium transition-colors"
                   onClick={() => setIsDropdownOpen(false)}
                 >
+                  <Settings className="w-4 h-4 mr-3 text-gray-500" />
                   Topic Settings
                 </Link>
                 <Link
                   to="/user-channels"
-                  className="block px-4 py-2 text-gray-800 hover:bg-gray-100"
+                  className="flex items-center px-4 py-2.5 text-gray-800 hover:bg-gray-100 text-sm font-medium transition-colors"
                   onClick={() => setIsDropdownOpen(false)}
                 >
-                  Switch to Channels
+                  <Users className="w-4 h-4 mr-3 text-gray-500" />
+                  My Channels
                 </Link>
+                <Link
+                  to="/reports"
+                  className="flex items-center px-4 py-2.5 text-gray-800 hover:bg-gray-100 text-sm font-medium transition-colors"
+                  onClick={() => setIsDropdownOpen(false)}
+                >
+                  <FileText className="w-4 h-4 mr-3 text-gray-500" />
+                  Reports
+                </Link>
+                {(() => {
+                  const channelId = localStorage.getItem('channelId');
+                  return channelId ? (
+                    <Link
+                      to={`/channels/${channelId}/segments`}
+                      className="flex items-center px-4 py-2.5 text-gray-800 hover:bg-gray-100 text-sm font-medium transition-colors"
+                      onClick={() => setIsDropdownOpen(false)}
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-3 text-gray-500" />
+                      Back to Segments
+                    </Link>
+                  ) : null;
+                })()}
+                <div className="border-t border-gray-200 my-1"></div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="w-4 h-4 mr-3" />
+                  Logout
+                </button>
               </div>
             )}
           </div>

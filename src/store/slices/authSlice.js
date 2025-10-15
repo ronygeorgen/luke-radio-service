@@ -206,6 +206,8 @@ const authSlice = createSlice({
       state.magicLinkData = null;
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('channelId');  
+      localStorage.removeItem('channelName');
     },
     clearError: (state) => {
       state.error = null;

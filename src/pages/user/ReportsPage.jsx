@@ -27,7 +27,8 @@ import {
   TrendingUp,
   Grid3x3,
   LayoutList,
-  SortAsc
+  SortAsc,
+  Settings
 } from 'lucide-react';
 import { logout } from '../../store/slices/authSlice';
 
@@ -135,11 +136,11 @@ const ReportsPage = () => {
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center space-x-12">
               <Link
-                to="/"
+                to={`/channels/${channelId}/segments`}
                 className="flex items-center text-sm font-medium text-[#6C757D] hover:text-[#212529] transition-colors group"
               >
                 <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-0.5 transition-transform" />
-                Channels
+                Back
               </Link>
 
               <div className="flex items-center space-x-4">
@@ -162,22 +163,68 @@ const ReportsPage = () => {
             </div>
 
             <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-gradient-to-r from-[#4B7DF5] to-[#3A63E0] hover:from-[#3A63E0] hover:to-[#2B6AE1] text-white px-5 py-2.5 rounded-xl font-semibold flex items-center space-x-2 shadow-lg shadow-[#4B7DF5]/20 hover:shadow-xl hover:shadow-[#4B7DF5]/30 hover:scale-105 active:scale-95 transition-all duration-200"
-              >
-                <Plus className="w-5 h-5" />
-                <span>New Report</span>
-              </button>
+  <button
+    onClick={() => setShowCreateModal(true)}
+    className="bg-gradient-to-r from-[#4B7DF5] to-[#3A63E0] hover:from-[#3A63E0] hover:to-[#2B6AE1] text-white px-5 py-2.5 rounded-xl font-semibold flex items-center space-x-2 shadow-lg shadow-[#4B7DF5]/20 hover:shadow-xl hover:shadow-[#4B7DF5]/30 hover:scale-105 active:scale-95 transition-all duration-200"
+  >
+    <Plus className="w-5 h-5" />
+    <span>New Report</span>
+  </button>
 
-              <button
-                onClick={handleLogout}
-                className="p-2.5 text-[#6C757D] hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
+  <div className="relative">
+    <button
+      onClick={() => setMenuOpenId(menuOpenId === 'settings' ? null : 'settings')}
+      className="p-2.5 text-[#6C757D] hover:text-[#4B7DF5] hover:bg-blue-50 rounded-xl transition-all"
+      title="Settings & Navigation"
+    >
+      <Settings className="w-5 h-5" />
+    </button>
+
+    {menuOpenId === 'settings' && (
+      <>
+        <div
+          className="fixed inset-0 z-20"
+          onClick={() => setMenuOpenId(null)}
+        ></div>
+        <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-2xl border border-[#E9ECEF] z-30">
+          <div className="py-2">
+            <button
+              onClick={() => {
+                navigate('/dashboard');
+                setMenuOpenId(null);
+              }}
+              className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-[#212529] hover:bg-[#F8F9FA] transition-colors"
+            >
+              <TrendingUp className="w-4 h-4 mr-3 text-[#6C757D]" />
+              Dashboard
+            </button>
+            <button
+              onClick={() => {
+                navigate('/user-channels');
+                setMenuOpenId(null);
+              }}
+              className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-[#212529] hover:bg-[#F8F9FA] transition-colors"
+            >
+              <Users className="w-4 h-4 mr-3 text-[#6C757D]" />
+              My Channels
+            </button>
+            <div className="border-t border-[#E9ECEF] my-1"></div>
+            <button
+              onClick={() => {
+                handleLogout();
+                setMenuOpenId(null);
+              }}
+              className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <LogOut className="w-4 h-4 mr-3" />
+              Logout
+            </button>
+          </div>
+        </div>
+      </>
+    )}
+  </div>
+</div>
           </div>
         </div>
       </div>

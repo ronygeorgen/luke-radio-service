@@ -1,5 +1,6 @@
+// Updated AdminLayout.js
 import { Outlet } from 'react-router-dom';
-import { Settings, Layers, Users, Plus, UserCog, ChevronDown, Music } from 'lucide-react';
+import { Settings, Layers, Users, Plus, UserCog, ChevronDown, Music, BarChart3, FileText } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from 'react-redux';
@@ -7,6 +8,7 @@ import { logout } from '../store/slices/authSlice';
 import { useState, useRef, useEffect } from 'react';
 import CreateUserModal from '../pages/admin/CreateUserModal';
 import OnboardModal from '../components/OnboardModal';
+import ChannelSelectionModal from '../pages/admin/ChannelSelectionModal';
 
 const AdminLayout = () => {
     const navigate = useNavigate();
@@ -15,6 +17,8 @@ const AdminLayout = () => {
     const [isUserModalOpen, setIsUserModalOpen] = useState(false);
     const [isChannelModalOpen, setIsChannelModalOpen] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isChannelSelectionOpen, setIsChannelSelectionOpen] = useState(false);
+    const [pendingNavigation, setPendingNavigation] = useState(null);
     const dropdownRef = useRef(null);
 
     const handleLogout = () => {
@@ -31,6 +35,42 @@ const AdminLayout = () => {
 
     const toggleDropdown = () => {
         setIsDropdownOpen(!isDropdownOpen);
+    };
+
+    // Navigation handler that checks for channel selection
+    const handleNavigation = (path) => {
+        const channelId = localStorage.getItem('channelId');
+        
+        if (channelId) {
+            // If channel ID exists, navigate directly
+            navigate(path);
+        } else {
+            // If no channel ID, open channel selection modal
+            setPendingNavigation(path);
+            setIsChannelSelectionOpen(true);
+        }
+        setIsDropdownOpen(false);
+    };
+
+    // Handle channel selection from modal
+const handleChannelSelect = (channel) => {
+  if (pendingNavigation) {
+    let finalPath = pendingNavigation;
+    
+    // Replace :channelId with the actual internal ID (1)
+    if (finalPath.includes(':channelId')) {
+      finalPath = finalPath.replace(':channelId', channel.id);
+    }
+    
+    navigate(finalPath);
+    setPendingNavigation(null);
+  }
+};
+
+    // Close channel selection modal
+    const handleCloseChannelSelection = () => {
+        setIsChannelSelectionOpen(false);
+        setPendingNavigation(null);
     };
 
     // Close dropdown when clicking outside
@@ -71,6 +111,48 @@ const AdminLayout = () => {
                             {/* Dropdown Menu */}
                             {isDropdownOpen && (
                                 <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
+                                    {/* Dashboard Option */}
+                                    <button
+                                        onClick={() => handleNavigation('/dashboard')}
+                                        className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                                    >
+                                        <BarChart3 className="h-4 w-4 text-blue-600" />
+                                        <span className="flex-1 text-left">Dashboard</span>
+                                    </button>
+
+                                    {/* Reports Option */}
+                                    <button
+                                        onClick={() => handleNavigation('/reports')}
+                                        className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                                    >
+                                        <FileText className="h-4 w-4 text-green-600" />
+                                        <span className="flex-1 text-left">Reports</span>
+                                    </button>
+
+                                    {/* Segments Option */}
+                                    <button
+                                        onClick={() => handleNavigation('/channels/:channelId/segments')}
+                                        className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                                    >
+                                        <Music className="h-4 w-4 text-purple-600" />
+                                        <span className="flex-1 text-left">Audio Segments</span>
+                                    </button>
+
+                                    {/* Switch to Channels Option */}
+                                    <button
+                                        onClick={() => {
+                                            navigate("/user-channels");
+                                            setIsDropdownOpen(false);
+                                        }}
+                                        className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                                    >
+                                        <Layers className="h-4 w-4 text-purple-600" />
+                                        <span className="flex-1 text-left">Switch to Channels</span>
+                                    </button>
+
+                                    {/* Divider */}
+                                    <div className="border-t border-gray-200 my-1"></div>
+
                                     {/* Create User Option */}
                                     {user?.isAdmin && (
                                         <button
@@ -99,17 +181,7 @@ const AdminLayout = () => {
                                         </button>
                                     )}
                                     
-                                    {/* Switch to Channels Option */}
-                                    <button
-                                        onClick={() => {
-                                            navigate("/user-channels");
-                                            setIsDropdownOpen(false);
-                                        }}
-                                        className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                                    >
-                                        <Layers className="h-4 w-4 text-purple-600" />
-                                        <span className="flex-1 text-left">Switch to Channels</span>
-                                    </button>
+                                    
                                     
                                     {/* Divider */}
                                     <div className="border-t border-gray-200 my-1"></div>
@@ -217,6 +289,15 @@ const AdminLayout = () => {
             <OnboardModal
                 isOpen={isChannelModalOpen}
                 onClose={handleCloseChannelModal}
+            />
+
+            {/* Channel Selection Modal */}
+            <ChannelSelectionModal
+                isOpen={isChannelSelectionOpen}
+                onClose={handleCloseChannelSelection}
+                onChannelSelect={handleChannelSelect}
+                title="Select a Channel"
+                description="Choose a channel to access the selected feature"
             />
         </div>
     );
