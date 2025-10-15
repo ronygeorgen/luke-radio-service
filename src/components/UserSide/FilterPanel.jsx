@@ -33,6 +33,9 @@ const FilterPanel = ({
     end: null,
     selecting: false
   });
+  const [timeError, setTimeError] = useState('');
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const filterRef = useRef(null);
   const calendarRef = useRef(null);
 
@@ -45,6 +48,79 @@ const FilterPanel = ({
     { value: 'overnight', label: 'Overnight (00:00–06:00)', startTime: '00:00:00', endTime: '06:00:00' },
     { value: 'weekend', label: 'Weekend (Saturday & Sunday)', startTime: '00:00:00', endTime: '23:59:59' }
   ];
+
+  // Helper function to validate time range
+  const validateTimeRange = (startTime, endTime) => {
+    if (!startTime || !endTime) return true; // Allow empty values
+    
+    const start = new Date(`2000-01-01T${startTime}`);
+    const end = new Date(`2000-01-01T${endTime}`);
+    
+    return end > start;
+  };
+
+  // Update start time with validation
+  const handleStartTimeChange = (time) => {
+    setLocalStartTime(time);
+    setTimeError('');
+    
+    if (time && localEndTime) {
+      if (!validateTimeRange(time, localEndTime)) {
+        setTimeError('End time cannot be before start time');
+      }
+    }
+  };
+
+  // Update end time with validation
+  const handleEndTimeChange = (time) => {
+    setLocalEndTime(time);
+    setTimeError('');
+    
+    if (time && localStartTime) {
+      if (!validateTimeRange(localStartTime, time)) {
+        setTimeError('End time cannot be before start time');
+      }
+    }
+  };
+
+  // Apply time with validation
+  const handleApplyTime = () => {
+    if (localStartTime && localEndTime) {
+      if (!validateTimeRange(localStartTime, localEndTime)) {
+        setTimeError('End time cannot be before start time');
+        return; // Prevent applying invalid time range
+      }
+    }
+    
+    // Clear any existing error
+    setTimeError('');
+    
+    if (localStartTime || localEndTime) {
+      const newFilters = {
+        startTime: localStartTime ? localStartTime + ':00' : '',
+        endTime: localEndTime ? localEndTime + ':00' : '',
+        daypart: 'none',
+      };
+      
+      dispatch(setFilter(newFilters));
+      
+      const updatedFilters = { ...filters, ...newFilters };
+      if (fetchAudioSegments) {
+        fetchAudioSegments({ 
+          channelId, 
+          date: filters.date,
+          startDate: filters.startDate,
+          endDate: filters.endDate,
+          startTime: newFilters.startTime,
+          endTime: newFilters.endTime,
+          daypart: 'none',
+          searchText: filters.searchText,
+          searchIn: filters.searchIn,
+          page: 1
+        });
+      }
+    }
+  };
 
   // Helper functions for timezone-safe date handling
   const convertLocalToUTCDateString = (localDate) => {
@@ -149,6 +225,80 @@ const FilterPanel = ({
     }
   };
 
+  // Calendar navigation functions
+  const navigateMonth = (direction) => {
+    if (direction === 'prev') {
+      if (currentMonth === 0) {
+        setCurrentMonth(11);
+        setCurrentYear(currentYear - 1);
+      } else {
+        setCurrentMonth(currentMonth - 1);
+      }
+    } else {
+      if (currentMonth === 11) {
+        setCurrentMonth(0);
+        setCurrentYear(currentYear + 1);
+      } else {
+        setCurrentMonth(currentMonth + 1);
+      }
+    }
+  };
+
+  // Generate calendar days for current month/year
+  const generateCalendarDays = () => {
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    const startingDay = firstDay.getDay();
+    
+    const days = [];
+    
+    // Previous month days
+    const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
+    for (let i = startingDay - 1; i >= 0; i--) {
+      const date = new Date(currentYear, currentMonth - 1, prevMonthLastDay - i);
+      days.push({
+        date,
+        isCurrentMonth: false,
+        isDisabled: true
+      });
+    }
+    
+    // Current month days
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+      const date = new Date(currentYear, currentMonth, i);
+      days.push({
+        date,
+        isCurrentMonth: true,
+        isDisabled: false
+      });
+    }
+    
+    return days;
+  };
+
+  // Check if date is in selected range
+  const isDateInRange = (date) => {
+    if (!dateRange.start || !dateRange.end) return false;
+    
+    const currentDate = getLocalDateString(date);
+    const startDate = parseDateString(dateRange.start);
+    const endDate = parseDateString(dateRange.end);
+    const dateObj = parseDateString(currentDate);
+    
+    return dateObj >= startDate && dateObj <= endDate;
+  };
+
+  // Check if date is range start/end
+  const isRangeStart = (date) => {
+    const dateString = getLocalDateString(date);
+    return dateString === dateRange.start;
+  };
+
+  const isRangeEnd = (date) => {
+    const dateString = getLocalDateString(date);
+    return dateString === dateRange.end;
+  };
+
   // Calendar date selection - CONVERT TO UTC FOR BACKEND
   const handleDateClick = (date) => {
     const localDateString = getLocalDateString(date);
@@ -190,65 +340,6 @@ const FilterPanel = ({
     }
   };
 
-  // Generate calendar days
-  const generateCalendarDays = () => {
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    
-    const firstDay = new Date(currentYear, currentMonth, 1);
-    const lastDay = new Date(currentYear, currentMonth + 1, 0);
-    const startingDay = firstDay.getDay();
-    
-    const days = [];
-    
-    // Previous month days
-    const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
-    for (let i = startingDay - 1; i >= 0; i--) {
-      const date = new Date(currentYear, currentMonth - 1, prevMonthLastDay - i);
-      days.push({
-        date,
-        isCurrentMonth: false,
-        isDisabled: true
-      });
-    }
-    
-    // Current month days
-    for (let i = 1; i <= lastDay.getDate(); i++) {
-      const date = new Date(currentYear, currentMonth, i);
-      days.push({
-        date,
-        isCurrentMonth: true,
-        isDisabled: date > today
-      });
-    }
-    
-    return days;
-  };
-
-  // Check if date is in selected range
-  const isDateInRange = (date) => {
-    if (!dateRange.start || !dateRange.end) return false;
-    
-    const currentDate = getLocalDateString(date);
-    const startDate = parseDateString(dateRange.start);
-    const endDate = parseDateString(dateRange.end);
-    const dateObj = parseDateString(currentDate);
-    
-    return dateObj >= startDate && dateObj <= endDate;
-  };
-
-  // Check if date is range start/end
-  const isRangeStart = (date) => {
-    const dateString = getLocalDateString(date);
-    return dateString === dateRange.start;
-  };
-
-  const isRangeEnd = (date) => {
-    const dateString = getLocalDateString(date);
-    return dateString === dateRange.end;
-  };
-
   // Format date for display
   const formatDateRangeDisplay = () => {
     if (dateRange.start && dateRange.end) {
@@ -266,7 +357,7 @@ const FilterPanel = ({
   };
 
   const preventKeyboardInput = (e) => {
-    if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
     }
   };
@@ -278,7 +369,6 @@ const FilterPanel = ({
 
   // Calendar component
   const DateRangeCalendar = () => {
-    const today = new Date();
     const monthNames = ["January", "February", "March", "April", "May", "June",
       "July", "August", "September", "October", "November", "December"
     ];
@@ -286,14 +376,22 @@ const FilterPanel = ({
     return (
       <div ref={calendarRef} className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg z-50 p-4 min-w-80">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="font-semibold text-gray-700">
-            {monthNames[today.getMonth()]} {today.getFullYear()}
-          </h3>
           <button
-            onClick={() => setShowDatePicker(false)}
-            className="text-gray-500 hover:text-gray-700"
+            onClick={() => navigateMonth('prev')}
+            className="p-1 hover:bg-gray-100 rounded transition-colors"
           >
-            <X className="w-4 h-4" />
+            <ChevronUp className="w-4 h-4 transform -rotate-90" />
+          </button>
+          
+          <h3 className="font-semibold text-gray-700">
+            {monthNames[currentMonth]} {currentYear}
+          </h3>
+          
+          <button
+            onClick={() => navigateMonth('next')}
+            className="p-1 hover:bg-gray-100 rounded transition-colors"
+          >
+            <ChevronUp className="w-4 h-4 transform rotate-90" />
           </button>
         </div>
         
@@ -366,7 +464,7 @@ const FilterPanel = ({
     );
   };
 
-  // Compact version for header
+  // Compact version for header - All filters in single line
   if (isInHeader) {
     return (
       <div className="bg-white border-t border-gray-200" ref={filterRef}>
@@ -383,84 +481,66 @@ const FilterPanel = ({
 
         {isExpanded && (
           <div className="border-t border-gray-200 p-4 bg-white">
-            {/* Date Range Picker */}
-            <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Date Range</label>
-              <div className="relative">
-                <button
-                  onClick={() => setShowDatePicker(!showDatePicker)}
-                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-left flex justify-between items-center"
-                >
-                  <span className={dateRange.start ? 'text-gray-900' : 'text-gray-500'}>
-                    {formatDateRangeDisplay()}
-                  </span>
-                  <Calendar className="w-4 h-4 text-gray-400" />
-                </button>
-                {showDatePicker && <DateRangeCalendar />}
+            {/* All filters in single line */}
+            <div className="flex flex-row items-end gap-4 mb-4">
+              {/* Date Range Picker */}
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Date Range</label>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowDatePicker(!showDatePicker)}
+                    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-left flex justify-between items-center"
+                  >
+                    <span className={dateRange.start ? 'text-gray-900' : 'text-gray-500'}>
+                      {formatDateRangeDisplay()}
+                    </span>
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                  </button>
+                  {showDatePicker && <DateRangeCalendar />}
+                </div>
               </div>
-            </div>
 
-            {/* Time inputs */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div>
+              {/* Time inputs */}
+              <div className="flex-1">
                 <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
                 <input
                   type="time"
                   value={localStartTime}
-                  onChange={(e) => setLocalStartTime(e.target.value)}
+                  onChange={(e) => handleStartTimeChange(e.target.value)}
                   onKeyDown={preventKeyboardInput}
                   className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
-              <div>
+              <div className="flex-1">
                 <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
                 <input
                   type="time"
                   value={localEndTime}
-                  onChange={(e) => setLocalEndTime(e.target.value)}
+                  onChange={(e) => handleEndTimeChange(e.target.value)}
                   onKeyDown={preventKeyboardInput}
                   className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
+
+              {/* Apply Time Button */}
+              <div className="flex-1">
+                <button
+                  onClick={handleApplyTime}
+                  disabled={(!localStartTime && !localEndTime) || !!timeError}
+                  className="w-full p-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  Apply Time
+                </button>
+              </div>
             </div>
 
-            {/* Apply Time Button */}
-            <div className="mb-4">
-              <button
-                onClick={() => {
-                  if (localStartTime || localEndTime) {
-                    const newFilters = {
-                      startTime: localStartTime ? localStartTime + ':00' : '',
-                      endTime: localEndTime ? localEndTime + ':00' : '',
-                      daypart: 'none',
-                    };
-                    
-                    dispatch(setFilter(newFilters));
-                    
-                    const updatedFilters = { ...filters, ...newFilters };
-                    if (fetchAudioSegments) {
-                      fetchAudioSegments({ 
-                        channelId, 
-                        date: filters.date,
-                        startDate: filters.startDate,
-                        endDate: filters.endDate,
-                        startTime: newFilters.startTime,
-                        endTime: newFilters.endTime,
-                        daypart: 'none',
-                        searchText: filters.searchText,
-                        searchIn: filters.searchIn,
-                        page: 1
-                      });
-                    }
-                  }
-                }}
-                disabled={!localStartTime && !localEndTime}
-                className="w-full p-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                Apply Time
-              </button>
-            </div>
+            {/* Error message */}
+            {timeError && (
+              <div className="mb-3 p-2 text-xs text-red-600 bg-red-50 rounded border border-red-200">
+                {timeError}
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex justify-between items-center">
@@ -486,7 +566,7 @@ const FilterPanel = ({
     );
   }
 
-  // Original expanded version
+  // Original expanded version - All filters in single line for time section
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6" ref={filterRef}>
       <div 
@@ -532,69 +612,50 @@ const FilterPanel = ({
                   </div>
                 </div>
 
-                {/* Time inputs */}
+                {/* Time inputs in single line */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Time Range</label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
+                  <div className="flex flex-row gap-4 items-end">
+                    <div className="flex-1">
                       <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
                       <input
                         type="time"
                         value={localStartTime}
-                        onChange={(e) => setLocalStartTime(e.target.value)}
+                        onChange={(e) => handleStartTimeChange(e.target.value)}
                         onKeyDown={preventKeyboardInput}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
 
-                    <div>
+                    <div className="flex-1">
                       <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
                       <input
                         type="time"
                         value={localEndTime}
-                        onChange={(e) => setLocalEndTime(e.target.value)}
+                        onChange={(e) => handleEndTimeChange(e.target.value)}
                         onKeyDown={preventKeyboardInput}
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
 
                     {/* Apply Time Button */}
-                    <div className="flex flex-col justify-end">
+                    <div className="flex-1">
                       <button
-                        onClick={() => {
-                          if (localStartTime || localEndTime) {
-                            const newFilters = {
-                              startTime: localStartTime ? localStartTime + ':00' : '',
-                              endTime: localEndTime ? localEndTime + ':00' : '',
-                              daypart: 'none',
-                            };
-                            
-                            dispatch(setFilter(newFilters));
-                            
-                            const updatedFilters = { ...filters, ...newFilters };
-                            if (fetchAudioSegments) {
-                              fetchAudioSegments({ 
-                                channelId, 
-                                date: filters.date,
-                                startDate: filters.startDate,
-                                endDate: filters.endDate,
-                                startTime: newFilters.startTime,
-                                endTime: newFilters.endTime,
-                                daypart: 'none',
-                                searchText: filters.searchText,
-                                searchIn: filters.searchIn,
-                                page: 1
-                              });
-                            }
-                          }
-                        }}
-                        disabled={!localStartTime && !localEndTime}
+                        onClick={handleApplyTime}
+                        disabled={(!localStartTime && !localEndTime) || !!timeError}
                         className="w-full p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                       >
                         Apply Time
                       </button>
                     </div>
                   </div>
+                  
+                  {/* Error message */}
+                  {timeError && (
+                    <div className="mt-2 p-2 text-sm text-red-600 bg-red-50 rounded border border-red-200">
+                      {timeError}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
