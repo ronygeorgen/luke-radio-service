@@ -60,18 +60,6 @@ function Dashboard() {
     setIsRefreshing(isLoading);
   };
 
-  // Show full page loader only on initial load
-  // if (isInitialLoad) {
-  //   return (
-  //     <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
-  //       <div className="text-center">
-  //         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-  //         <p className="text-gray-600">Loading dashboard...</p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
-
   if (hasError) {
     const errorMessage = error || shiftAnalytics.error;
     return (
@@ -86,17 +74,17 @@ function Dashboard() {
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Hero onToggleChange={handleToggleChange} />
-      <Filters />
+      <AnalyticsTabs activeTab={activeTab} setActiveTab={setActiveTab}>
       
-      <ErrorBoundary>
-        <StatsCards isLoading={isRefreshing || isLoading} />
-      </ErrorBoundary>
       
       <TopicModal />
       
-      <AnalyticsTabs activeTab={activeTab} setActiveTab={setActiveTab}>
         {activeTab === 'main' ? (
           <>
+          <Filters />
+          <ErrorBoundary>
+            <StatsCards isLoading={isRefreshing || isLoading} />
+          </ErrorBoundary>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
               <ErrorBoundary>
                 <SentimentGauge isLoading={isRefreshing || isLoading} />
