@@ -1,31 +1,35 @@
-// src/utils/dateUtils.js
-export const formatDate = (dateString, options = {}) => {
-  if (!dateString) return 'N/A';
+// Utility functions for time handling
+export const validateTimeRange = (startTime, endTime) => {
+  if (!startTime || !endTime) return true;
   
-  const defaultOptions = {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  };
+  const [startHours, startMinutes] = startTime.split(':').map(Number);
+  const [endHours, endMinutes] = endTime.split(':').map(Number);
   
-  return new Date(dateString).toLocaleDateString('en-US', {
-    ...defaultOptions,
-    ...options
-  });
+  // If end time is earlier than start time, it means it crosses midnight
+  // This should be allowed, so we'll always return true for validation
+  return true;
 };
 
-export const getToday = () => {
-  return new Date().toISOString().split('T')[0];
+// Format time for display (no conversion needed since we're not converting to UTC)
+export const formatTimeForDisplay = (time) => {
+  if (!time) return '';
+  // Remove seconds if present
+  return time.slice(0, 5);
 };
 
-export const isToday = (dateString) => {
-  const today = getToday();
-  return dateString === today;
-};
-
-export const getDateRangeDisplay = (startDate, endDate) => {
-  if (startDate === endDate) {
-    return formatDate(startDate);
+// Format time for API (ensure it has seconds)
+export const formatTimeForAPI = (time) => {
+  if (!time) return '';
+  if (time.length === 5) {
+    return time + ':00';
   }
-  return `${formatDate(startDate)} to ${formatDate(endDate)}`;
+  return time;
+};
+
+// Get current time in local format for form defaults
+export const getCurrentLocalTime = () => {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
 };

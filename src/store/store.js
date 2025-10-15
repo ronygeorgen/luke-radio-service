@@ -12,6 +12,7 @@ import authReducer from './slices/authSlice';
 import userManagementReducer from './slices/userManagementSlice';
 import audioTrimmerReducer from './slices/audioTrimmerSlice'
 import audioManagementReducer from './slices/audioManagementSlice';
+import shiftManagementReducer from './slices/shiftManagementSlice';
 
 export const store = configureStore({
   reducer: {
@@ -26,7 +27,8 @@ export const store = configureStore({
     auth: authReducer,
     userManagement: userManagementReducer,
     audioTrimmer: audioTrimmerReducer,
-    audioManagement: audioManagementReducer
+    audioManagement: audioManagementReducer,
+    shiftManagement: shiftManagementReducer
   },
 });
 
