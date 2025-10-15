@@ -53,19 +53,19 @@ const AdminLayout = () => {
     };
 
     // Handle channel selection from modal
-const handleChannelSelect = (channel) => {
-  if (pendingNavigation) {
-    let finalPath = pendingNavigation;
-    
-    // Replace :channelId with the actual internal ID (1)
-    if (finalPath.includes(':channelId')) {
-      finalPath = finalPath.replace(':channelId', channel.id);
-    }
-    
-    navigate(finalPath);
-    setPendingNavigation(null);
-  }
-};
+    const handleChannelSelect = (channel) => {
+        if (pendingNavigation) {
+            let finalPath = pendingNavigation;
+            
+            // Replace :channelId with the actual internal ID (1)
+            if (finalPath.includes(':channelId')) {
+                finalPath = finalPath.replace(':channelId', channel.id);
+            }
+            
+            navigate(finalPath);
+            setPendingNavigation(null);
+        }
+    };
 
     // Close channel selection modal
     const handleCloseChannelSelection = () => {
@@ -97,121 +97,105 @@ const handleChannelSelect = (channel) => {
                             <p className="text-gray-600 mt-1">Manage your channels and system settings</p>
                         </div>
                         
-                        {/* Settings Dropdown */}
-                        <div className="relative" ref={dropdownRef}>
-                            <button
-                                onClick={toggleDropdown}
-                                className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                            >
-                                <Settings className="h-5 w-5" />
-                                <span>Settings</span>
-                                <ChevronDown className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                            </button>
-
-                            {/* Dropdown Menu */}
-                            {isDropdownOpen && (
-                                <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50">
-                                    {/* Dashboard Option */}
-                                    <button
-                                        onClick={() => handleNavigation('/dashboard')}
-                                        className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                                    >
-                                        <BarChart3 className="h-4 w-4 text-blue-600" />
-                                        <span className="flex-1 text-left">Dashboard</span>
-                                    </button>
-
-                                    {/* Reports Option */}
-                                    <button
-                                        onClick={() => handleNavigation('/reports')}
-                                        className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                                    >
-                                        <FileText className="h-4 w-4 text-green-600" />
-                                        <span className="flex-1 text-left">Reports</span>
-                                    </button>
-
-                                    {/* Segments Option */}
-                                    <button
-                                        onClick={() => handleNavigation('/channels/:channelId/segments')}
-                                        className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                                    >
-                                        <Music className="h-4 w-4 text-purple-600" />
-                                        <span className="flex-1 text-left">Audio Segments</span>
-                                    </button>
-
-                                    {/* Switch to Channels Option */}
-                                    <button
-                                        onClick={() => {
-                                            navigate("/user-channels");
-                                            setIsDropdownOpen(false);
-                                        }}
-                                        className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                                    >
-                                        <Layers className="h-4 w-4 text-purple-600" />
-                                        <span className="flex-1 text-left">Switch to Channels</span>
-                                    </button>
-
-                                    {/* Divider */}
-                                    <div className="border-t border-gray-200 my-1"></div>
-
-                                    {/* Create User Option */}
-                                    {user?.isAdmin && (
-                                        <button
-                                            onClick={() => {
-                                                setIsUserModalOpen(true);
-                                                setIsDropdownOpen(false);
-                                            }}
-                                            className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                                        >
-                                            <Users className="h-4 w-4 text-green-600" />
-                                            <span className="flex-1 text-left">Create User</span>
-                                        </button>
-                                    )}
-                                    
-                                    {/* Onboard Channel Option */}
-                                    {user?.isAdmin && (
-                                        <button
-                                            onClick={() => {
-                                                setIsChannelModalOpen(true);
-                                                setIsDropdownOpen(false);
-                                            }}
-                                            className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                                        >
-                                            <Plus className="h-4 w-4 text-blue-600" />
-                                            <span className="flex-1 text-left">Onboard Channel</span>
-                                        </button>
-                                    )}
-                                    
-                                    
-                                    
-                                    {/* Divider */}
-                                    <div className="border-t border-gray-200 my-1"></div>
-                                    
-                                    {/* Logout Option */}
-                                    <button
-                                        onClick={() => {
-                                            handleLogout();
-                                            setIsDropdownOpen(false);
-                                        }}
-                                        className="flex items-center space-x-3 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            className="h-4 w-4"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                            strokeWidth={2}
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 002 2h5a2 2 0 002-2V7a2 2 0 00-2-2h-5a2 2 0 00-2 2v1"
-                                            />
-                                        </svg>
-                                        <span className="flex-1 text-left">Logout</span>
-                                    </button>
-                                </div>
+                        {/* Action Buttons */}
+                        <div className="flex items-center space-x-4">
+                            {/* Create User Button */}
+                            {user?.isAdmin && (
+                                <button
+                                    onClick={() => setIsUserModalOpen(true)}
+                                    className="flex items-center space-x-2 px-4 py-2.5 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-xl font-medium transition-all duration-200 group"
+                                >
+                                    <Users className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                    <span className="text-sm">Create User</span>
+                                </button>
                             )}
+                            
+                            {/* Onboard Channel Button */}
+                            {user?.isAdmin && (
+                                <button
+                                    onClick={() => setIsChannelModalOpen(true)}
+                                    className="flex items-center space-x-2 px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl font-medium transition-all duration-200 group"
+                                >
+                                    <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                    <span className="text-sm">Onboard Channel</span>
+                                </button>
+                            )}
+
+                            {/* Settings Dropdown */}
+                            <div className="relative" ref={dropdownRef}>
+                                <button
+                                    onClick={toggleDropdown}
+                                    className="flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                >
+                                    <Settings className="h-5 w-5" />
+                                    <span>Settings</span>
+                                    <ChevronDown className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {/* Dropdown Menu */}
+                                {isDropdownOpen && (
+                                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50">
+                                        <div className="py-1">
+                                            <button
+                                                onClick={() => handleNavigation('/dashboard')}
+                                                className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
+                                            >
+                                                <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
+                                                Dashboard
+                                            </button>
+                                            <button
+                                                onClick={() => handleNavigation('/reports')}
+                                                className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
+                                            >
+                                                <FileText className="w-4 h-4 mr-3 text-gray-500" />
+                                                Reports
+                                            </button>
+                                            {/* <button
+                                                onClick={() => handleNavigation('/channels/:channelId/segments')}
+                                                className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
+                                            >
+                                                <Music className="w-4 h-4 mr-3 text-gray-500" />
+                                                Audio Segments
+                                            </button> */}
+                                            {/* <div className="border-t border-gray-200 my-1"></div> */}
+                                            <button
+                                                onClick={() => {
+                                                    navigate("/user-channels");
+                                                    setIsDropdownOpen(false);
+                                                }}
+                                                className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
+                                            >
+                                                <Layers className="w-4 h-4 mr-3 text-gray-500" />
+                                                Switch to Channels
+                                            </button>
+                                            <div className="border-t border-gray-200 my-1"></div>
+                                            <button
+                                                onClick={() => {
+                                                    handleLogout();
+                                                    setIsDropdownOpen(false);
+                                                }}
+                                                className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="w-4 h-4 mr-3"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                    strokeWidth={2}
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 002 2h5a2 2 0 002-2V7a2 2 0 00-2-2h-5a2 2 0 00-2 2v1"
+                                                    />
+                                                </svg>
+                                                Logout
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                     

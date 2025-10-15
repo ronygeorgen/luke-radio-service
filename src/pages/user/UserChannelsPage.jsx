@@ -5,7 +5,7 @@ import { fetchUserChannels, selectUserChannels, selectUserChannelsLoading, selec
 import UserChannelCard from "./UserChannelCard";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../../store/slices/authSlice";
-import { Calendar, BarChart3, FileText, Settings, Radio } from "lucide-react";
+import { Calendar, BarChart3, FileText, Settings, Radio, ChevronDown } from "lucide-react";
 import SimpleChannelSelectionModal from "./SimpleChannelSelectionModal";
 
 const UserChannelsPage = () => {
@@ -21,6 +21,7 @@ const UserChannelsPage = () => {
   // State for channel selection modal
   const [isChannelSelectionOpen, setIsChannelSelectionOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     localStorage.removeItem("channelName");
@@ -46,6 +47,7 @@ const UserChannelsPage = () => {
       setPendingNavigation(path);
       setIsChannelSelectionOpen(true);
     }
+    setIsDropdownOpen(false);
   };
 
   // Handle channel selection from modal
@@ -67,18 +69,6 @@ const UserChannelsPage = () => {
   const handleCloseChannelSelection = () => {
     setIsChannelSelectionOpen(false);
     setPendingNavigation(null);
-  };
-
-  // Format date function
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   if (loading) {
@@ -124,9 +114,6 @@ const UserChannelsPage = () => {
                   My Channels
                 </h1>
                 <p className="text-gray-600 mt-1 flex items-center text-sm">
-                  <svg className="w-4 h-4 mr-1.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
                   Channels assigned to your account
                 </p>
               </div>
@@ -134,61 +121,76 @@ const UserChannelsPage = () => {
 
             {/* Right Section - Actions */}
             <div className="flex items-center space-x-4">
-              {/* Dashboard Quick Action */}
-              <button
-                onClick={() => handleNavigation('/dashboard')}
-                className="hidden sm:flex items-center space-x-2 px-4 py-2.5 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-xl font-medium transition-all duration-200 group"
-                title="Go to Dashboard"
-              >
-                <BarChart3 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                <span className="text-sm">Dashboard</span>
-              </button>
-
-              {/* Reports Quick Action */}
-              <button
-                onClick={() => handleNavigation('/reports')}
-                className="hidden sm:flex items-center space-x-2 px-4 py-2.5 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-xl font-medium transition-all duration-200 group"
-                title="View Reports"
-              >
-                <FileText className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                <span className="text-sm">Reports</span>
-              </button>
-
-              {/* Admin Panel Button - Only show if user is admin */}
-              {user?.isAdmin && (
+              {/* Settings Dropdown */}
+              <div className="relative">
                 <button
-                  onClick={() => navigate('/admin')}
-                  className="hidden sm:flex items-center space-x-2 px-4 py-2.5 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-xl font-medium transition-all duration-200 group"
-                  title="Admin Panel"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                 >
-                  <Settings className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span className="text-sm">Admin</span>
+                  <Settings className="h-5 w-5" />
+                  <span>Settings</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
-              )}
 
-              {/* Divider */}
-              <div className="h-8 w-px bg-gray-200"></div>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/30 hover:scale-105 active:scale-95 transition-all duration-200 group"
-              >
-                <svg
-                  className="w-5 h-5 group-hover:rotate-90 transition-transform"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 002 2h5a2 2 0 002-2V7a2 2 0 00-2-2h-5a2 2 0 00-2 2v1"
-                  />
-                </svg>
-                <span className="text-sm">Logout</span>
-              </button>
+                {/* Dropdown Menu */}
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50">
+                    <div className="py-1">
+                      <button
+                        onClick={() => handleNavigation('/dashboard')}
+                        className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
+                      >
+                        <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
+                        Dashboard
+                      </button>
+                      <button
+                        onClick={() => handleNavigation('/reports')}
+                        className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
+                      >
+                        <FileText className="w-4 h-4 mr-3 text-gray-500" />
+                        Reports
+                      </button>
+                      {/* Admin Panel Button - Only show if user is admin */}
+                      {/* {user?.isAdmin && (
+                        <button
+                          onClick={() => {
+                            navigate('/admin');
+                            setIsDropdownOpen(false);
+                          }}
+                          className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
+                        >
+                          <Settings className="w-4 h-4 mr-3 text-gray-500" />
+                          Admin Panel
+                        </button>
+                      )} */}
+                      <div className="border-t border-gray-200 my-1"></div>
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          setIsDropdownOpen(false);
+                        }}
+                        className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="w-4 h-4 mr-3"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 002 2h5a2 2 0 002-2V7a2 2 0 00-2-2h-5a2 2 0 00-2 2v1"
+                          />
+                        </svg>
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -236,7 +238,7 @@ const UserChannelsPage = () => {
         isOpen={isChannelSelectionOpen}
         onClose={handleCloseChannelSelection}
         onChannelSelect={handleChannelSelect}
-        channels={userChannels} // Pass the already loaded channels
+        channels={userChannels}
         title="Select a Channel"
         description="Choose a channel to access the selected feature"
       />

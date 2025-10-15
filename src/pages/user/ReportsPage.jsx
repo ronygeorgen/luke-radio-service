@@ -28,7 +28,9 @@ import {
   Grid3x3,
   LayoutList,
   SortAsc,
-  Settings
+  Settings,
+  ChevronDown,
+  BarChart3 
 } from 'lucide-react';
 import { logout } from '../../store/slices/authSlice';
 
@@ -174,10 +176,11 @@ const ReportsPage = () => {
   <div className="relative">
     <button
       onClick={() => setMenuOpenId(menuOpenId === 'settings' ? null : 'settings')}
-      className="p-2.5 text-[#6C757D] hover:text-[#4B7DF5] hover:bg-blue-50 rounded-xl transition-all"
-      title="Settings & Navigation"
+      className="flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
     >
-      <Settings className="w-5 h-5" />
+      <Settings className="h-5 w-5" />
+      <span>Settings</span>
+      <ChevronDown className={`h-4 w-4 transition-transform ${menuOpenId === 'settings' ? 'rotate-180' : ''}`} />
     </button>
 
     {menuOpenId === 'settings' && (
@@ -186,16 +189,16 @@ const ReportsPage = () => {
           className="fixed inset-0 z-20"
           onClick={() => setMenuOpenId(null)}
         ></div>
-        <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-2xl border border-[#E9ECEF] z-30">
+        <div className="absolute right-0 mt-1 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 z-30">
           <div className="py-2">
             <button
               onClick={() => {
                 navigate('/dashboard');
                 setMenuOpenId(null);
               }}
-              className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-[#212529] hover:bg-[#F8F9FA] transition-colors"
+              className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
             >
-              <TrendingUp className="w-4 h-4 mr-3 text-[#6C757D]" />
+              <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
               Dashboard
             </button>
             <button
@@ -203,12 +206,12 @@ const ReportsPage = () => {
                 navigate('/user-channels');
                 setMenuOpenId(null);
               }}
-              className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-[#212529] hover:bg-[#F8F9FA] transition-colors"
+              className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
             >
-              <Users className="w-4 h-4 mr-3 text-[#6C757D]" />
+              <Users className="w-4 h-4 mr-3 text-gray-500" />
               My Channels
             </button>
-            <div className="border-t border-[#E9ECEF] my-1"></div>
+            <div className="border-t border-gray-200 my-1"></div>
             <button
               onClick={() => {
                 handleLogout();
@@ -216,7 +219,20 @@ const ReportsPage = () => {
               }}
               className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
             >
-              <LogOut className="w-4 h-4 mr-3" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4 mr-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 002 2h5a2 2 0 002-2V7a2 2 0 00-2-2h-5a2 2 0 00-2 2v1"
+                />
+              </svg>
               Logout
             </button>
           </div>

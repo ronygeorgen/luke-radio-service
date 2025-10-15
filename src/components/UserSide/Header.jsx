@@ -1,9 +1,9 @@
 // components/UserSide/Header.jsx
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { formatDateForDisplay } from "../../utils/formatters";
 import FilterPanel from "../../components/UserSide/FilterPanel";
 import { useNavigate } from "react-router-dom";
-import { Settings, ArrowLeft, FileText, BarChart3 } from "lucide-react";
+import { Settings, ArrowLeft, FileText, BarChart3, ChevronDown } from "lucide-react";
 import { useDispatch } from 'react-redux';
 import { logout } from "../../store/slices/authSlice";
 
@@ -36,8 +36,10 @@ const Header = ({
   setFilter 
 }) => {
   const navigate = useNavigate();
+  const reduxDispatch = useDispatch();
   const savedChannelName = localStorage.getItem("channelName");
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   // Safe formatting function
   const safeFormatDate = (dateString) => {
@@ -52,63 +54,83 @@ const Header = ({
   const unrecognizedWithoutContentCount = segments.filter(s => !s.is_recognized && !s.analysis?.summary && !s.transcription?.transcript).length;
 
   const handleLogout = () => {
-    dispatch(logout());
+    reduxDispatch(logout());
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Top Row: Settings Dropdown */}
+        {/* Top Row: Navigation and Settings */}
         <div className="flex items-center justify-between py-2">
           <a
-            href="/channels"
+            href="/user-channels"
             className="flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 transition"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
-            <span>Back</span>
+            <span>Back to Channels</span>
           </a>
 
-          <div className="relative">
+          {/* Settings Dropdown */}
+          <div className="relative" ref={dropdownRef}>
             <button
-              onClick={() => setShowDropdown(!showDropdown)}
-              className="p-2 rounded-full hover:bg-gray-100 transition"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
-              <Settings className="w-5 h-5 text-gray-600" />
+              <Settings className="h-5 w-5" />
+              <span>Settings</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
-            
-            {showDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+
+            {/* Dropdown Menu */}
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50">
                 <div className="py-1">
                   <button
                     onClick={() => {
-                      navigate("/reports");
-                      setShowDropdown(false);
+                      navigate("/dashboard");
+                      setIsDropdownOpen(false);
                     }}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
                   >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Go to Reports
+                    <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
+                    Dashboard
                   </button>
                   <button
                     onClick={() => {
-                      navigate("/dashboard");
-                      setShowDropdown(false);
+                      navigate("/reports");
+                      setIsDropdownOpen(false);
                     }}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
                   >
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    Go to Dashboard
+                    <FileText className="w-4 h-4 mr-3 text-gray-500" />
+                    Reports
                   </button>
-                </div>
-                <div className="bg-white shadow-sm border-b border-gray-200 p-3 flex justify-end">
+                  <div className="border-t border-gray-200 my-1"></div>
                   <button
-                    onClick={handleLogout}
-                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg shadow-sm transition duration-200 ease-in-out flex items-center gap-2"
+                    onClick={() => {
+                      handleLogout();
+                      setIsDropdownOpen(false);
+                    }}
+                    className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
+                      className="w-4 h-4 mr-3"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -205,7 +227,7 @@ const Header = ({
               <div className="flex flex-col justify-end">
                 <button
                   onClick={() => {
-                    handleSearch(); // This should call the handleSearch from AudioSegmentsPage
+                    handleSearch();
                   }}
                   className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 h-[34px]"
                 >
