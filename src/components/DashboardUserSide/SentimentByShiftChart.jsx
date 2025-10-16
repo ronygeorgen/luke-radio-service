@@ -15,7 +15,7 @@ export default function SentimentByShiftChart() {
   const shiftAnalytics = useSelector((state) => state.shiftAnalytics.data);
   const data = shiftAnalytics?.sentimentByShift?.map(item => ({ name: item.shift, value: Math.round(item.value) })) || [];
   return (
-    <div className="bg-white shadow-md rounded-2xl p-6">
+    <div className="bg-white shadow-md rounded-2xl p-6 w-full">
       <div className="flex items-center gap-2 mb-4">
         <TrendingUp className="w-5 h-5 text-blue-500" />
         <h2 className="text-lg font-semibold text-gray-800">
@@ -23,11 +23,11 @@ export default function SentimentByShiftChart() {
         </h2>
       </div>
 
-      <div style={{ width: "100%", height: 300 }}>
+      <div style={{ width: "100%", height: 340 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
-            margin={{ top: 20, right: 20, left: 10, bottom: 40 }}
+            margin={{ top: 20, right: 20, left: 10, bottom: 80 }}
             barCategoryGap="25%"
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -37,10 +37,9 @@ export default function SentimentByShiftChart() {
               tick={{ fontSize: 12, fill: "#555" }}
               tickLine={false}
               axisLine={{ stroke: "#ccc" }}
-              height={60}
-              tickFormatter={(value) =>
-                value.length > 12 ? value.slice(0, 12) + "..." : value
-              }
+              height={70}
+              angle={-35}
+              textAnchor="end"
             />
             <YAxis
               domain={[0, "dataMax + 10"]}
@@ -54,7 +53,10 @@ export default function SentimentByShiftChart() {
                 borderRadius: "8px",
                 color: "#fff",
               }}
-              formatter={(value, name, props) => [value, props.payload.name]}
+              labelStyle={{ color: "#fff" }}
+              itemStyle={{ color: "#fff" }}
+              labelFormatter={(label) => label}
+              formatter={(value) => [value, "Sentiment"]}
             />
             <Bar
               dataKey="value"
