@@ -48,57 +48,71 @@ const FilterPanel = ({
         reduxDispatch(fetchShifts());
       }, [reduxDispatch]);
 
+// Convert a HH:MM:SS time that is in `sourceTimezone` to user's local HH:MM (24h)
+const convertTimeFromZoneToLocal = (timeString, sourceTimezone) => {
+  try {
+    if (!timeString) return '';
+    const [hoursStr, minutesStr, secondsStr] = timeString.split(':');
+    const hours = Number(hoursStr || 0);
+    const minutes = Number(minutesStr || 0);
+    const seconds = Number(secondsStr || 0);
+
+    // Build a local Date for "today" at the provided wall clock time
+    const now = new Date();
+    const localCandidate = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      hours,
+      minutes,
+      seconds,
+      0
+    );
+
+    // Invert the timezone using the well-known Intl hack to get the instant
+    // at which the wall time equals the provided time in sourceTimezone
+    const sameWallClockInSourceZone = new Date(
+      localCandidate.toLocaleString('en-US', { timeZone: sourceTimezone })
+    );
+    const diffMs = localCandidate.getTime() - sameWallClockInSourceZone.getTime();
+    const utcInstantForSourceWallTime = new Date(localCandidate.getTime() + diffMs);
+
+    // Finally, format that instant in the user's local timezone
+    return utcInstantForSourceWallTime.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  } catch (e) {
+    return (timeString || '').substring(0, 5);
+  }
+};
+
 // Format shift time for display with timezone conversion
 const formatShiftTime = (shift) => {
-  // Get user's local timezone
-  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  
-  // If user's timezone matches shift timezone, show as-is
-  if (userTimezone === shift.timezone) {
-    return `${shift.start_time} - ${shift.end_time}`;
-  }
-  
-  // Convert to user's local timezone
   try {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Parse start time in shift's timezone
-    const startDateTime = new Date(`${today}T${shift.start_time}`);
-    const startInUserTimezone = new Date(startDateTime.toLocaleString('en-US', { timeZone: shift.timezone }));
-    const startFormatted = startInUserTimezone.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    });
-    
-    // Parse end time in shift's timezone
-    const endDateTime = new Date(`${today}T${shift.end_time}`);
-    const endInUserTimezone = new Date(endDateTime.toLocaleString('en-US', { timeZone: shift.timezone }));
-    const endFormatted = endInUserTimezone.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    });
-    
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // If user's timezone matches shift timezone, show as-is (trim seconds)
+    if (userTimezone === shift.timezone) {
+      const start = (shift.start_time || '').substring(0, 5);
+      const end = (shift.end_time || '').substring(0, 5);
+      return `${start} - ${end}`;
+    }
+
+    const startFormatted = convertTimeFromZoneToLocal(shift.start_time, shift.timezone);
+    const endFormatted = convertTimeFromZoneToLocal(shift.end_time, shift.timezone);
     return `${startFormatted} - ${endFormatted}`;
   } catch (error) {
     console.error('Error converting timezone:', error);
-    // Fallback to original times if conversion fails
-    return `${shift.start_time} - ${shift.end_time}`;
+    const start = (shift.start_time || '').substring(0, 5);
+    const end = (shift.end_time || '').substring(0, 5);
+    return `${start} - ${end}`;
   }
 };
 
 // Convert HH:MM:SS from a given timezone to user's local HH:MM
 const toLocalTimeFromTimezone = (timeString, sourceTimezone) => {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const baseLocal = new Date(`${today}T${timeString}`);
-    const asSourceTzString = baseLocal.toLocaleString('en-US', { timeZone: sourceTimezone });
-    const asLocal = new Date(asSourceTzString);
-    return asLocal.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-  } catch (e) {
-    return (timeString || '').substring(0, 5);
-  }
+  return convertTimeFromZoneToLocal(timeString, sourceTimezone);
 };
 
 // Handle shift selection - Only update filter state, don't trigger API call

@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { useDashboard } from '../../hooks/useDashboard';
 import Shimmer from './Shimmer';
 
 const SentimentChart = ({ isLoading = false }) => {
   const { sentimentData, loading } = useDashboard();
+  const chartRef = useRef(null);
   const [tooltip, setTooltip] = useState({
     x: 0,
     y: 0,
@@ -44,7 +45,7 @@ const SentimentChart = ({ isLoading = false }) => {
 
     const width = sentimentData.length * 80;
     const height = 200;
-    const padding = { top: 20, right: 10, bottom: 40, left: 60 };
+    const padding = { top: 20, right: 60, bottom: 40, left: 60 };
     
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
@@ -92,7 +93,8 @@ const SentimentChart = ({ isLoading = false }) => {
   }, [sentimentData]);
 
   const handleMouseMove = (event, point) => {
-    const rect = event.currentTarget.getBoundingClientRect();
+    const container = chartRef.current;
+    const rect = container ? container.getBoundingClientRect() : event.currentTarget.getBoundingClientRect();
     setTooltip({
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
@@ -151,7 +153,7 @@ const SentimentChart = ({ isLoading = false }) => {
         <h3 className="text-lg font-semibold text-gray-800">Sentiment Analysis Over Time</h3>
       </div>
 
-      <div className="relative h-64">
+      <div ref={chartRef} className="relative h-64">
         <svg 
           className="w-full h-full" 
           viewBox={`0 0 ${width} ${height}`}
@@ -284,10 +286,10 @@ const SentimentChart = ({ isLoading = false }) => {
         {/* Tooltip */}
         {tooltip.visible && (
           <div 
-            className="absolute pointer-events-none z-10 bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg transform -translate-x-1/2 -translate-y-full"
+            className="absolute pointer-events-none z-10 bg-gray-900 text-white px-3 py-2 rounded-lg shadow-lg"
             style={{ 
-              left: `${tooltip.x}px`, 
-              top: `${tooltip.y - 10}px`,
+              left: `${tooltip.x + 12}px`, 
+              top: `${tooltip.y + 12}px`,
               fontSize: '12px'
             }}
           >
