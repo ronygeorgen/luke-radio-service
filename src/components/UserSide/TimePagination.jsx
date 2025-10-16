@@ -19,29 +19,41 @@ const TimePagination = ({
   const pageLabels = pagesWithData.map(page => {
     const startTime = new Date(page.start_time);
     const endTime = new Date(page.end_time);
-    
-    // Format: "Oct 7, 18:30-19:30" in local time
-    const startDateStr = startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const endDateStr = endTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    
-    const startTimeStr = startTime.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+
+    // Desired format example: "Wed 1 Oct, 2025 19:00-20:00"
+    const formatDate = (date) => {
+      const weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
+      const day = date.getDate();
+      const month = date.toLocaleDateString('en-US', { month: 'short' });
+      const year = date.getFullYear();
+      return `${weekday} ${day} ${month}, ${year}`;
+    };
+
+    const startDateStr = formatDate(startTime);
+    const endDateStr = formatDate(endTime);
+
+    const startTimeStr = startTime.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: false 
+      hour12: false
     });
-    const endTimeStr = endTime.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    const endTimeStr = endTime.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: false 
+      hour12: false
     });
-    
-    let label;
-    if (startDateStr === endDateStr) {
-      label = `${startDateStr}, ${startTimeStr}-${endTimeStr}`;
-    } else {
-      label = `${startDateStr}, ${startTimeStr} - ${endDateStr}, ${endTimeStr}`;
-    }
-    
+
+    // If the start and end dates are the same (by date components), show one date
+    const sameCalendarDate = (
+      startTime.getFullYear() === endTime.getFullYear() &&
+      startTime.getMonth() === endTime.getMonth() &&
+      startTime.getDate() === endTime.getDate()
+    );
+
+    const label = sameCalendarDate
+      ? `${startDateStr} ${startTimeStr}-${endTimeStr}`
+      : `${startDateStr} ${startTimeStr} - ${endDateStr} ${endTimeStr}`;
+
     return {
       pageNumber: page.page,
       label,
