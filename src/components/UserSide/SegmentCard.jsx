@@ -64,6 +64,7 @@ const SegmentCard = ({
           currentPlayingId={currentPlayingId}
           isPlaying={isPlaying}
           handlePlayPauseAudio={handlePlayPauseAudio}
+          handleTrimClick={handleTrimClick}
         />
       )}
     </div>

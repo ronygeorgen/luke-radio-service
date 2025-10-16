@@ -3,7 +3,7 @@ import React from "react";
 import { Play, Pause } from "lucide-react";
 import TranscribeButton from "./TranscribeButton";
 
-const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseAudio }) => {
+const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseAudio, handleTrimClick }) => {
   const isMusicSegment = segment.metadata_json?.source === 'music';
   const artistNames = isMusicSegment 
     ? segment.metadata_json.artists?.map(artist => artist.name).join(', ') 
@@ -59,12 +59,12 @@ const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseA
               currentPlayingId === segment.id && isPlaying
                 ? "bg-yellow-600 hover:bg-yellow-700"
                 : "bg-green-600 hover:bg-green-700"
-            } text-white p-2 rounded-full flex items-center justify-center`}
+            } text-white p-1.5 rounded-full flex items-center justify-center`}
           >
             {currentPlayingId === segment.id && isPlaying ? (
-              <Pause className="w-5 h-5" />
+              <Pause className="w-4 h-4" />
             ) : (
-              <Play className="w-5 h-5" />
+              <Play className="w-4 h-4" />
             )}
           </button>
 
@@ -88,14 +88,24 @@ const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseA
             </span>
           </div>
 
-          <div className="text-sm text-gray-700">{segment.duration_seconds}s</div>
+          <div className="text-xs text-gray-700">{segment.duration_seconds}s</div>
         </div>
 
-        <div className="text-sm text-gray-400 italic">No content available</div>
+        <div className="flex items-center space-x-2">
+          <TranscribeButton 
+            segmentId={segment.id}
+            className="inline-flex items-center px-2.5 py-1 text-xs rounded-md bg-blue-600 hover:bg-blue-700 text-white"
+          />
+          <button
+            onClick={() => handleTrimClick(segment)}
+            className="inline-flex items-center px-2.5 py-1 text-xs rounded-md bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            Edit
+          </button>
+        </div>
       </div>
 
-      {/* Transcription Button */}
-      <TranscribeButton segmentId={segment.id} />
+      {/* actions moved inline above for compact layout */}
     </div>
   );
 };

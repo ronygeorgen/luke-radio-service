@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { transcribeAudioSegment, clearTranscriptionError, startTranscriptionPolling } from '../../store/slices/audioSegmentsSlice';
 
-const TranscribeButton = ({ segmentId }) => {
+const TranscribeButton = ({ segmentId, className }) => {
   const dispatch = useDispatch();
   
   // Use more specific selectors to avoid object reference changes
@@ -110,10 +110,10 @@ const TranscribeButton = ({ segmentId }) => {
   }
 
   return (
-    <div className="p-4">
+    <div className={className ? "" : "p-4"}>
       <button
         onClick={handleTranscribe}
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md text-sm font-medium"
+        className={className || "w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md text-sm font-medium"}
       >
         Transcribe Audio
       </button>
