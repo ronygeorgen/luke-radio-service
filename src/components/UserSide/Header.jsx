@@ -72,40 +72,41 @@ const Header = ({
   }, []);
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40">
+    <header className="bg-gradient-to-r from-white to-gray-50 shadow-lg border-b border-gray-200 fixed top-0 left-0 right-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Top Row: Navigation and Settings */}
-        <div className="flex items-center justify-between py-2">
-          <a
-            href="/user-channels"
-            className="flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 transition"
+        <div className="flex items-center justify-between py-3">
+          <button
+            onClick={() => navigate("/user-channels")}
+            className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md group"
+            aria-label="Navigate back to channels page"
           >
-            <ArrowLeft className="w-4 h-4 mr-1" />
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform duration-200" />
             <span>Back to Channels</span>
-          </a>
+          </button>
 
           {/* Settings Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              className="flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
             >
               <Settings className="h-5 w-5" />
               <span>Settings</span>
-              <ChevronDown className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50">
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50 backdrop-blur-sm">
                 <div className="py-1">
                   <button
                     onClick={() => {
                       navigate("/dashboard");
                       setIsDropdownOpen(false);
                     }}
-                    className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
+                    className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
                   >
                     <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
                     Dashboard
@@ -115,7 +116,7 @@ const Header = ({
                       navigate("/reports");
                       setIsDropdownOpen(false);
                     }}
-                    className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
+                    className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
                   >
                     <FileText className="w-4 h-4 mr-3 text-gray-500" />
                     Reports
@@ -126,7 +127,7 @@ const Header = ({
                       handleLogout();
                       setIsDropdownOpen(false);
                     }}
-                    className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                    className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors duration-200"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -151,25 +152,36 @@ const Header = ({
         </div>
 
         {/* Channel Info Row */}
-        <div className="flex items-center justify-between py-2">
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900">
+        <div className="flex items-center justify-between py-4">
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-gray-900 mb-1">
               {savedChannelName || "Channel"}
             </h1>
-            <p className="text-xs text-gray-500">
-              {safeFormatDate(filters.date)} • {formatTimeDisplay()}
-            </p>
+            <div className="flex items-center space-x-4 text-sm text-gray-600">
+              {/* <span className="flex items-center">
+                <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {safeFormatDate(filters.date)}
+              </span> */}
+              {/* <span className="flex items-center">
+                <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {formatTimeDisplay()}
+              </span> */}
+            </div>
           </div>
           
           {/* Search and Filter Bar */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-end space-x-4">
             {/* Status Filter */}
             <div className="flex flex-col">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Status</label>
               <select
                 value={filters.status || 'all'}
                 onChange={(e) => dispatch(setFilter({ status: e.target.value }))}
-                className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500"
+                className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md min-w-[120px]"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
@@ -179,11 +191,11 @@ const Header = ({
 
             {/* Recognition Filter */}
             <div className="flex flex-col">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Recognition</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Recognition</label>
               <select
                 value={filters.recognition || 'all'}
                 onChange={(e) => dispatch(setFilter({ recognition: e.target.value }))}
-                className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500"
+                className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md min-w-[140px]"
               >
                 <option value="all">All Recognition</option>
                 <option value="recognized">Recognized ({recognizedCount})</option>
@@ -198,13 +210,13 @@ const Header = ({
             </div>
 
             {/* Search Bar */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-end space-x-3">
               <div className="flex flex-col">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Search In</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Search In</label>
                 <select
                   value={localSearchIn}
                   onChange={(e) => setLocalSearchIn(e.target.value)}
-                  className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500"
+                  className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md min-w-[140px]"
                 >
                   <option value="transcription">Transcription</option>
                   <option value="general_topics">General Topics</option>
@@ -215,13 +227,13 @@ const Header = ({
                 </select>
               </div>
               <div className="flex flex-col">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Search</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Search</label>
                 <input
                   type="text"
                   value={localSearchText}
                   onChange={(e) => setLocalSearchText(e.target.value)}
-                  placeholder="Search..."
-                  className="text-sm border border-gray-300 rounded px-3 py-1 focus:ring-1 focus:ring-blue-500"
+                  placeholder="Enter search term..."
+                  className="text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 shadow-sm hover:shadow-md min-w-[200px]"
                 />
               </div>
               <div className="flex flex-col justify-end">
@@ -229,16 +241,16 @@ const Header = ({
                   onClick={() => {
                     handleSearch();
                   }}
-                  className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 h-[34px]"
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 min-w-[120px]"
                 >
-                  Search
+                  Apply Filters
                 </button>
               </div>
               {localSearchText && (
                 <div className="flex flex-col justify-end">
                   <button
                     onClick={handleClearSearch}
-                    className="bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-400 h-[34px]"
+                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
                   >
                     Clear
                   </button>
