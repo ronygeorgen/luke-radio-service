@@ -29,7 +29,7 @@ const CommonHeader = ({ title, subtitle, children, showBackButton = true }) => {
           {/* Left Section - Navigation and Title */}
           <div className="flex items-center space-x-12">
             {/* Back Button */}
-            {showBackButton && (
+            {/* {showBackButton && (
               <Link
                 to="/dashboard"
                 className="flex items-center text-sm font-medium text-[#6C757D] hover:text-[#212529] transition-colors group"
@@ -37,7 +37,7 @@ const CommonHeader = ({ title, subtitle, children, showBackButton = true }) => {
                 <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-0.5 transition-transform" />
                 Back to Dashboard
               </Link>
-            )}
+            )} */}
 
             {/* Title Section */}
             <div className="flex items-center space-x-4">
