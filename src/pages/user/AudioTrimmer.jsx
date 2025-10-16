@@ -719,7 +719,7 @@ const AudioTrimmer = () => {
               disabled={isLoading || hasError}
               className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
             >
-              {isLoading ? 'Trimming...' : 'Trim Audio'}
+              {isLoading ? 'Saving...' : 'Save Audio'}
             </button>
           </div>
         </div>
