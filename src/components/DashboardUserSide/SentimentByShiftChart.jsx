@@ -1,15 +1,25 @@
-import { TrendingUp } from 'lucide-react';
-import { useSelector } from 'react-redux';
+import React from "react";
+import { TrendingUp } from "lucide-react";
+import { useSelector } from "react-redux";
 
 const SentimentByShiftChart = () => {
   const shiftAnalytics = useSelector((state) => state.shiftAnalytics.data);
-  
+
   if (!shiftAnalytics || !shiftAnalytics.sentimentByShift) {
     return <div>Loading sentiment data...</div>;
   }
 
-  const sentimentData = shiftAnalytics.sentimentByShift;
-  const maxValue = Math.max(...sentimentData.map(d => d.value));
+  const data = Array.isArray(shiftAnalytics.sentimentByShift)
+    ? shiftAnalytics.sentimentByShift.map((d) => ({
+        shift: d.shift,
+        value: Number(d.value) || 0,
+      }))
+    : [];
+
+  if (data.length === 0) return <div>No sentiment data</div>;
+
+  const maxValue = Math.max(...data.map((d) => d.value), 1);
+  const chartHeight = 240; // px chart area height
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -18,60 +28,69 @@ const SentimentByShiftChart = () => {
         <h3 className="text-lg font-semibold text-gray-800">Sentiment by Shift</h3>
       </div>
 
-      <div className="relative h-64">
-        <svg className="w-full h-full" viewBox="0 0 400 200">
-          {/* Grid lines */}
-          <defs>
-            <pattern id="shiftGrid" width="40" height="25" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 25" fill="none" stroke="rgb(243 244 246)" strokeWidth="1"/>
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#shiftGrid)" />
+      <div className="flex gap-4">
+        {/* Y-axis labels */}
+        <div className="flex flex-col justify-between items-end pr-3" style={{ height: chartHeight }}>
+          {[maxValue, (maxValue * 3) / 4, maxValue / 2, maxValue / 4, 0].map((val, idx) => (
+            <div key={idx} className="text-xs text-gray-500">
+              {Math.round(val)}
+            </div>
+          ))}
+        </div>
 
-          {/* Y-axis labels */}
-          <text x="10" y="20" className="text-xs fill-gray-500">75</text>
-          <text x="10" y="70" className="text-xs fill-gray-500">50</text>
-          <text x="10" y="120" className="text-xs fill-gray-500">25</text>
-          <text x="10" y="170" className="text-xs fill-gray-500">0</text>
+        {/* Bars container */}
+        <div className="flex-1 relative">
+          {/* Grid lines */}
+          <div className="absolute inset-0 flex flex-col justify-between">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="border-t border-gray-100" />
+            ))}
+          </div>
 
           {/* Bars */}
-          {sentimentData.map((item, index) => {
-            const barHeight = (item.value / maxValue) * 140;
-            const barWidth = 60;
-            const x = 60 + (index * 100);
-            const y = 160 - barHeight;
+          <div
+            className="flex justify-around items-end relative z-10 h-full px-2"
+            style={{ height: chartHeight }}
+          >
+            {data.map((d, i) => {
+              const height = (d.value / maxValue) * (chartHeight - 30); // 30px reserved for top text
+              return (
+                <div key={i} className="flex flex-col items-center w-24">
+                  <div className="text-sm text-gray-700 font-medium mb-1">{d.value}</div>
 
-            return (
-              <g key={index}>
-                <rect
-                  x={x}
-                  y={y}
-                  width={barWidth}
-                  height={barHeight}
-                  fill="#1f2937"
-                  rx="4"
-                  className="hover:fill-gray-600 transition-colors duration-200"
-                />
-                <text
-                  x={x + barWidth / 2}
-                  y={y - 5}
-                  textAnchor="middle"
-                  className="text-xs fill-gray-700 font-medium"
-                >
-                  {item.value}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+                  {/* Bar itself */}
+                  <div
+                    className="w-full bg-gray-900 rounded-md transition-all duration-300"
+                    style={{
+                      height: `${height}px`,
+                      minHeight: "4px", // ensures small values still visible
+                    }}
+                    title={`${d.shift}: ${d.value}`}
+                  />
 
-        {/* X-axis labels */}
-        <div className="flex justify-center space-x-8 mt-4">
-          {sentimentData.map((item, index) => (
-            <span key={index} className="text-xs text-gray-500 transform -rotate-45 origin-center">
-              {item.shift}
-            </span>
-          ))}
+                  {/* Label with tooltip */}
+                  <div className="mt-2 w-full">
+                    <div className="group relative">
+                      <div className="text-xs text-gray-500 truncate text-center" title={d.shift}>
+                        {d.shift}
+                      </div>
+                      <div className="absolute left-1/2 -translate-x-1/2 bottom-6 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <div className="bg-gray-800 text-white text-sm px-3 py-1 rounded-md shadow-lg whitespace-nowrap">
+                          {d.shift}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* X-axis baseline (0 line) */}
+          <div
+            className="absolute left-0 right-0 border-t border-gray-300"
+            style={{ bottom: 0, height: 0 }}
+          />
         </div>
       </div>
     </div>
