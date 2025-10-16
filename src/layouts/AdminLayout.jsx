@@ -1,6 +1,6 @@
 // Updated AdminLayout.js
 import { Outlet } from 'react-router-dom';
-import { Settings, Layers, Users, Plus, UserCog, ChevronDown, Music, BarChart3, FileText } from 'lucide-react';
+import { Settings, Layers, Users, Plus, UserCog, ChevronDown, Music, BarChart3, FileText, Search, LifeBuoy } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from 'react-redux';
@@ -134,65 +134,66 @@ const AdminLayout = () => {
 
                                 {/* Dropdown Menu */}
                                 {isDropdownOpen && (
-                                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50">
-                                        <div className="py-1">
-                                            <button
-                                                onClick={() => handleNavigation('/dashboard')}
-                                                className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
-                                            >
-                                                <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
-                                                Dashboard
-                                            </button>
-                                            <button
-                                                onClick={() => handleNavigation('/reports')}
-                                                className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
-                                            >
-                                                <FileText className="w-4 h-4 mr-3 text-gray-500" />
-                                                Reports
-                                            </button>
-                                            {/* <button
-                                                onClick={() => handleNavigation('/channels/:channelId/segments')}
-                                                className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
-                                            >
-                                                <Music className="w-4 h-4 mr-3 text-gray-500" />
-                                                Audio Segments
-                                            </button> */}
-                                            {/* <div className="border-t border-gray-200 my-1"></div> */}
-                                            <button
-                                                onClick={() => {
-                                                    navigate("/user-channels");
-                                                    setIsDropdownOpen(false);
-                                                }}
-                                                className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-100 transition-colors"
-                                            >
-                                                <Layers className="w-4 h-4 mr-3 text-gray-500" />
-                                                Switch to Channels
-                                            </button>
-                                            <div className="border-t border-gray-200 my-1"></div>
-                                            <button
-                                                onClick={() => {
-                                                    handleLogout();
-                                                    setIsDropdownOpen(false);
-                                                }}
-                                                className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
-                                            >
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    className="w-4 h-4 mr-3"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                    strokeWidth={2}
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 002 2h5a2 2 0 002-2V7a2 2 0 00-2-2h-5a2 2 0 00-2 2v1"
-                                                    />
-                                                </svg>
-                                                Logout
-                                            </button>
+                                    <div className="absolute right-0 mt-2 w-[28rem] bg-white rounded-xl shadow-2xl border border-gray-200 py-3 z-50">
+                                        <div className="grid grid-cols-2 gap-2 px-2">
+                                            <div>
+                                                <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Channels</div>
+                                                <button onClick={() => handleNavigation('/user-channels')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+                                                    <Search className="w-4 h-4 mr-3 text-gray-500" />
+                                                    Search
+                                                </button>
+                                                <button onClick={() => handleNavigation('/dashboard')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+                                                    <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
+                                                    Dashboard
+                                                </button>
+                                                <button onClick={() => handleNavigation('/reports')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+                                                    <FileText className="w-4 h-4 mr-3 text-gray-500" />
+                                                    Reports
+                                                </button>
+                                                <button onClick={() => { window.open('https://forms.clickup.com/9003066468/f/8c9zt34-21136/O2BX6CH5IROJJDHYMW', '_blank', 'noopener,noreferrer'); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+                                                    <LifeBuoy className="w-4 h-4 mr-3 text-gray-500" />
+                                                    Support Ticket
+                                                </button>
+                                            </div>
+                                            <div>
+                                                <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Settings</div>
+                                                <button onClick={() => handleNavigation('/dashboard/settings')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+                                                    <Settings className="w-4 h-4 mr-3 text-gray-500" />
+                                                    Topic Settings
+                                                </button>
+                                                <button onClick={() => handleNavigation('/admin/audio')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+                                                    <Music className="w-4 h-4 mr-3 text-gray-500" />
+                                                    Audio Management
+                                                </button>
+                                                <button onClick={() => handleNavigation('/admin/settings')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+                                                    <Layers className="w-4 h-4 mr-3 text-gray-500" />
+                                                    General Settings
+                                                </button>
+                                                <button onClick={() => handleNavigation('/admin/users')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+                                                    <UserCog className="w-4 h-4 mr-3 text-gray-500" />
+                                                    User Management
+                                                </button>
+                                                <button onClick={() => handleNavigation('/admin/users')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+                                                    <Plus className="w-4 h-4 mr-3 text-gray-500" />
+                                                    Create New User
+                                                </button>
+                                                <button onClick={() => handleNavigation('/admin/channels')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+                                                    <Layers className="w-4 h-4 mr-3 text-gray-500" />
+                                                    Channel Settings
+                                                </button>
+                                                <button onClick={() => handleNavigation('/admin/channels')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+                                                    <Plus className="w-4 h-4 mr-3 text-gray-500" />
+                                                    Onboard Channel
+                                                </button>
+                                            </div>
                                         </div>
+                                        <div className="border-t border-gray-200 my-2"></div>
+                                        <button onClick={() => { handleLogout(); setIsDropdownOpen(false); }} className="mx-2 mb-1 flex items-center w-[calc(100%-1rem)] px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 002 2h5a2 2 0 002-2V7a2 2 0 00-2-2h-5a2 2 0 00-2 2v1" />
+                                            </svg>
+                                            Logout
+                                        </button>
                                     </div>
                                 )}
                             </div>

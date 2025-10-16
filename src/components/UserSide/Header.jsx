@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { formatDateForDisplay } from "../../utils/formatters";
 import FilterPanel from "../../components/UserSide/FilterPanel";
 import { useNavigate } from "react-router-dom";
-import { Settings, ArrowLeft, FileText, BarChart3, ChevronDown } from "lucide-react";
+import { Settings, ArrowLeft, FileText, BarChart3, ChevronDown, Search, Layers, UserCog, Music, Plus, LifeBuoy } from "lucide-react";
 import { useDispatch } from 'react-redux';
 import { logout } from "../../store/slices/authSlice";
 
@@ -99,53 +99,66 @@ const Header = ({
 
             {/* Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50 backdrop-blur-sm">
-                <div className="py-1">
-                  <button
-                    onClick={() => {
-                      navigate("/dashboard");
-                      setIsDropdownOpen(false);
-                    }}
-                    className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
-                  >
-                    <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
-                    Dashboard
-                  </button>
-                  <button
-                    onClick={() => {
-                      navigate("/reports");
-                      setIsDropdownOpen(false);
-                    }}
-                    className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
-                  >
-                    <FileText className="w-4 h-4 mr-3 text-gray-500" />
-                    Reports
-                  </button>
-                  <div className="border-t border-gray-200 my-1"></div>
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setIsDropdownOpen(false);
-                    }}
-                    className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors duration-200"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4 mr-3"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 002 2h5a2 2 0 002-2V7a2 2 0 00-2-2h-5a2 2 0 00-2 2v1"
-                      />
-                    </svg>
-                    Logout
-                  </button>
+              <div className="absolute right-0 mt-2 w-[28rem] bg-white rounded-xl shadow-2xl border border-gray-200 py-3 z-50 backdrop-blur-sm">
+                <div className="grid grid-cols-2 gap-2 px-2">
+                  <div>
+                    <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Channels</div>
+                    <button onClick={() => { navigate("/user-channels"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <Search className="w-4 h-4 mr-3 text-gray-500" />
+                      Search
+                    </button>
+                    <button onClick={() => { navigate("/dashboard"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
+                      Dashboard
+                    </button>
+                    <button onClick={() => { navigate("/reports"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <FileText className="w-4 h-4 mr-3 text-gray-500" />
+                      Reports
+                    </button>
+                    <button onClick={() => { window.open('https://forms.clickup.com/9003066468/f/8c9zt34-21136/O2BX6CH5IROJJDHYMW', '_blank', 'noopener,noreferrer'); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <LifeBuoy className="w-4 h-4 mr-3 text-gray-500" />
+                      Support Ticket
+                    </button>
+                  </div>
+                  <div>
+                    <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Settings</div>
+                    <button onClick={() => { navigate("/dashboard/settings"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <Settings className="w-4 h-4 mr-3 text-gray-500" />
+                      Topic Settings
+                    </button>
+                    <button onClick={() => { navigate("/admin/audio"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <Music className="w-4 h-4 mr-3 text-gray-500" />
+                      Audio Management
+                    </button>
+                    <button onClick={() => { navigate("/admin/settings"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <Layers className="w-4 h-4 mr-3 text-gray-500" />
+                      General Settings
+                    </button>
+                    <button onClick={() => { navigate("/admin/users"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <UserCog className="w-4 h-4 mr-3 text-gray-500" />
+                      User Management
+                    </button>
+                    <button onClick={() => { navigate("/admin/users"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <Plus className="w-4 h-4 mr-3 text-gray-500" />
+                      Create New User
+                    </button>
+                    <button onClick={() => { navigate("/admin/channels"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <Layers className="w-4 h-4 mr-3 text-gray-500" />
+                      Channel Settings
+                    </button>
+                    <button onClick={() => { navigate("/admin/channels"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <Plus className="w-4 h-4 mr-3 text-gray-500" />
+                      Onboard Channel
+                    </button>
+                  </div>
                 </div>
+                <div className="border-t border-gray-200 my-2"></div>
+                <button onClick={() => { handleLogout(); setIsDropdownOpen(false); }} className="mx-2 mb-1 flex items-center w-[calc(100%-1rem)] px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 002 2h5a2 2 0 002-2V7a2 2 0 00-2-2h-5a2 2 0 00-2 2v1" />
+                  </svg>
+                  Logout
+                </button>
               </div>
             )}
           </div>
