@@ -121,7 +121,8 @@ const AudioSegmentsPage = () => {
       endTime: '23:59:59',
       daypart: 'none',
       searchText: '',
-      searchIn: 'transcription'
+      searchIn: 'transcription',
+      shiftId: null 
     };
 
     dispatch(setFilter(lastFilters.current));
@@ -141,6 +142,7 @@ const AudioSegmentsPage = () => {
       startTime: '00:00:00',
       endTime: '23:59:59',
       daypart: 'none',
+      shiftId: null,
       page: 1
     }));
   }
@@ -188,12 +190,19 @@ const AudioSegmentsPage = () => {
         daypart: filtersToUse.daypart,
         searchText: filtersToUse.searchText,
         searchIn: filtersToUse.searchIn,
+        shiftId: filtersToUse.shiftId,
         page: 1
       }));
     }
   };
 
 useEffect(() => {
+  console.log('🔄 useEffect [filters] triggered - Syncing local state:');
+  console.log('  - filters.startTime:', filters.startTime);
+  console.log('  - filters.endTime:', filters.endTime);
+  console.log('  - filters.searchText:', filters.searchText);
+  console.log('  - filters.searchIn:', filters.searchIn);
+  
   // Sync local time state with Redux filters
   setLocalStartTime(filters.startTime?.substring(0, 5) || '');
   setLocalEndTime(filters.endTime?.substring(0, 5) || '');
@@ -219,6 +228,7 @@ useEffect(() => {
         daypart: filters.daypart,
         searchText: filters.searchText,
         searchIn: filters.searchIn,
+        shiftId: filters.shiftId,
         page: 1
       }));
     }
@@ -238,6 +248,7 @@ useEffect(() => {
     daypart: filters.daypart,
     searchText: filters.searchText,
     searchIn: filters.searchIn,
+    shiftId: filters.shiftId,  // Add shiftId parameter
     page: pageNumber  // Pass the page number directly
   }));
 };
@@ -266,6 +277,7 @@ useEffect(() => {
         daypart: filters.daypart,
         searchText: filters.searchText,
         searchIn: filters.searchIn,
+        shiftId: filters.shiftId,
         page: 1
       }));
       
@@ -276,74 +288,31 @@ useEffect(() => {
 }, [filters.startTime, filters.endTime, channelId]);
 
 
-// const handleSearch = () => {
-//   dispatch(setFilter({ 
-//     searchText: localSearchText,
-//     searchIn: localSearchIn
-//   }));
-  
-//   // First, fetch page 1 to get the pagination data
-//   dispatch(fetchAudioSegments({ 
-//     channelId, 
-//     date: filters.date,
-//     startDate: filters.startDate,
-//     endDate: filters.endDate,
-//     startTime: filters.startTime,
-//     endTime: filters.endTime,
-//     daypart: filters.daypart,
-//     searchText: localSearchText,
-//     searchIn: localSearchIn,
-//     page: 1
-//   })).then((action) => {
-//     if (action.payload && action.payload.pagination) {
-//       const availablePages = action.payload.pagination.available_pages || [];
-      
-//       // Find the first page that has segments in the current search
-//       // We need to check each page to see which one has the actual search results
-//       const findFirstPageWithSearchResults = async () => {
-//         for (const page of availablePages) {
-//           if (page.has_data) {
-//             try {
-//               // Fetch this specific page to check if it has segments
-//               const pageResult = await dispatch(fetchAudioSegments({
-//                 channelId,
-//                 date: filters.date,
-//                 startDate: filters.startDate,
-//                 endDate: filters.endDate,
-//                 startTime: filters.startTime,
-//                 endTime: filters.endTime,
-//                 daypart: filters.daypart,
-//                 searchText: localSearchText,
-//                 searchIn: localSearchIn,
-//                 page: page.page
-//               })).unwrap();
-              
-//               // If this page has segments with the search results, use it
-//               if (pageResult.data.segments && pageResult.data.segments.length > 0) {
-//                 console.log('Found search results on page:', page.page);
-//                 return page.page;
-//               }
-//             } catch (error) {
-//               console.error('Error checking page:', page.page, error);
-//             }
-//           }
-//         }
-//         return 1; // Fallback to page 1
-//       };
-      
-//       findFirstPageWithSearchResults().then(firstPageWithResults => {
-//         console.log('First page with search results:', firstPageWithResults);
-//         // The segments from the first page are already loaded, no need to fetch again
-//       });
-//     }
-//   });
-// };
 
 const handleSearch = () => {
+  console.log('🔍 Search button clicked - Current state:');
+  console.log('  - localSearchText:', localSearchText);
+  console.log('  - localSearchIn:', localSearchIn);
+  console.log('  - filters.startTime:', filters.startTime);
+  console.log('  - filters.endTime:', filters.endTime);
+  console.log('  - localStartTime:', localStartTime);
+  console.log('  - localEndTime:', localEndTime);
+  
+  // Use local time values if they exist, otherwise fall back to Redux filters
+  const effectiveStartTime = localStartTime ? localStartTime + ':00' : filters.startTime;
+  const effectiveEndTime = localEndTime ? localEndTime + ':00' : filters.endTime;
+  
   const newFilters = {
     searchText: localSearchText,
-    searchIn: localSearchIn
+    searchIn: localSearchIn,
+    // Preserve local time values if they exist, otherwise use Redux filters
+    startTime: effectiveStartTime,
+    endTime: effectiveEndTime,
+    shiftId: filters.shiftId,
+    daypart: filters.daypart
   };
+  
+  console.log('  - newFilters:', newFilters);
   
   dispatch(setFilter(newFilters));
   
@@ -366,6 +335,7 @@ const handleSearchWithPagination = (searchFilters) => {
       daypart: searchFilters.daypart,
       searchText: searchFilters.searchText,
       searchIn: searchFilters.searchIn,
+      shiftId: searchFilters.shiftId,
       page: 1
     })).then((action) => {
       if (action.payload && action.payload.pagination) {
@@ -401,6 +371,7 @@ const findFirstPageWithSearchResults = async (searchFilters, availablePages) => 
       daypart: searchFilters.daypart,
       searchText: searchFilters.searchText,
       searchIn: searchFilters.searchIn,
+      shiftId: searchFilters.shiftId,
       page: firstPageWithData.page
     })).unwrap();
     
@@ -423,9 +394,18 @@ const handleClearSearch = () => {
   setLocalSearchText('');
   setLocalSearchIn('transcription');
   
+  // Use local time values if they exist, otherwise fall back to Redux filters
+  const effectiveStartTime = localStartTime ? localStartTime + ':00' : filters.startTime;
+  const effectiveEndTime = localEndTime ? localEndTime + ':00' : filters.endTime;
+  
   const newFilters = {
     searchText: '',
-    searchIn: 'transcription'
+    searchIn: 'transcription',
+    // Preserve local time values if they exist, otherwise use Redux filters
+    startTime: effectiveStartTime,
+    endTime: effectiveEndTime,
+    shiftId: filters.shiftId,
+    daypart: filters.daypart
   };
   
   dispatch(setFilter(newFilters));
@@ -576,7 +556,8 @@ const handleDaypartChange = (selectedDaypart) => {
       status: 'all', 
       recognition: 'all',
       searchText: '',
-      searchIn: 'transcription'
+      searchIn: 'transcription',
+      shiftId: null
     };
     
     dispatch(setFilter(newFilters));

@@ -3,7 +3,21 @@ import { axiosInstance } from '../../services/api';
 import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 
 // audioSegmentsSlice.js - Update the fetchAudioSegments thunk
-
+export const fetchShifts = createAsyncThunk(
+  'audioSegments/fetchShifts',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get('/shift-analysis/shifts/', {
+        params: {
+          is_active: true
+        }
+      });
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  }
+);
 
 // Replace both fetchAudioSegmentsWithFilter and fetchAudioSegmentsForPage with this:
 export const fetchAudioSegments = createAsyncThunk(
@@ -18,14 +32,15 @@ export const fetchAudioSegments = createAsyncThunk(
     searchIn, 
     startDate, 
     endDate,
-    page = 1  // Add page parameter with default value
+    page = 1,
+    shiftId = null
   }, { rejectWithValue }) => {
     try {
       let startDatetime = null;
       let endDatetime = null;
       
       console.log('API Request - Received params:', {
-        channelId, date, startTime, endTime, startDate, endDate, daypart, page
+        channelId, date, startTime, endTime, startDate, endDate, daypart, page, shiftId
       });
 
       // Handle date range with specific time
@@ -89,6 +104,9 @@ export const fetchAudioSegments = createAsyncThunk(
       
       // Add page parameter to API call
       if (page) params.page = page;
+      
+      // Add shift_id parameter to API call
+      if (shiftId) params.shift_id = shiftId;
       
       console.log('API Request - Final params:', params);
       
@@ -223,6 +241,9 @@ const audioSegmentsSlice = createSlice({
     availablePages: null,
     loading: false,
     error: null,
+    shifts: [],
+    shiftsLoading: false,
+    shiftsError: null,
     pieChartData: [],
     pieChartLoading: false,
     pieChartError: null,
@@ -238,7 +259,8 @@ const audioSegmentsSlice = createSlice({
       endTime: '',
       daypart: 'none',
       searchText: '',  // NEW: search text
-      searchIn: 'transcription' // NEW: search category
+      searchIn: 'transcription', // NEW: search category
+      shiftId: null, 
     },
     transcriptionLoading: {}, // Track loading state per segment
     transcriptionErrors: {}, // Track errors per segment
@@ -292,13 +314,25 @@ const audioSegmentsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+    // Add shifts cases
+      .addCase(fetchShifts.pending, (state) => {
+        state.shiftsLoading = true;
+      })
+      .addCase(fetchShifts.fulfilled, (state, action) => {
+        state.shiftsLoading = false;
+        state.shifts = action.payload;
+      })
+      .addCase(fetchShifts.rejected, (state, action) => {
+        state.shiftsLoading = false;
+        state.shiftsError = action.payload || 'Failed to fetch shifts';
+      })
       .addCase(fetchAudioSegments.pending, (state) => {
         state.loading = true;
       })
       .addCase(fetchAudioSegments.fulfilled, (state, action) => {
         state.loading = false;
-        state.segments = action.payload.data.segments;
-        state.channelInfo = action.payload.data.channel_info;
+        state.segments = action.payload.data?.segments || [];
+        state.channelInfo = action.payload.data?.channel_info || null;
         state.pagination = action.payload.pagination;
 
         console.log('🔍 API Response - Full pagination:', action.payload.pagination);
@@ -309,21 +343,21 @@ const audioSegmentsSlice = createSlice({
           console.log('✅ Updated availablePages:', state.availablePages);
         }
         
-        const segments = action.payload.data.segments;
+        const segments = action.payload.data?.segments || [];
         const unrecognizedSegments = segments.filter(s => !s.is_recognized);
         
         state.totals = {
-          total: action.payload.data.total_segments,
-          recognized: action.payload.data.total_recognized,
-          unrecognized: action.payload.data.total_unrecognized,
+          total: action.payload.data?.total_segments || 0,
+          recognized: action.payload.data?.total_recognized || 0,
+          unrecognized: action.payload.data?.total_unrecognized || 0,
           unrecognizedWithContent: unrecognizedSegments.filter(s => 
             s.analysis?.summary || s.transcription?.transcript
           ).length,
           unrecognizedWithoutContent: unrecognizedSegments.filter(s => 
             !s.analysis?.summary && !s.transcription?.transcript
           ).length,
-          withTranscription: action.payload.data.total_with_transcription,
-          withAnalysis: action.payload.data.total_with_analysis
+          withTranscription: action.payload.data?.total_with_transcription || 0,
+          withAnalysis: action.payload.data?.total_with_analysis || 0
         };
       })
       .addCase(fetchAudioSegments.rejected, (state, action) => {

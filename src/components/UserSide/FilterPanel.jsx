@@ -1,8 +1,8 @@
 // FilterPanel.jsx - International/Timezone-safe version
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Search, Calendar, Filter, RotateCcw, X } from 'lucide-react';
-import { setFilter } from '../../store/slices/audioSegmentsSlice';
-
+import { setFilter, fetchShifts  } from '../../store/slices/audioSegmentsSlice';
+import { useDispatch, useSelector } from 'react-redux';
 const FilterPanel = ({ 
   filters, 
   dispatch, 
@@ -36,8 +36,89 @@ const FilterPanel = ({
   const [timeError, setTimeError] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [localShiftId, setLocalShiftId] = useState(filters.shiftId || '');
+  const [currentShiftId, setCurrentShiftId] = useState(filters.shiftId || '');
   const filterRef = useRef(null);
   const calendarRef = useRef(null);
+
+    const { shifts, shiftsLoading } = useSelector(state => state.audioSegments);
+    const reduxDispatch = useDispatch();
+
+      useEffect(() => {
+        reduxDispatch(fetchShifts());
+      }, [reduxDispatch]);
+
+ // Handle shift selection
+// Handle shift selection - Only update filter state, don't trigger API call
+const handleShiftChange = (shiftId) => {
+  console.log('🔄 Shift changed to:', shiftId);
+  
+  // Update both local states immediately
+  setLocalShiftId(shiftId || '');
+  setCurrentShiftId(shiftId || '');
+  
+  // Find the selected shift to get its time range
+  const selectedShift = shiftId ? shifts.find(shift => shift.id === shiftId) : null;
+  console.log('  - selectedShift:', selectedShift);
+  
+  const newFilters = {
+    shiftId: shiftId || null,
+    // Keep the current date filters
+    date: filters.date,
+    startDate: filters.startDate,
+    endDate: filters.endDate,
+    // Use shift times if shift is selected, otherwise keep current times
+    startTime: selectedShift ? selectedShift.start_time : filters.startTime,
+    endTime: selectedShift ? selectedShift.end_time : filters.endTime,
+    daypart: 'none' // Reset daypart when shift is selected
+  };
+  
+  console.log('  - newFilters:', newFilters);
+  
+  // Only update the filter state, don't trigger API call
+  dispatch(setFilter(newFilters));
+};
+
+
+// Format shift time for display with timezone conversion
+const formatShiftTime = (shift) => {
+  // Get user's local timezone
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
+  // If user's timezone matches shift timezone, show as-is
+  if (userTimezone === shift.timezone) {
+    return `${shift.start_time} - ${shift.end_time}`;
+  }
+  
+  // Convert to user's local timezone
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Parse start time in shift's timezone
+    const startDateTime = new Date(`${today}T${shift.start_time}`);
+    const startInUserTimezone = new Date(startDateTime.toLocaleString('en-US', { timeZone: shift.timezone }));
+    const startFormatted = startInUserTimezone.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+    
+    // Parse end time in shift's timezone
+    const endDateTime = new Date(`${today}T${shift.end_time}`);
+    const endInUserTimezone = new Date(endDateTime.toLocaleString('en-US', { timeZone: shift.timezone }));
+    const endFormatted = endInUserTimezone.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+    
+    return `${startFormatted} - ${endFormatted}`;
+  } catch (error) {
+    console.error('Error converting timezone:', error);
+    // Fallback to original times if conversion fails
+    return `${shift.start_time} - ${shift.end_time}`;
+  }
+};
 
   const daypartOptions = [
     { value: 'none', label: 'None', startTime: '', endTime: '' },
@@ -83,44 +164,6 @@ const FilterPanel = ({
     }
   };
 
-  // Apply time with validation
-  const handleApplyTime = () => {
-    if (localStartTime && localEndTime) {
-      if (!validateTimeRange(localStartTime, localEndTime)) {
-        setTimeError('End time cannot be before start time');
-        return; // Prevent applying invalid time range
-      }
-    }
-    
-    // Clear any existing error
-    setTimeError('');
-    
-    if (localStartTime || localEndTime) {
-      const newFilters = {
-        startTime: localStartTime ? localStartTime + ':00' : '',
-        endTime: localEndTime ? localEndTime + ':00' : '',
-        daypart: 'none',
-      };
-      
-      dispatch(setFilter(newFilters));
-      
-      const updatedFilters = { ...filters, ...newFilters };
-      if (fetchAudioSegments) {
-        fetchAudioSegments({ 
-          channelId, 
-          date: filters.date,
-          startDate: filters.startDate,
-          endDate: filters.endDate,
-          startTime: newFilters.startTime,
-          endTime: newFilters.endTime,
-          daypart: 'none',
-          searchText: filters.searchText,
-          searchIn: filters.searchIn,
-          page: 1
-        });
-      }
-    }
-  };
 
   // Helper functions for timezone-safe date handling
   const convertLocalToUTCDateString = (localDate) => {
@@ -171,6 +214,13 @@ const FilterPanel = ({
     setLocalStartTime(filters.startTime?.substring(0, 5) || '');
     setLocalEndTime(filters.endTime?.substring(0, 5) || '');
   }, [filters.startTime, filters.endTime]);
+
+  // Only sync local shift state with Redux state on initial load, not on every change
+  useEffect(() => {
+    if (!currentShiftId && filters.shiftId) {
+      setCurrentShiftId(filters.shiftId);
+    }
+  }, [filters.shiftId, currentShiftId]);
 
   // Close filter when clicking outside
   useEffect(() => {
@@ -465,7 +515,7 @@ const FilterPanel = ({
   };
 
   // Compact version for header - All filters in single line
-  if (isInHeader) {
+if (isInHeader) {
     return (
       <div className="bg-white border-t border-gray-200" ref={filterRef}>
         <div 
@@ -483,6 +533,28 @@ const FilterPanel = ({
           <div className="border-t border-gray-200 p-4 bg-white">
             {/* All filters in single line */}
             <div className="flex flex-row items-end gap-4 mb-4">
+              {/* NEW: Shifts Dropdown */}
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Shift</label>
+                <select
+                  value={currentShiftId}
+                  onChange={(e) => handleShiftChange(e.target.value || null)}
+                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
+                >
+                  <option value="">All Shifts</option>
+                  {shiftsLoading ? (
+                    <option disabled>Loading shifts...</option>
+                  ) : (
+                    shifts.map(shift => (
+                      <option key={shift.id} value={shift.id}>
+                        {shift.name} - {formatShiftTime(shift)} {shift.days_of_week ? `(${shift.days_of_week})` : ''}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+
               {/* Date Range Picker */}
               <div className="flex-1">
                 <label className="block text-xs font-medium text-gray-700 mb-1">Date Range</label>
@@ -523,16 +595,6 @@ const FilterPanel = ({
                 />
               </div>
 
-              {/* Apply Time Button */}
-              <div className="flex-1">
-                <button
-                  onClick={handleApplyTime}
-                  disabled={(!localStartTime && !localEndTime) || !!timeError}
-                  className="w-full p-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                >
-                  Apply Time
-                </button>
-              </div>
             </div>
 
             {/* Error message */}
@@ -594,6 +656,33 @@ const FilterPanel = ({
                 <h3 className="font-semibold text-gray-900">Date & Time</h3>
               </div>
 
+              {/* NEW: Shifts Dropdown */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Shift</label>
+                <div className="relative">
+                  <select
+                    value={currentShiftId}
+                    onChange={(e) => handleShiftChange(e.target.value || null)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none bg-white"
+                  >
+                    <option value="">All Shifts</option>
+                    {shiftsLoading ? (
+                      <option disabled>Loading shifts...</option>
+                    ) : (
+                      shifts.map(shift => (
+                        <option key={shift.id} value={shift.id}>
+                          {shift.name} ({formatShiftTime(shift)})
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <ChevronDown className="h-4 w-4" />
+                  </div>
+                </div>
+                
+              </div>
+
               {/* Date Range Picker */}
               <div className="space-y-4">
                 <div>
@@ -638,16 +727,6 @@ const FilterPanel = ({
                       />
                     </div>
 
-                    {/* Apply Time Button */}
-                    <div className="flex-1">
-                      <button
-                        onClick={handleApplyTime}
-                        disabled={(!localStartTime && !localEndTime) || !!timeError}
-                        className="w-full p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                      >
-                        Apply Time
-                      </button>
-                    </div>
                   </div>
                   
                   {/* Error message */}

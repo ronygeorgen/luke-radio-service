@@ -379,7 +379,8 @@ const AudioTrimmer = () => {
           date: filters.date,
           startTime: filters.startTime,
           endTime: filters.endTime,
-          daypart: filters.daypart
+          daypart: filters.daypart,
+          shiftId: filters.shiftId
         }));
         
         // Close trimmer after a short delay to show success
