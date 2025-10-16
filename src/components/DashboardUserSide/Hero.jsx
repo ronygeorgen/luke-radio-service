@@ -84,6 +84,14 @@ const Hero = ({ onToggleChange }) => {
               <p className="text-blue-100 text-lg">
                 Comprehensive insights into radio transcription data
               </p>
+              {(() => {
+                const channelName = localStorage.getItem('channelName');
+                return channelName ? (
+                  <p className="text-white/90 text-sm mt-1">
+                    Channel: <span className="font-semibold">{channelName}</span>
+                  </p>
+                ) : null;
+              })()}
             </div>
           </div>
         </div>

@@ -78,13 +78,14 @@ export const dashboardApi = {
         const minutes = String(date.getMinutes()).padStart(2, '0');
         const seconds = String(date.getSeconds()).padStart(2, '0');
 
-        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        // Use ISO-like format expected by v2 API with 'T' separator
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
       };
 
       const startDateTime = formatDateTime(startDate, false);
       const endDateTime = formatDateTime(endDate, true);
 
-      const response = await axiosInstance.get('/dashboard/shift-analytics/', {
+      const response = await axiosInstance.get('/dashboard/shift-analytics/v2/', {
         params: {
           start_datetime: startDateTime,
           end_datetime: endDateTime,

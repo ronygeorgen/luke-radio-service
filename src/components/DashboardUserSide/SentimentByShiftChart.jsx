@@ -9,14 +9,11 @@ import {
   LabelList,
 } from "recharts";
 import { TrendingUp } from "lucide-react";
-
-const data = [
-  { name: "Morning Shift (6AM-2PM)", value: 73 },
-  { name: "Afternoon Shift (2PM-10PM)", value: 77 },
-  { name: "Night Shift (10PM-6AM)", value: 76 },
-];
+import { useSelector } from 'react-redux';
 
 export default function SentimentByShiftChart() {
+  const shiftAnalytics = useSelector((state) => state.shiftAnalytics.data);
+  const data = shiftAnalytics?.sentimentByShift?.map(item => ({ name: item.shift, value: Math.round(item.value) })) || [];
   return (
     <div className="bg-white shadow-md rounded-2xl p-6">
       <div className="flex items-center gap-2 mb-4">

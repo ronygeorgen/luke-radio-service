@@ -8,28 +8,12 @@ const ShiftCards = () => {
     return <div>Loading shift data...</div>;
   }
 
-  const { morning, afternoon, night } = shiftAnalytics.shiftData;
-
-  const shifts = [
-    {
-      ...morning,
-      icon: Clock,
-      bgColor: 'bg-white',
-      borderColor: 'border-gray-200'
-    },
-    {
-      ...afternoon,
-      icon: Clock,
-      bgColor: 'bg-white',
-      borderColor: 'border-gray-200'
-    },
-    {
-      ...night,
-      icon: Clock,
-      bgColor: 'bg-white',
-      borderColor: 'border-gray-200'
-    }
-  ];
+  const shifts = Object.values(shiftAnalytics.shiftData).map((shift) => ({
+    ...shift,
+    icon: Clock,
+    bgColor: 'bg-white',
+    borderColor: 'border-gray-200'
+  }));
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

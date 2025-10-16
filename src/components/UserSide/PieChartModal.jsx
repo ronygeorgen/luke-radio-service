@@ -77,6 +77,13 @@ useEffect(() => {
       const [start, end] = item.value;
       const duration = end - start;
       const percentage = (duration / 3600) * 100;
+      const startIso = item.overlap_start || item.start_time;
+      const endIso = item.overlap_end || item.end_time;
+      const formatIsoTime = (iso) => {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      };
       
       segments.push({
         ...item,
@@ -85,7 +92,9 @@ useEffect(() => {
         color: categoryColors[item.category] || '#6B7280',
         percentage: percentage,
         startPercentage: cumulativePercentage,
-        endPercentage: cumulativePercentage + percentage
+        endPercentage: cumulativePercentage + percentage,
+        startDisplayTime: formatIsoTime(startIso),
+        endDisplayTime: formatIsoTime(endIso)
       });
       
       cumulativePercentage += percentage;
@@ -383,16 +392,24 @@ useEffect(() => {
           <div className="font-semibold mb-1 text-center">
             {hoveredSegment.displayTitle || hoveredSegment.displayName}
           </div>
-          <div className="flex items-center justify-center space-x-2 mb-1">
-            <div
-              className="w-3 h-3 rounded flex-shrink-0"
-              style={{ backgroundColor: hoveredSegment.color }}
-            />
-            <span>{hoveredSegment.formattedDuration}</span>
-          </div>
-          <div className="text-xs text-center text-gray-300">
-            {hoveredSegment.percentage}%{hoveredSegment.count && ` • ${hoveredSegment.count} segments`}
-          </div>
+          {hoveredSegment.startDisplayTime && hoveredSegment.endDisplayTime ? (
+            <>
+              <div className="flex items-center justify-center space-x-2 mb-1">
+                <div
+                  className="w-3 h-3 rounded flex-shrink-0"
+                  style={{ backgroundColor: hoveredSegment.color }}
+                />
+                <span>{hoveredSegment.formattedDuration}</span>
+              </div>
+              <div className="text-xs text-center text-gray-300">
+                {hoveredSegment.startDisplayTime} - {hoveredSegment.endDisplayTime}
+              </div>
+            </>
+          ) : (
+            <div className="text-xs text-center text-gray-300">
+              {hoveredSegment.percentage}%{hoveredSegment.count && ` • ${hoveredSegment.count} segments`}
+            </div>
+          )}
           {hoveredSegment.category && (
             <div className="text-xs text-center text-gray-400 mt-1">
               {categoryDisplayNames[hoveredSegment.category]}
