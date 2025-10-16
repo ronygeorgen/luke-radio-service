@@ -48,38 +48,6 @@ const FilterPanel = ({
         reduxDispatch(fetchShifts());
       }, [reduxDispatch]);
 
- // Handle shift selection
-// Handle shift selection - Only update filter state, don't trigger API call
-const handleShiftChange = (shiftId) => {
-  console.log('🔄 Shift changed to:', shiftId);
-  
-  // Update both local states immediately
-  setLocalShiftId(shiftId || '');
-  setCurrentShiftId(shiftId || '');
-  
-  // Find the selected shift to get its time range
-  const selectedShift = shiftId ? shifts.find(shift => shift.id === shiftId) : null;
-  console.log('  - selectedShift:', selectedShift);
-  
-  const newFilters = {
-    shiftId: shiftId || null,
-    // Keep the current date filters
-    date: filters.date,
-    startDate: filters.startDate,
-    endDate: filters.endDate,
-    // Use shift times if shift is selected, otherwise keep current times
-    startTime: selectedShift ? selectedShift.start_time : filters.startTime,
-    endTime: selectedShift ? selectedShift.end_time : filters.endTime,
-    daypart: 'none' // Reset daypart when shift is selected
-  };
-  
-  console.log('  - newFilters:', newFilters);
-  
-  // Only update the filter state, don't trigger API call
-  dispatch(setFilter(newFilters));
-};
-
-
 // Format shift time for display with timezone conversion
 const formatShiftTime = (shift) => {
   // Get user's local timezone
@@ -118,6 +86,63 @@ const formatShiftTime = (shift) => {
     // Fallback to original times if conversion fails
     return `${shift.start_time} - ${shift.end_time}`;
   }
+};
+
+// Convert HH:MM:SS from a given timezone to user's local HH:MM
+const toLocalTimeFromTimezone = (timeString, sourceTimezone) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const baseLocal = new Date(`${today}T${timeString}`);
+    const asSourceTzString = baseLocal.toLocaleString('en-US', { timeZone: sourceTimezone });
+    const asLocal = new Date(asSourceTzString);
+    return asLocal.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  } catch (e) {
+    return (timeString || '').substring(0, 5);
+  }
+};
+
+// Handle shift selection - Only update filter state, don't trigger API call
+const handleShiftChange = (shiftId) => {
+  console.log('🔄 Shift changed to:', shiftId);
+
+  // Normalize id to string for robust matching (select provides strings)
+  const normalizedId = shiftId ? String(shiftId) : '';
+
+  // Update local selected id immediately
+  setLocalShiftId(normalizedId);
+  setCurrentShiftId(normalizedId);
+
+  // Find the selected shift to get its time range (match id as string)
+  const selectedShift = normalizedId
+    ? shifts.find((shift) => String(shift.id) === normalizedId)
+    : null;
+
+  console.log('  - selectedShift:', selectedShift);
+
+  // If a shift is selected, also reflect its times in the local inputs instantly
+  if (selectedShift) {
+    const newLocalStart = toLocalTimeFromTimezone(selectedShift.start_time || '', selectedShift.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const newLocalEnd = toLocalTimeFromTimezone(selectedShift.end_time || '', selectedShift.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+    setLocalStartTime(newLocalStart);
+    setLocalEndTime(newLocalEnd);
+  }
+
+  const newFilters = {
+    shiftId: normalizedId || null,
+    // Keep the current date filters
+    date: filters.date,
+    startDate: filters.startDate,
+    endDate: filters.endDate,
+    // Use shift times (converted to local) if shift is selected, otherwise keep current times
+    startTime: selectedShift ? `${toLocalTimeFromTimezone(selectedShift.start_time || '', selectedShift.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone)}:00` : filters.startTime,
+    endTime: selectedShift ? `${toLocalTimeFromTimezone(selectedShift.end_time || '', selectedShift.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone)}:00` : filters.endTime,
+    daypart: 'none' // Reset daypart when shift is selected
+  };
+
+  console.log('  - newFilters:', newFilters);
+
+  // Only update the filter state, don't trigger API call
+  dispatch(setFilter(newFilters));
 };
 
   const daypartOptions = [
