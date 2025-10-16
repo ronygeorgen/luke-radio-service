@@ -111,6 +111,7 @@ function Dashboard() {
           </>
         ) : (
           <>
+            <Filters showPredefined={false} />
             <ErrorBoundary>
               <ShiftCards isLoading={isRefreshing || isLoading} />
             </ErrorBoundary>
