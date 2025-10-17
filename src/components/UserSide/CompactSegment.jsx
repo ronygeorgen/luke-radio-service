@@ -3,7 +3,7 @@ import React from "react";
 import { Play, Pause } from "lucide-react";
 import TranscribeButton from "./TranscribeButton";
 
-const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseAudio, handleTrimClick }) => {
+const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseAudio, handleTrimClick, handleCompactEditClick }) => {
   const isMusicSegment = segment.metadata_json?.source === 'music';
   const artistNames = isMusicSegment 
     ? segment.metadata_json.artists?.map(artist => artist.name).join(', ') 
@@ -97,7 +97,7 @@ const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseA
             className="inline-flex items-center px-2.5 py-1 text-xs rounded-md bg-blue-600 hover:bg-blue-700 text-white"
           />
           <button
-            onClick={() => handleTrimClick(segment)}
+            onClick={() => handleCompactEditClick(segment) }
             className="inline-flex items-center px-2.5 py-1 text-xs rounded-md bg-purple-600 hover:bg-purple-700 text-white"
           >
             Edit

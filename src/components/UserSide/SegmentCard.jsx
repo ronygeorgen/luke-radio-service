@@ -12,7 +12,8 @@ const SegmentCard = ({
   handlePlayPauseAudio, 
   handleSummaryClick, 
   handleTranscriptionClick,
-  handleTrimClick  
+  handleTrimClick,
+  handleCompactEditClick 
 }) => {
   const dispatch = useDispatch();
   
@@ -65,6 +66,7 @@ const SegmentCard = ({
           isPlaying={isPlaying}
           handlePlayPauseAudio={handlePlayPauseAudio}
           handleTrimClick={handleTrimClick}
+          handleCompactEditClick={handleCompactEditClick}
         />
       )}
     </div>

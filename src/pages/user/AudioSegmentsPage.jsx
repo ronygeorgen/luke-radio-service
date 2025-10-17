@@ -14,6 +14,7 @@ import { formatDateForDisplay, formatTimeDisplay } from '../../utils/formatters'
 import useTranscriptionPolling from '../../hooks/useTranscriptionPolling';
 import { openTrimmer } from '../../store/slices/audioTrimmerSlice';
 import AudioTrimmer from './AudioTrimmer';
+import CompactAudioEditor from '../../components/UserSide/CompactAudioEditor';
 import TimePagination from '../../components/UserSide/TimePagination';
 import PieChartModal from '../../components/UserSide/PieChartModal';
 import PieChartTrigger from '../../components/UserSide/PieChartTrigger';
@@ -37,11 +38,18 @@ const AudioSegmentsPage = () => {
   const [localSearchIn, setLocalSearchIn] = useState('transcription');
 
   const { isOpen: isTrimmerOpen } = useSelector((state) => state.audioTrimmer);
+  const [isCompactEditorOpen, setIsCompactEditorOpen] = useState(false);
+  const [compactEditorSegment, setCompactEditorSegment] = useState(null);
 
   const [showPieChartModal, setShowPieChartModal] = useState(false);
   
   const handleTrimClick = (segment) => {
     dispatch(openTrimmer(segment));
+  };
+
+  const handleCompactEditClick = (segment) => {
+    setCompactEditorSegment(segment);
+    setIsCompactEditorOpen(true);
   };
   
   const channelName = searchParams.get("name"); 
@@ -713,6 +721,7 @@ const handleDaypartChange = (selectedDaypart) => {
             handleSummaryClick={handleSummaryClick}
             handleTranscriptionClick={handleTranscriptionClick}
             handleTrimClick={handleTrimClick}
+            handleCompactEditClick={handleCompactEditClick}
           />
         ))}
 
@@ -750,6 +759,14 @@ const handleDaypartChange = (selectedDaypart) => {
       )}
 
       {isTrimmerOpen && <AudioTrimmer />}
+
+      {isCompactEditorOpen && (
+        <CompactAudioEditor
+          isOpen={isCompactEditorOpen}
+          onClose={() => { setIsCompactEditorOpen(false); setCompactEditorSegment(null); }}
+          segment={compactEditorSegment}
+        />
+      )}
 
       {showSummaryModal && selectedSegment && (
         <SummaryModal 
