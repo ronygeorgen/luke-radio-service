@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { X } from 'lucide-react';
 import { addChannel, updateChannel } from '../store/slices/channelSlice';
+import TimezoneSelect from 'react-timezone-select';
 
 const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
   const dispatch = useDispatch();
@@ -11,10 +12,11 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
     channelId: '',
     projectId: '',
     name: '',
+    timezone: '',
   });
 
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTimezone, setSelectedTimezone] = useState({});
 
   useEffect(() => {
     if (channelToEdit) {
@@ -22,37 +24,56 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
         id: channelToEdit.id,
         channelId: channelToEdit.channelId,
         projectId: channelToEdit.projectId,
-        name: channelToEdit.name || ''
+        name: channelToEdit.name || '',
+        timezone: channelToEdit.timezone || ''
       });
+      
+      if (channelToEdit.timezone) {
+        setSelectedTimezone({
+          value: channelToEdit.timezone,
+          label: channelToEdit.timezone
+        });
+      }
     } else {
       setFormData({
         id: '',
         channelId: '',
         projectId: '',
-        name: ''
+        name: '',
+        timezone: ''
       });
+      setSelectedTimezone({});
     }
   }, [channelToEdit]);
+
+  const handleTimezoneChange = (timezone) => {
+    setSelectedTimezone(timezone);
+    setFormData(prev => ({
+      ...prev,
+      timezone: timezone.value
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Safely handle all fields with proper fallbacks
     const channelId = String(formData.channelId || '').trim();
     const projectId = String(formData.projectId || '').trim();
-    const name = formData.name ? String(formData.name).trim() : ''; // Safely handle name
+    const name = formData.name ? String(formData.name).trim() : '';
+    const timezone = String(formData.timezone || '').trim();
     
-    if (!channelId || !projectId) {
-      alert('Please fill in Channel ID and Project ID');
+    if (!channelId || !projectId || !timezone) {
+      alert('Please fill in Channel ID, Project ID and Timezone');
       return;
     }
 
     setIsSubmitting(true);
     try {
       const payload = {
-        channelId,
-        projectId,
-        name // Will be empty string if not provided
+        channel_id: parseInt(channelId),
+        project_id: parseInt(projectId),
+        name: name,
+        timezone: timezone
       };
       
       if (formData.id) {
@@ -62,13 +83,14 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
         await dispatch(addChannel(payload));
       }
       
-      // Reset form after successful submission
       setFormData({
         id: '',
         channelId: '',
         projectId: '',
-        name: ''
+        name: '',
+        timezone: ''
       });
+      setSelectedTimezone({});
       setIsSubmitting(false);
       onClose();
     } catch (error) {
@@ -134,6 +156,7 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
               required
             />
           </div>
+
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
               Channel Name (Optional)
@@ -142,13 +165,27 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
               type="text"
               id="name"
               name="name"
-              value={formData.name || ''} // Ensure value is never undefined
-              onChange={(e) => setFormData(prev => ({
-                ...prev,
-                name: e.target.value
-              }))}
+              value={formData.name || ''}
+              onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter channel name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Timezone *
+            </label>
+            <TimezoneSelect
+              value={selectedTimezone}
+              onChange={handleTimezoneChange}
+              className="timezone-select"
+              classNames={{
+                control: (state) => 
+                  `w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${state.isFocused ? 'border-blue-500' : ''}`
+              }}
+              placeholder="Select timezone..."
+              required
             />
           </div>
 

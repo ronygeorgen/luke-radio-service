@@ -27,7 +27,8 @@ export const addChannel = createAsyncThunk(
       const response = await axiosInstance.post('/channels', {
         channel_id: parseInt(channelData.channelId, 10),
         project_id: parseInt(channelData.projectId, 10),
-        name: channelData.name || ''
+        name: channelData.name || '',
+        timezone: channelData.timezone
       });
       return response.data.channel;
     } catch (err) {
