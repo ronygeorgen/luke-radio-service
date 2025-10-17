@@ -373,14 +373,19 @@ const AudioTrimmer = () => {
       is_active: isSegmentActive
     })).then((result) => {
       if (result.meta.requestStatus === 'fulfilled') {
-        // Refresh segments list after successful trim
+        // Refresh segments list after successful trim - include all active filters
         dispatch(fetchAudioSegments({ 
           channelId: channelId,
           date: filters.date,
+          startDate: filters.startDate,
+          endDate: filters.endDate,
           startTime: filters.startTime,
           endTime: filters.endTime,
           daypart: filters.daypart,
-          shiftId: filters.shiftId
+          searchText: filters.searchText,
+          searchIn: filters.searchIn,
+          shiftId: filters.shiftId,
+          page: 1
         }));
         
         // Close trimmer after a short delay to show success
