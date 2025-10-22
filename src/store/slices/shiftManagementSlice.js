@@ -144,13 +144,14 @@ const shiftManagementSlice = createSlice({
     resetFilterForm: (state) => {
       state.filterForm = initialState.filterForm;
     },
-    addSchedule: (state) => {
-      state.filterForm.schedules.push({
+    addSchedule: (state, action) => {
+      const scheduleData = action.payload || {
         day_of_week: 'monday',
-        start_time: '',
-        end_time: '',
+        start_time: '09:00',
+        end_time: '17:00',
         notes: ''
-      });
+      };
+      state.filterForm.schedules.push(scheduleData);
     },
     updateSchedule: (state, action) => {
       const { index, field, value } = action.payload;

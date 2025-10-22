@@ -114,7 +114,28 @@ const PredefinedFilters = () => {
   };
 
   const handleAddSchedule = () => {
-    dispatch(addSchedule());
+    // Get the last schedule's day or start from monday if no schedules
+    const lastSchedule = filterForm.schedules[filterForm.schedules.length - 1];
+    let nextDay = 'monday'; // Default to monday if no schedules
+    
+    if (lastSchedule && lastSchedule.day_of_week) {
+      const currentDayIndex = dayOptions.findIndex(day => day.value === lastSchedule.day_of_week);
+      if (currentDayIndex !== -1 && currentDayIndex < dayOptions.length - 1) {
+        nextDay = dayOptions[currentDayIndex + 1].value;
+      }
+      // If it's already sunday, it will stay as sunday
+    }
+    
+    // Create new schedule with the next day and default times
+    const newSchedule = {
+      day_of_week: nextDay,
+      start_time: '09:00',
+      end_time: '17:00',
+      notes: ''
+    };
+    
+    // Pass the schedule data to the reducer
+    dispatch(addSchedule(newSchedule));
   };
 
   const handleUpdateSchedule = (index, field, value) => {
