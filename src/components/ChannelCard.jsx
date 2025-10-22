@@ -9,6 +9,16 @@ const ChannelCard = ({ channel, onEdit }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
 
+  const formatCreatedDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString();
+    } catch (error) {
+      return dateString;
+    }
+  };
+
   const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this channel?')) {
       setIsDeleting(true);
@@ -32,14 +42,19 @@ const ChannelCard = ({ channel, onEdit }) => {
           </h3>
           {channel.name && (
             <p className="text-sm text-gray-600 mb-1">
-              Channel ID: {channel.channelId}
+              <span className="font-medium">Channel ID:</span> {channel.channelId}
             </p>
           )}
           <p className="text-sm text-gray-600 mb-1">
             <span className="font-medium">Project ID:</span> {channel.projectId}
           </p>
+          {channel.timezone && (
+            <p className="text-sm text-gray-600 mb-1">
+              <span className="font-medium">Timezone:</span> {channel.timezone}
+            </p>
+          )}
           <p className="text-xs text-gray-500">
-            Created: { channel.createdAt }
+            Created: { formatCreatedDate(channel.createdAt) }
           </p>
         </div>
         <div className="flex items-center space-x-2">

@@ -47,7 +47,8 @@ export const updateChannel = createAsyncThunk(
       id: channelData.id,
       channel_id: channelData.channelId,
       project_id: channelData.projectId,
-      name: channelData.name || ''
+      name: channelData.name || '',
+      timezone: channelData.timezone
     });
     return response.data.channel;
   }
@@ -106,6 +107,7 @@ const channelSlice = createSlice({
           channelId: channel.channel_id,
           projectId: channel.project_id,
           name: channel.name,
+          timezone: channel.timezone,
           createdAt: channel.created_at,
           isActive: !channel.is_deleted
         }));
@@ -149,6 +151,7 @@ const channelSlice = createSlice({
           channelId: action.payload.channel_id,
           projectId: action.payload.project_id,
           name: action.payload.name || '',
+          timezone: action.payload.timezone,
           createdAt: action.payload.created_at,
           isActive: !action.payload.is_deleted
         });
@@ -173,6 +176,7 @@ const channelSlice = createSlice({
             channelId: action.payload.channel_id,
             projectId: action.payload.project_id,
             name: action.payload.name || '',
+            timezone: action.payload.timezone,
             createdAt: action.payload.created_at,
             isActive: !action.payload.is_deleted
           };

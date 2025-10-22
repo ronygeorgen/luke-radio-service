@@ -37,7 +37,8 @@ const ChannelOnboard = () => {
       id: channel.id,
       channelId: String(channel.channelId || ''),
       projectId: String(channel.projectId || ''),
-      name: channel.name || '' 
+      name: channel.name || '',
+      timezone: channel.timezone || ''
     });
     setIsModalOpen(true);
   };
