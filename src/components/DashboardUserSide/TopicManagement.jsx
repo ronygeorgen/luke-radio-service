@@ -98,7 +98,16 @@ const TopicManagement = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {topics.map((topic) => (
+            {[...topics]
+              .sort((a, b) => {
+                // Sort blocked topics first (is_active: false), then active topics (is_active: true)
+                if (a.is_active === b.is_active) {
+                  // If same status, sort alphabetically by topic name
+                  return a.topic_name.localeCompare(b.topic_name);
+                }
+                return a.is_active ? 1 : -1;
+              })
+              .map((topic) => (
               <tr key={topic.id}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">{topic.topic_name}</div>
@@ -118,7 +127,7 @@ const TopicManagement = () => {
                   <button
                     onClick={() => handleToggleTopic(topic)}
                     disabled={isTopicUpdating(topic.id)}
-                    className={`px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200 flex items-center space-x-2 ${
+                    className={`px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200 flex items-center justify-center space-x-2 w-24 ${
                       topic.is_active
                         ? 'bg-red-600 hover:bg-red-700'
                         : 'bg-green-600 hover:bg-green-700'
