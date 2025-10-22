@@ -19,15 +19,13 @@ const PredefinedFilters = () => {
   const channelId = useSelector((state) => state.channels.currentChannel?.id) || 
                    localStorage.getItem("channelId");
   const [editingFilter, setEditingFilter] = useState(null);
+  const [showForm, setShowForm] = useState(false);
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // Show shimmer loading only for content
   if (loading && predefinedFilters.length === 0) {
     return (
       <>
-        {/* Shimmer for filter form */}
-        <ShimmerLoading type="form" />
-        
         {/* Shimmer for filters table */}
         <div className="mt-6">
           <ShimmerLoading type="table" rows={5} />
@@ -74,15 +72,20 @@ const PredefinedFilters = () => {
     if (editingFilter) {
       dispatch(updatePredefinedFilter({ id: editingFilter.id, filterData })).then(() => {
         setEditingFilter(null);
+        setShowForm(false);
         dispatch(resetFilterForm());
       });
     } else {
-      dispatch(createPredefinedFilter(filterData));
+      dispatch(createPredefinedFilter(filterData)).then(() => {
+        setShowForm(false);
+        dispatch(resetFilterForm());
+      });
     }
   };
 
   const handleEditFilter = (filter) => {
     setEditingFilter(filter);
+    setShowForm(true);
     const schedulesWithFormattedTime = filter.schedules.map(schedule => ({
       ...schedule,
       start_time: schedule.start_time,
@@ -106,6 +109,7 @@ const PredefinedFilters = () => {
 
   const handleCancelEditFilter = () => {
     setEditingFilter(null);
+    setShowForm(false);
     dispatch(resetFilterForm());
   };
 
@@ -121,147 +125,164 @@ const PredefinedFilters = () => {
     dispatch(removeSchedule(index));
   };
 
+  const handleCreateNewFilter = () => {
+    setShowForm(true);
+    setEditingFilter(null);
+    dispatch(resetFilterForm());
+  };
+
   return (
     <>
-      {/* Filter Form */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          {editingFilter ? 'Edit Predefined Filter' : 'Create New Predefined Filter'}
-        </h2>
-        <form onSubmit={handleCreateFilter} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Filter Name
-              </label>
-              <input
-                type="text"
-                value={filterForm.name}
-                onChange={(e) => dispatch(setFilterForm({ name: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
-              </label>
-              <input
-                type="text"
-                value={filterForm.description}
-                onChange={(e) => dispatch(setFilterForm({ description: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center mt-6">
+      {/* Create New Filter Button */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Predefined Filters</h1>
+        <button
+          onClick={handleCreateNewFilter}
+          className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg text-white font-medium transition-colors duration-200"
+        >
+          Create New Predefined Filter
+        </button>
+      </div>
+
+      {/* Filter Form - Only show when creating/editing */}
+      {showForm && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            {editingFilter ? 'Edit Predefined Filter' : 'Create New Predefined Filter'}
+          </h2>
+          <form onSubmit={handleCreateFilter} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Filter Name
+                </label>
                 <input
-                  type="checkbox"
-                  checked={filterForm.is_active}
-                  onChange={(e) => dispatch(setFilterForm({ is_active: e.target.checked }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  type="text"
+                  value={filterForm.name}
+                  onChange={(e) => dispatch(setFilterForm({ name: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
                 />
-                <label className="ml-2 text-sm text-gray-700">Active</label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <input
+                  type="text"
+                  value={filterForm.description}
+                  onChange={(e) => dispatch(setFilterForm({ description: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center mt-6">
+                  <input
+                    type="checkbox"
+                    checked={filterForm.is_active}
+                    onChange={(e) => dispatch(setFilterForm({ is_active: e.target.checked }))}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label className="ml-2 text-sm text-gray-700">Active</label>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Schedules Section */}
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Schedules</h3>
-              <button
-                type="button"
-                onClick={handleAddSchedule}
-                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200"
-              >
-                Add Time Slot
-              </button>
-            </div>
+            {/* Schedules Section */}
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Schedules</h3>
+                <button
+                  type="button"
+                  onClick={handleAddSchedule}
+                  className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200"
+                >
+                  Add Time Slot
+                </button>
+              </div>
 
-            {filterForm.schedules.map((schedule, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4 mb-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Day of Week
-                    </label>
-                    <select
-                      value={schedule.day_of_week}
-                      onChange={(e) => handleUpdateSchedule(index, 'day_of_week', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              {filterForm.schedules.map((schedule, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Day of Week
+                      </label>
+                      <select
+                        value={schedule.day_of_week}
+                        onChange={(e) => handleUpdateSchedule(index, 'day_of_week', e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        {dayOptions.map(day => (
+                          <option key={day.value} value={day.value}>
+                            {day.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Start Time
+                      </label>
+                      <input
+                        type="time"
+                        value={schedule.start_time}
+                        onChange={(e) => handleUpdateSchedule(index, 'start_time', e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        End Time
+                      </label>
+                      <input
+                        type="time"
+                        value={schedule.end_time}
+                        onChange={(e) => handleUpdateSchedule(index, 'end_time', e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Notes
+                      </label>
+                      <input
+                        type="text"
+                        value={schedule.notes}
+                        onChange={(e) => handleUpdateSchedule(index, 'notes', e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end mt-4">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSchedule(index)}
+                      className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200"
                     >
-                      {dayOptions.map(day => (
-                        <option key={day.value} value={day.value}>
-                          {day.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Start Time
-                    </label>
-                    <input
-                      type="time"
-                      value={schedule.start_time}
-                      onChange={(e) => handleUpdateSchedule(index, 'start_time', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      End Time
-                    </label>
-                    <input
-                      type="time"
-                      value={schedule.end_time}
-                      onChange={(e) => handleUpdateSchedule(index, 'end_time', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Notes
-                    </label>
-                    <input
-                      type="text"
-                      value={schedule.notes}
-                      onChange={(e) => handleUpdateSchedule(index, 'notes', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+                      Remove
+                    </button>
                   </div>
                 </div>
-                <div className="flex justify-end mt-4">
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveSchedule(index)}
-                    className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200"
-                  >
-                    Remove
-                  </button>
+              ))}
+
+              {filterForm.schedules.length === 0 && (
+                <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                  <p className="text-gray-500">No time slots added. Click "Add Time Slot" to get started.</p>
                 </div>
-              </div>
-            ))}
+              )}
+            </div>
 
-            {filterForm.schedules.length === 0 && (
-              <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
-                <p className="text-gray-500">No time slots added. Click "Add Time Slot" to get started.</p>
-              </div>
-            )}
-          </div>
-
-          <div className="flex space-x-4">
-            <button
-              type="submit"
-              disabled={filterForm.schedules.length === 0}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 px-6 py-2 rounded-lg text-white font-medium transition-colors duration-200"
-            >
-              {editingFilter ? 'Update Filter' : 'Create Filter'}
-            </button>
-            {editingFilter && (
+            <div className="flex space-x-4">
+              <button
+                type="submit"
+                disabled={filterForm.schedules.length === 0}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 px-6 py-2 rounded-lg text-white font-medium transition-colors duration-200"
+              >
+                {editingFilter ? 'Update Filter' : 'Create Filter'}
+              </button>
               <button
                 type="button"
                 onClick={handleCancelEditFilter}
@@ -269,92 +290,94 @@ const PredefinedFilters = () => {
               >
                 Cancel
               </button>
-            )}
-          </div>
-        </form>
-      </div>
+            </div>
+          </form>
+        </div>
+      )}
 
-      {/* Predefined Filters Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Filter Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Channel
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Time Slots
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {predefinedFilters.map((filter) => (
-              <tr key={filter.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{filter.name}</div>
-                  <div className="text-sm text-gray-500">{filter.description}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{filter.channel_name}</div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="text-sm text-gray-900">
-                    {filter.schedule_count} time slot(s)
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1 max-h-20 overflow-y-auto">
-                    {filter.schedules.map(schedule => (
-                      <div key={schedule.id} className="mb-1">
-                        {schedule.day_of_week_display}: { schedule.start_time } - { schedule.end_time }
-                        {schedule.notes && ` (${schedule.notes})`}
-                      </div>
-                    ))}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      filter.is_active
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {filter.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <button
-                    onClick={() => handleEditFilter(filter)}
-                    className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200 mr-2"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteFilter(filter.id)}
-                    className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200"
-                  >
-                    Delete
-                  </button>
-                </td>
+      {/* Predefined Filters Table - Always show when form is not visible */}
+      {!showForm && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Filter Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Channel
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Time Slots
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        
-        {predefinedFilters.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No predefined filters found.</p>
-          </div>
-        )}
-      </div>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {predefinedFilters.map((filter) => (
+                <tr key={filter.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{filter.name}</div>
+                    <div className="text-sm text-gray-500">{filter.description}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{filter.channel_name}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">
+                      {filter.schedule_count} time slot(s)
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1 max-h-20 overflow-y-auto">
+                      {filter.schedules.map(schedule => (
+                        <div key={schedule.id} className="mb-1">
+                          {schedule.day_of_week_display}: { schedule.start_time } - { schedule.end_time }
+                          {schedule.notes && ` (${schedule.notes})`}
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        filter.is_active
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {filter.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => handleEditFilter(filter)}
+                      className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200 mr-2"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteFilter(filter.id)}
+                      className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {predefinedFilters.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No predefined filters found.</p>
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 };

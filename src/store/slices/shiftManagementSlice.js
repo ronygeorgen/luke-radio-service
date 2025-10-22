@@ -112,7 +112,10 @@ const initialState = {
     start_time: '',
     end_time: '',
     description: '',
-    is_active: true
+    is_active: true,
+    days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+    flag_seconds: 300,
+    channel: ''
   },
   filterForm: {
     name: '',
