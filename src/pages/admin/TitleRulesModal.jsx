@@ -235,7 +235,7 @@ const TitleRulesModal = ({ isOpen, onClose, category }) => {
                         <p className="text-sm text-gray-600">{rule.notes}</p>
                       )}
                       <p className="text-xs text-gray-500">
-                        Created: {new Date(rule.created_at).toLocaleString()}
+                        Created: { rule.created_at }
                       </p>
                     </div>
                     <button

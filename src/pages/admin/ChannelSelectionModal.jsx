@@ -111,7 +111,7 @@ const ChannelSelectionModal = ({
                       <p className="text-xs text-gray-500 mt-1">Channel ID: {channel.channelId}</p>
                       {channel.assignedAt && (
                         <p className="text-xs text-gray-500 mt-1">
-                          Assigned: {new Date(channel.assignedAt).toLocaleDateString()}
+                          Assigned: { channel.assignedAt }
                         </p>
                       )}
                     </div>

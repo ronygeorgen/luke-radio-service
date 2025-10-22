@@ -569,10 +569,7 @@ const ReportsPage = () => {
                       <div className="flex items-center text-[#6C757D]">
                         <Calendar className="w-4 h-4 mr-1.5 text-[#6C757D]" />
                         <span className="text-xs">
-                          {new Date(folder.updated_at).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric'
-                          })}
+                          {folder.updated_at.split('T')[0]}
                         </span>
                       </div>
                     </div>
@@ -672,11 +669,7 @@ const ReportsPage = () => {
                           <div className="flex items-center text-[#6C757D]">
                             <Calendar className="w-4 h-4 mr-2 text-[#6C757D]" />
                             <span>
-                              {new Date(folder.updated_at).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric'
-                              })}
+                              {folder.updated_at.split('T')[0]}
                             </span>
                           </div>
                         </div>

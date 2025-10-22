@@ -48,116 +48,49 @@ const FilterPanel = ({
         reduxDispatch(fetchShifts());
       }, [reduxDispatch]);
 
-// Convert a HH:MM:SS time that is in `sourceTimezone` to user's local HH:MM (24h)
-const convertTimeFromZoneToLocal = (timeString, sourceTimezone) => {
-  try {
-    if (!timeString) return '';
-    const [hoursStr, minutesStr, secondsStr] = timeString.split(':');
-    const hours = Number(hoursStr || 0);
-    const minutes = Number(minutesStr || 0);
-    const seconds = Number(secondsStr || 0);
 
-    // Build a local Date for "today" at the provided wall clock time
-    const now = new Date();
-    const localCandidate = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      hours,
-      minutes,
-      seconds,
-      0
-    );
-
-    // Invert the timezone using the well-known Intl hack to get the instant
-    // at which the wall time equals the provided time in sourceTimezone
-    const sameWallClockInSourceZone = new Date(
-      localCandidate.toLocaleString('en-US', { timeZone: sourceTimezone })
-    );
-    const diffMs = localCandidate.getTime() - sameWallClockInSourceZone.getTime();
-    const utcInstantForSourceWallTime = new Date(localCandidate.getTime() + diffMs);
-
-    // Finally, format that instant in the user's local timezone
-    return utcInstantForSourceWallTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-  } catch (e) {
-    return (timeString || '').substring(0, 5);
-  }
-};
-
-// Format shift time for display with timezone conversion
+      // Simple shift time display - show raw times without conversion
 const formatShiftTime = (shift) => {
-  try {
-    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    // If user's timezone matches shift timezone, show as-is (trim seconds)
-    if (userTimezone === shift.timezone) {
-      const start = (shift.start_time || '').substring(0, 5);
-      const end = (shift.end_time || '').substring(0, 5);
-      return `${start} - ${end}`;
-    }
-
-    const startFormatted = convertTimeFromZoneToLocal(shift.start_time, shift.timezone);
-    const endFormatted = convertTimeFromZoneToLocal(shift.end_time, shift.timezone);
-    return `${startFormatted} - ${endFormatted}`;
-  } catch (error) {
-    console.error('Error converting timezone:', error);
-    const start = (shift.start_time || '').substring(0, 5);
-    const end = (shift.end_time || '').substring(0, 5);
-    return `${start} - ${end}`;
-  }
+  const start = (shift.start_time || '').substring(0, 5); // "HH:MM"
+  const end = (shift.end_time || '').substring(0, 5);     // "HH:MM"
+  return `${start} - ${end}`;
 };
 
-// Convert HH:MM:SS from a given timezone to user's local HH:MM
-const toLocalTimeFromTimezone = (timeString, sourceTimezone) => {
-  return convertTimeFromZoneToLocal(timeString, sourceTimezone);
-};
 
-// Handle shift selection - Only update filter state, don't trigger API call
+// Update handleShiftChange to use raw times
 const handleShiftChange = (shiftId) => {
   console.log('🔄 Shift changed to:', shiftId);
-
-  // Normalize id to string for robust matching (select provides strings)
   const normalizedId = shiftId ? String(shiftId) : '';
-
-  // Update local selected id immediately
   setLocalShiftId(normalizedId);
   setCurrentShiftId(normalizedId);
 
-  // Find the selected shift to get its time range (match id as string)
   const selectedShift = normalizedId
     ? shifts.find((shift) => String(shift.id) === normalizedId)
     : null;
 
-  console.log('  - selectedShift:', selectedShift);
-
-  // If a shift is selected, also reflect its times in the local inputs instantly
+  // Use raw times without conversion
   if (selectedShift) {
-    const newLocalStart = toLocalTimeFromTimezone(selectedShift.start_time || '', selectedShift.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
-    const newLocalEnd = toLocalTimeFromTimezone(selectedShift.end_time || '', selectedShift.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const newLocalStart = (selectedShift.start_time || '').substring(0, 5);
+    const newLocalEnd = (selectedShift.end_time || '').substring(0, 5);
     setLocalStartTime(newLocalStart);
     setLocalEndTime(newLocalEnd);
   }
 
   const newFilters = {
     shiftId: normalizedId || null,
-    // Keep the current date filters
     date: filters.date,
     startDate: filters.startDate,
     endDate: filters.endDate,
-    // Use shift times (converted to local) if shift is selected, otherwise keep current times
-    startTime: selectedShift ? `${toLocalTimeFromTimezone(selectedShift.start_time || '', selectedShift.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone)}:00` : filters.startTime,
-    endTime: selectedShift ? `${toLocalTimeFromTimezone(selectedShift.end_time || '', selectedShift.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone)}:00` : filters.endTime,
-    daypart: 'none' // Reset daypart when shift is selected
+    // Use raw shift times without conversion
+    startTime: selectedShift ? selectedShift.start_time : filters.startTime,
+    endTime: selectedShift ? selectedShift.end_time : filters.endTime,
+    daypart: 'none'
   };
 
-  console.log('  - newFilters:', newFilters);
-
-  // Only update the filter state, don't trigger API call
   dispatch(setFilter(newFilters));
 };
+
+
 
   const daypartOptions = [
     { value: 'none', label: 'None', startTime: '', endTime: '' },
@@ -586,7 +519,7 @@ if (isInHeader) {
                   ) : (
                     shifts.map(shift => (
                       <option key={shift.id} value={shift.id}>
-                        {shift.name} - {formatShiftTime(shift)} {shift.days_of_week ? `(${shift.days_of_week})` : ''}
+                        {shift.name} - {(shift.start_time || '').substring(0, 5)} - {(shift.end_time || '').substring(0, 5)} {shift.days_of_week ? `(${shift.days_of_week})` : ''}
                       </option>
                     ))
                   )}

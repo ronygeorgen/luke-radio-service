@@ -210,16 +210,14 @@ const ReportDetailPage = () => {
     return insightsBySegment[savedSegmentId] || [];
   };
 
-  const formatDateTime = (dateString) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
+const formatDateTime = (backendTime) => {
+  try {
+    // Show raw backend timestamp without conversion
+    return backendTime; // Shows full timestamp like "2025-10-21T18:30:00.000Z"
+  } catch (e) {
+    return 'Invalid time';
+  }
+};
 
   const getSentimentLabel = (sentiment) => {
     if (!sentiment) return 'N/A';

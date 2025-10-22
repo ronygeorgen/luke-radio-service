@@ -42,6 +42,29 @@ const FullSegment = ({
     setShowCreateModal(false);
   };
 
+
+  const formatDateTime = (dateTimeString) => {
+  if (!dateTimeString) return 'N/A';
+  
+  try {
+    const date = new Date(dateTimeString);
+    
+    // Format: October 22, 2025 at 5:52:04 AM GMT+11:00
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      // timeZoneName: 'long'
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return dateTimeString; // Return original if parsing fails
+  }
+};
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-4">
@@ -97,11 +120,11 @@ const FullSegment = ({
             <div className="space-y-1">
               <p className="text-sm text-gray-600">
                 <span className="font-medium text-gray-800">Start:</span>{" "}
-                {new Date(segment.start_time).toLocaleString()}
+                {formatDateTime(segment.start_time)}
               </p>
               <p className="text-sm text-gray-600">
                 <span className="font-medium text-gray-800">End:</span>{" "}
-                {new Date(segment.end_time).toLocaleString()}
+                {formatDateTime(segment.end_time)}
               </p>
             </div>
           </div>

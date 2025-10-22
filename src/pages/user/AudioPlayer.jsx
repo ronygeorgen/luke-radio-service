@@ -20,15 +20,27 @@ const AudioPlayer = ({ segment, onClose }) => {
   
   const fullSrc = `${import.meta.env.VITE_API_URL}/${segment.file_path}`;
 
-  // Format the time display for the header
-  const formatHeaderTime = (startTime) => {
-    try {
-      const date = new Date(startTime);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch (e) {
-      return 'Invalid time';
-    }
-  };
+  const formatDateTime = (dateTimeString) => {
+  if (!dateTimeString) return 'N/A';
+  
+  try {
+    const date = new Date(dateTimeString);
+    
+    // Format: October 22, 2025 at 5:52:04 AM GMT+11:00
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      // timeZoneName: 'long'
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return dateTimeString; // Return original if parsing fails
+  }
+};
 
   // Preload the entire audio file to enable seeking
   const enableSeekingWorkaround = async () => {
@@ -343,8 +355,8 @@ const AudioPlayer = ({ segment, onClose }) => {
               )}
               <p className="text-sm text-blue-100">
                 Duration: {formatTime(segment.duration_seconds)} • 
-                Start: {formatHeaderTime(segment.start_time)} • 
-                End: {formatHeaderTime(segment.end_time)}
+                Start: {formatDateTime(segment.start_time)} • 
+                End: {formatDateTime(segment.end_time)}
               </p>
 
             </h3>

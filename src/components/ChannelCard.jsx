@@ -39,7 +39,7 @@ const ChannelCard = ({ channel, onEdit }) => {
             <span className="font-medium">Project ID:</span> {channel.projectId}
           </p>
           <p className="text-xs text-gray-500">
-            Created: {new Date(channel.createdAt).toLocaleDateString()}
+            Created: { channel.createdAt }
           </p>
         </div>
         <div className="flex items-center space-x-2">

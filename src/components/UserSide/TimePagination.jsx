@@ -7,59 +7,49 @@ const TimePagination = ({
   onPageChange,
   availablePages = []
 }) => {
-  console.log('🎯 TimePagination - currentPage:', currentPage);
-  console.log('🎯 TimePagination - totalPages:', totalPages);
-  console.log('🎯 TimePagination - availablePages:', availablePages);
+
+  const formatDateTime = (dateTimeString) => {
+  if (!dateTimeString) return 'N/A';
+  
+  try {
+    const date = new Date(dateTimeString);
+    
+    // Format: Wed 1 Oct, 2025 19:00
+    return date.toLocaleString('en-US', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false // Use 24-hour format
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return dateTimeString;
+  }
+};
 
   // Filter out pages without data and create page labels
   const pagesWithData = availablePages.filter(page => page.has_data);
   console.log('🎯 Pages with data:', pagesWithData);
 
   // Create page labels with date and time
-  const pageLabels = pagesWithData.map(page => {
-    const startTime = new Date(page.start_time);
-    const endTime = new Date(page.end_time);
+  // Create page labels with raw backend data
+const pageLabels = pagesWithData.map(page => {
+  // Show raw backend timestamps without any conversion
+  const startTime = formatDateTime(page.start_time); 
+  const endTime = formatDateTime(page.end_time);
 
-    // Desired format example: "Wed 1 Oct, 2025 19:00-20:00"
-    const formatDate = (date) => {
-      const weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
-      const day = date.getDate();
-      const month = date.toLocaleDateString('en-US', { month: 'short' });
-      const year = date.getFullYear();
-      return `${weekday} ${day} ${month}, ${year}`;
-    };
+  // Simply show the raw timestamps
+  const label = `${startTime} - ${endTime}`;
 
-    const startDateStr = formatDate(startTime);
-    const endDateStr = formatDate(endTime);
-
-    const startTimeStr = startTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-    const endTimeStr = endTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-
-    // If the start and end dates are the same (by date components), show one date
-    const sameCalendarDate = (
-      startTime.getFullYear() === endTime.getFullYear() &&
-      startTime.getMonth() === endTime.getMonth() &&
-      startTime.getDate() === endTime.getDate()
-    );
-
-    const label = sameCalendarDate
-      ? `${startDateStr} ${startTimeStr}-${endTimeStr}`
-      : `${startDateStr} ${startTimeStr} - ${endDateStr} ${endTimeStr}`;
-
-    return {
-      pageNumber: page.page,
-      label,
-      segmentCount: page.segment_count
-    };
-  });
+  return {
+    pageNumber: page.page,
+    label,
+    segmentCount: page.segment_count
+  };
+});
 
   console.log('🎯 Generated page labels:', pageLabels);
 
@@ -133,7 +123,7 @@ const TimePagination = ({
       </button>
 
       {/* Page buttons */}
-      <div className="flex items-center justify-center space-x-1 flex-1 overflow-x-auto">
+      <div className="flex items-center space-x-1 flex-1 overflow-x-auto">
         {visiblePages.map((pageIndex, index) => {
           if (pageIndex === 'ellipsis-start' || pageIndex === 'ellipsis-end') {
             return (

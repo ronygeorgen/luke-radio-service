@@ -9,6 +9,29 @@ const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseA
     ? segment.metadata_json.artists?.map(artist => artist.name).join(', ') 
     : null;
 
+
+  const formatDateTime = (dateTimeString) => {
+    if (!dateTimeString) return 'N/A';
+    
+    try {
+      const date = new Date(dateTimeString);
+      
+      // Format: October 22, 2025 at 5:52:04 AM GMT+11:00
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        // timeZoneName: 'long'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateTimeString; // Return original if parsing fails
+    }
+  };
+
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-2">
@@ -71,21 +94,21 @@ const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseA
           <div className="flex flex-col">
             <span className="text-xs font-medium text-gray-500">Start Time</span>
             <span className="text-sm text-gray-900">
-              {new Date(segment.start_time).toLocaleDateString()}
+              {formatDateTime(segment.start_time)}
             </span>
-            <span className="text-xs text-gray-500">
-              {new Date(segment.start_time).toLocaleTimeString()}
-            </span>
+            {/* <span className="text-xs text-gray-500">
+              {new Date(segment.start_time).toUTCString()} 
+            </span> */}
           </div>
 
           <div className="flex flex-col">
             <span className="text-xs font-medium text-gray-500">End Time</span>
             <span className="text-sm text-gray-900">
-              {new Date(segment.end_time).toLocaleDateString()}
+              {formatDateTime(segment.end_time)}
             </span>
-            <span className="text-xs text-gray-500">
-              {new Date(segment.end_time).toLocaleTimeString()}
-            </span>
+            {/* <span className="text-xs text-gray-500">
+              {new Date(segment.end_time).toUTCString()} 
+            </span> */}
           </div>
 
           <div className="text-xs text-gray-700">{segment.duration_seconds}s</div>

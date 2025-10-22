@@ -39,15 +39,15 @@ const ReportAudioPlayer = ({ segment, onClose }) => {
   };
 
   // Format header time
-  const formatHeaderTime = (timeString) => {
-    try {
-      if (!timeString) return 'Invalid time';
-      const date = new Date(timeString);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch (e) {
-      return 'Invalid time';
-    }
-  };
+const formatHeaderTime = (backendTime) => {
+  try {
+    if (!backendTime) return 'Invalid time';
+    // Show raw backend time without conversion
+    return backendTime; // Shows full timestamp like "2025-10-21T18:30:00.000Z"
+  } catch (e) {
+    return 'Invalid time';
+  }
+};
 
   // Preload the entire audio file to enable seeking
   const enableSeekingWorkaround = async () => {

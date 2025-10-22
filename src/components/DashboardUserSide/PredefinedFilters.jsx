@@ -85,8 +85,8 @@ const PredefinedFilters = () => {
     setEditingFilter(filter);
     const schedulesWithFormattedTime = filter.schedules.map(schedule => ({
       ...schedule,
-      start_time: formatTimeForDisplay(schedule.start_time),
-      end_time: formatTimeForDisplay(schedule.end_time)
+      start_time: schedule.start_time,
+      end_time: schedule.end_time
     }));
     
     dispatch(setFilterForm({
@@ -313,7 +313,7 @@ const PredefinedFilters = () => {
                   <div className="text-xs text-gray-500 mt-1 max-h-20 overflow-y-auto">
                     {filter.schedules.map(schedule => (
                       <div key={schedule.id} className="mb-1">
-                        {schedule.day_of_week_display}: {formatTimeForDisplay(schedule.start_time)} - {formatTimeForDisplay(schedule.end_time)}
+                        {schedule.day_of_week_display}: { schedule.start_time } - { schedule.end_time }
                         {schedule.notes && ` (${schedule.notes})`}
                       </div>
                     ))}
