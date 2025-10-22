@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateTopicStatus, createTopic, updateTopicLocally } from '../../store/slices/dashboardSettingsSlice';
-import { Ban, CheckCircle } from 'lucide-react';
+import { updateTopicStatus, createTopic, updateTopicLocally, deleteTopic } from '../../store/slices/dashboardSettingsSlice';
+import { Ban, CheckCircle, Trash2 } from 'lucide-react';
 import ShimmerLoading from './ShimmerLoading';
 
 const TopicManagement = () => {
   const dispatch = useDispatch();
-  const { topics, updating, loading } = useSelector((state) => state.dashboardSettings);
+  const { topics, updating, deleting, loading } = useSelector((state) => state.dashboardSettings);
   const [newTopic, setNewTopic] = useState('');
 
   const handleToggleTopic = (topic) => {
@@ -33,8 +33,18 @@ const TopicManagement = () => {
     }
   };
 
+  const handleDeleteTopic = (topic) => {
+    if (window.confirm(`Are you sure you want to delete the topic "${topic.topic_name}"? This action cannot be undone.`)) {
+      dispatch(deleteTopic(topic.id));
+    }
+  };
+
   const isTopicUpdating = (topicId) => {
     return updating[topicId] === true;
+  };
+
+  const isTopicDeleting = (topicId) => {
+    return deleting[topicId] === true;
   };
 
   // Show shimmer loading only for content
@@ -95,6 +105,9 @@ const TopicManagement = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Delete
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -147,6 +160,25 @@ const TopicManagement = () => {
                       <>
                         <CheckCircle className="w-4 h-4" />
                         <span>Unblock</span>
+                      </>
+                    )}
+                  </button>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <button
+                    onClick={() => handleDeleteTopic(topic)}
+                    disabled={isTopicDeleting(topic.id) || isTopicUpdating(topic.id)}
+                    className="px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200 flex items-center justify-center space-x-2 w-24 bg-red-600 hover:bg-red-700 disabled:bg-gray-400"
+                  >
+                    {isTopicDeleting(topic.id) ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Deleting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4" />
+                        <span>Delete</span>
                       </>
                     )}
                   </button>

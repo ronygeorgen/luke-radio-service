@@ -50,6 +50,20 @@ export const createTopic = createAsyncThunk(
   }
 );
 
+export const deleteTopic = createAsyncThunk(
+  'dashboardSettings/deleteTopic',
+  async (topicId, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.delete('/general_topics', {
+        data: [{ id: topicId }]
+      });
+      return { topicId, data: response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 const initialState = {
   topics: [],
   totalCount: 0,
@@ -57,6 +71,7 @@ const initialState = {
   inactiveCount: 0,
   loading: false,
   updating: {}, // Track updating status per topic
+  deleting: {}, // Track deleting status per topic
   error: null,
   showAllTopics: false
 };
@@ -92,6 +107,20 @@ const dashboardSettingsSlice = createSlice({
         state.updating[topicId] = true;
       } else {
         delete state.updating[topicId];
+      }
+    },
+    removeTopicLocally: (state, action) => {
+      const topicId = action.payload;
+      const topicIndex = state.topics.findIndex(topic => topic.id === topicId);
+      if (topicIndex !== -1) {
+        const topic = state.topics[topicIndex];
+        state.topics.splice(topicIndex, 1);
+        state.totalCount -= 1;
+        if (topic.is_active) {
+          state.activeCount -= 1;
+        } else {
+          state.inactiveCount -= 1;
+        }
       }
     }
   },
@@ -164,9 +193,37 @@ const dashboardSettingsSlice = createSlice({
       })
       .addCase(createTopic.rejected, (state, action) => {
         state.error = action.payload;
+      })
+      // Delete topic
+      .addCase(deleteTopic.pending, (state, action) => {
+        const topicId = action.meta.arg;
+        state.deleting[topicId] = true;
+        state.error = null;
+      })
+      .addCase(deleteTopic.fulfilled, (state, action) => {
+        const { topicId } = action.payload;
+        delete state.deleting[topicId];
+        
+        // Remove the topic from local state
+        const topicIndex = state.topics.findIndex(topic => topic.id === topicId);
+        if (topicIndex !== -1) {
+          const topic = state.topics[topicIndex];
+          state.topics.splice(topicIndex, 1);
+          state.totalCount -= 1;
+          if (topic.is_active) {
+            state.activeCount -= 1;
+          } else {
+            state.inactiveCount -= 1;
+          }
+        }
+      })
+      .addCase(deleteTopic.rejected, (state, action) => {
+        const topicId = action.meta.arg;
+        delete state.deleting[topicId];
+        state.error = action.payload;
       });
   }
 });
 
-export const { clearError, setShowAllTopics, updateTopicLocally, setTopicUpdating } = dashboardSettingsSlice.actions;
+export const { clearError, setShowAllTopics, updateTopicLocally, setTopicUpdating, removeTopicLocally } = dashboardSettingsSlice.actions;
 export default dashboardSettingsSlice.reducer;

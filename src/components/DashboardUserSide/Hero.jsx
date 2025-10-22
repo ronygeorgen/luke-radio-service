@@ -145,7 +145,7 @@ const Hero = ({ onToggleChange }) => {
               className="flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-white bg-white bg-opacity-20 hover:bg-opacity-30 rounded-xl border border-white border-opacity-30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors"
             >
               <Settings className="h-5 w-5" />
-              <span>Settings</span>
+              <span>Navigation</span>
               <ChevronDown className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 

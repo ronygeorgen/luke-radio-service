@@ -183,7 +183,7 @@ const ReportsPage = () => {
       className="flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
     >
       <Settings className="h-5 w-5" />
-      <span>Settings</span>
+      <span>Navigation</span>
       <ChevronDown className={`h-4 w-4 transition-transform ${menuOpenId === 'settings' ? 'rotate-180' : ''}`} />
     </button>
 
