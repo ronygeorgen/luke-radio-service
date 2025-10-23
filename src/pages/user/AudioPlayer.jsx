@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setIsPlaying, setCurrentPlaying } from '../../store/slices/audioSegmentsSlice';
+import dayjs from "dayjs";
 
 const AudioPlayer = ({ segment, onClose }) => {
   const dispatch = useDispatch();
@@ -20,27 +21,19 @@ const AudioPlayer = ({ segment, onClose }) => {
   
   const fullSrc = `${import.meta.env.VITE_API_URL}/${segment.file_path}`;
 
-  const formatDateTime = (dateTimeString) => {
-  if (!dateTimeString) return 'N/A';
-  
+const formatDateTime = (dateTimeString) => {
+  if (!dateTimeString) return "N/A";
+
   try {
-    const date = new Date(dateTimeString);
-    
-    // Format: October 22, 2025 at 5:52:04 AM GMT+11:00
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      // timeZoneName: 'long'
-    });
+    // Parse exactly as provided, no conversion
+    const date = dayjs(dateTimeString);
+    return date.format("MMMM D, YYYY [at] h:mm:ss A [(GMT]Z[)]");
   } catch (error) {
-    console.error('Error formatting date:', error);
-    return dateTimeString; // Return original if parsing fails
+    console.error("Error formatting date:", error);
+    return dateTimeString;
   }
 };
+
 
   // Preload the entire audio file to enable seeking
   const enableSeekingWorkaround = async () => {

@@ -2,6 +2,7 @@
 import React from "react";
 import { Play, Pause } from "lucide-react";
 import TranscribeButton from "./TranscribeButton";
+import dayjs from "dayjs";
 
 const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseAudio, handleTrimClick, handleCompactEditClick }) => {
   const isMusicSegment = segment.metadata_json?.source === 'music';
@@ -10,27 +11,20 @@ const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseA
     : null;
 
 
-  const formatDateTime = (dateTimeString) => {
-    if (!dateTimeString) return 'N/A';
-    
-    try {
-      const date = new Date(dateTimeString);
-      
-      // Format: October 22, 2025 at 5:52:04 AM GMT+11:00
-      return date.toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        // timeZoneName: 'long'
-      });
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return dateTimeString; // Return original if parsing fails
-    }
-  };
+const formatDateTime = (dateTimeString) => {
+  if (!dateTimeString) return "N/A";
+
+  try {
+    // Parse exactly as provided, no conversion
+    const date = dayjs(dateTimeString);
+    return date.format("MMMM D, YYYY [at] h:mm:ss A [(GMT]Z[)]");
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return dateTimeString;
+  }
+};
+
+
 
   return (
     <div className="p-4">

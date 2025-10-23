@@ -1,6 +1,7 @@
 // components/UserSide/FullSegment.jsx
 import React, { useState } from 'react';
 import { SelectReportModal, CreateReportModal } from '../../pages/user/ReportModals';
+import dayjs from "dayjs";
 
 const FullSegment = ({ 
   segment, 
@@ -43,27 +44,20 @@ const FullSegment = ({
   };
 
 
-  const formatDateTime = (dateTimeString) => {
-  if (!dateTimeString) return 'N/A';
-  
+const formatDateTime = (dateTimeString) => {
+  if (!dateTimeString) return "N/A";
+
   try {
-    const date = new Date(dateTimeString);
-    
-    // Format: October 22, 2025 at 5:52:04 AM GMT+11:00
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      // timeZoneName: 'long'
-    });
+    // Parse exactly as provided, no conversion
+    const date = dayjs(dateTimeString);
+    return date.format("MMMM D, YYYY [at] h:mm:ss A [(GMT]Z[)]");
   } catch (error) {
-    console.error('Error formatting date:', error);
-    return dateTimeString; // Return original if parsing fails
+    console.error("Error formatting date:", error);
+    return dateTimeString;
   }
 };
+
+
 
   return (
     <div className="p-6">

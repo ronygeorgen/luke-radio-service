@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
+import dayjs from "dayjs";
 
 const TimePagination = ({ 
   currentPage, 
@@ -8,27 +9,19 @@ const TimePagination = ({
   availablePages = []
 }) => {
 
-  const formatDateTime = (dateTimeString) => {
-  if (!dateTimeString) return 'N/A';
-  
+const formatDateTime = (dateTimeString) => {
+  if (!dateTimeString) return "N/A";
+
   try {
-    const date = new Date(dateTimeString);
-    
-    // Format: Wed 1 Oct, 2025 19:00
-    return date.toLocaleString('en-US', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false // Use 24-hour format
-    });
+    // Parse exactly as provided, no conversion
+    const date = dayjs(dateTimeString);
+    return date.format("MMMM D, YYYY [at] h:mm:ss A [(GMT]Z[)]");
   } catch (error) {
-    console.error('Error formatting date:', error);
+    console.error("Error formatting date:", error);
     return dateTimeString;
   }
 };
+
 
   // Filter out pages without data and create page labels
   const pagesWithData = availablePages.filter(page => page.has_data);
