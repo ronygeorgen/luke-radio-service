@@ -37,7 +37,7 @@ function formatDateTime(dateTimeString) {
     const formatted = `${day.toString().padStart(2, "0")} ${months[month - 1]} ${year}, ` +
                       `${hour12.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}:${second.toString().padStart(2, "0")} ${ampm}`;
 
-    return `${formatted} (${offset})`;
+    return `${formatted}`;
   } catch (error) {
     console.error("Error formatting date:", error);
     return dateTimeString;
