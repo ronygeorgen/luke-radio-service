@@ -21,18 +21,40 @@ const AudioPlayer = ({ segment, onClose }) => {
   
   const fullSrc = `${import.meta.env.VITE_API_URL}/${segment.file_path}`;
 
-const formatDateTime = (dateTimeString) => {
+function formatDateTime(dateTimeString) {
   if (!dateTimeString) return "N/A";
 
   try {
-    // Parse exactly as provided, no conversion
-    const date = dayjs(dateTimeString);
-    return date.format("MMMM D, YYYY [at] h:mm:ss A [(GMT]Z[)]");
+    // Split into date and time parts
+    const [datePart, timePartWithOffset] = dateTimeString.split("T");
+    const [timePart] = timePartWithOffset.split(/[+-]/);
+    const offsetMatch = dateTimeString.match(/([+-]\d{2}:\d{2})$/);
+    const offset = offsetMatch ? `UTC${offsetMatch[1]}` : "UTC";
+
+    // Extract date components
+    const [year, month, day] = datePart.split("-").map(Number);
+
+    // Extract time components
+    const [hour, minute, second] = timePart.split(":").map(Number);
+
+    // Format month and 12-hour time
+    const months = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+    const hour12 = hour % 12 || 12;
+    const ampm = hour < 12 ? "AM" : "PM";
+
+    // Construct readable string
+    const formatted = `${day.toString().padStart(2, "0")} ${months[month - 1]} ${year}, ` +
+                      `${hour12.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}:${second.toString().padStart(2, "0")} ${ampm}`;
+
+    return `${formatted} (${offset})`;
   } catch (error) {
     console.error("Error formatting date:", error);
     return dateTimeString;
   }
-};
+}
 
 
   // Preload the entire audio file to enable seeking
