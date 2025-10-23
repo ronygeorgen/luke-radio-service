@@ -45,7 +45,7 @@ export default function SentimentByShiftChart() {
             <XAxis
               dataKey="name"
               interval={0}
-              tick={{ fontSize: 12, fill: "#555" }}
+              tick={{ fontSize: 12, fill: "#333", fontWeight: "bold" }}
               tickLine={false}
               axisLine={{ stroke: "#ccc" }}
               height={10}
