@@ -1,5 +1,5 @@
-// pages/user/AudioSegmentsPage.jsx
 import React, { useEffect, useState, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Filter as FilterIcon } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { fetchAudioSegments, setCurrentPlaying, setIsPlaying, setFilter } from '../../store/slices/audioSegmentsSlice';
@@ -29,11 +29,6 @@ const AudioSegmentsPage = () => {
   const endTime = searchParams.get('endTime');
   const daypart = searchParams.get('daypart');
   
-
-  // const [currentPage, setCurrentPage] = useState(0);
-  
-  // const [localAvailablePages, setLocalAvailablePages] = useState([]);
-
   const [localSearchText, setLocalSearchText] = useState('');
   const [localSearchIn, setLocalSearchIn] = useState('transcription');
 
@@ -42,6 +37,7 @@ const AudioSegmentsPage = () => {
   const [compactEditorSegment, setCompactEditorSegment] = useState(null);
 
   const [showPieChartModal, setShowPieChartModal] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   const handleTrimClick = (segment) => {
     dispatch(openTrimmer(segment));
@@ -68,16 +64,16 @@ const AudioSegmentsPage = () => {
   useTranscriptionPolling();
   
   const { 
-  segments, 
-  channelInfo, 
-  loading, 
-  error, 
-  currentPlayingId,
-  isPlaying,
-  filters,
-  pagination,        // Current page data
-  availablePages     // Original pagination from filter
-} = useSelector((state) => state.audioSegments);
+    segments, 
+    channelInfo, 
+    loading, 
+    error, 
+    currentPlayingId,
+    isPlaying,
+    filters,
+    pagination,
+    availablePages
+  } = useSelector((state) => state.audioSegments);
 
   const currentPage = pagination?.current_page || 1;
   const totalPages = pagination?.total_pages || 0;  
@@ -97,6 +93,12 @@ const AudioSegmentsPage = () => {
     { value: 'overnight', label: 'Overnight (00:00–06:00)', startTime: '00:00:00', endTime: '06:00:00' },
     { value: 'weekend', label: 'Weekend (Saturday & Sunday)', startTime: '00:00:00', endTime: '23:59:59' }
   ];
+
+  // Calculate counts for recognition filters
+  const recognizedCount = segments.filter(s => s.is_recognized).length;
+  const unrecognizedCount = segments.filter(s => !s.is_recognized).length;
+  const unrecognizedWithContentCount = segments.filter(s => !s.is_recognized && (s.analysis?.summary || s.transcription?.transcript)).length;
+  const unrecognizedWithoutContentCount = segments.filter(s => !s.is_recognized && !s.analysis?.summary && !s.transcription?.transcript).length;
 
   const formatShortDate = (date) => {
     const options = { month: 'short', day: 'numeric' };
@@ -298,189 +300,74 @@ useEffect(() => {
 
 
 const handleSearch = () => {
-  console.log('🔍 Search button clicked - Current state:');
-  console.log('  - localSearchText:', localSearchText);
-  console.log('  - localSearchIn:', localSearchIn);
-  console.log('  - filters.startTime:', filters.startTime);
-  console.log('  - filters.endTime:', filters.endTime);
-  console.log('  - localStartTime:', localStartTime);
-  console.log('  - localEndTime:', localEndTime);
-  
-  // Use local time values if they exist, otherwise fall back to Redux filters
-  const effectiveStartTime = localStartTime ? localStartTime + ':00' : filters.startTime;
-  const effectiveEndTime = localEndTime ? localEndTime + ':00' : filters.endTime;
-  
-  const newFilters = {
-    searchText: localSearchText,
-    searchIn: localSearchIn,
-    // Preserve local time values if they exist, otherwise use Redux filters
-    startTime: effectiveStartTime,
-    endTime: effectiveEndTime,
-    shiftId: filters.shiftId,
-    daypart: filters.daypart
+    console.log('🔍 Search button clicked - Current state:');
+    console.log('  - localSearchText:', localSearchText);
+    console.log('  - localSearchIn:', localSearchIn);
+    
+    const newFilters = {
+      searchText: localSearchText,
+      searchIn: localSearchIn,
+      startTime: filters.startTime,
+      endTime: filters.endTime,
+      shiftId: filters.shiftId,
+      daypart: filters.daypart
+    };
+    
+    console.log('  - newFilters:', newFilters);
+    
+    dispatch(setFilter(newFilters));
+    handleSearchWithPagination({ ...filters, ...newFilters });
   };
-  
-  console.log('  - newFilters:', newFilters);
-  
-  dispatch(setFilter(newFilters));
-  
-  // Use the centralized handleFilterChange but with search-specific logic
-  handleSearchWithPagination({ ...filters, ...newFilters });
-};
 
-// Separate function for search with pagination logic
-const handleSearchWithPagination = (searchFilters) => {
-  if ((searchFilters.startDate && searchFilters.endDate) || searchFilters.date) {
-    console.log('Making search API call with filters:', searchFilters);
+  const handleClearSearch = () => {
+    setLocalSearchText('');
+    setLocalSearchIn('transcription');
     
-    dispatch(fetchAudioSegments({ 
-      channelId, 
-      date: searchFilters.date,
-      startDate: searchFilters.startDate,
-      endDate: searchFilters.endDate,
-      startTime: searchFilters.startTime,
-      endTime: searchFilters.endTime,
-      daypart: searchFilters.daypart,
-      searchText: searchFilters.searchText,
-      searchIn: searchFilters.searchIn,
-      shiftId: searchFilters.shiftId,
-      page: 1
-    })).then((action) => {
-      if (action.payload && action.payload.pagination) {
-        const availablePages = action.payload.pagination.available_pages || [];
-        
-        // Only check for first page with results if no segments on page 1
-        if (action.payload.data.segments.length === 0 && availablePages.length > 0) {
-          findFirstPageWithSearchResults(searchFilters, availablePages);
-        }
-      }
-    });
-  }
-};
-
-// Optimized version that only makes ONE additional API call if needed
-const findFirstPageWithSearchResults = async (searchFilters, availablePages) => {
-  // Filter to only pages that have data
-  const pagesWithData = availablePages.filter(page => page.has_data);
-  
-  if (pagesWithData.length === 0) return 1;
-  
-  // Try the first page that has data (most likely to have results)
-  const firstPageWithData = pagesWithData[0];
-  
-  try {
-    const pageResult = await dispatch(fetchAudioSegments({
-      channelId,
-      date: searchFilters.date,
-      startDate: searchFilters.startDate,
-      endDate: searchFilters.endDate,
-      startTime: searchFilters.startTime,
-      endTime: searchFilters.endTime,
-      daypart: searchFilters.daypart,
-      searchText: searchFilters.searchText,
-      searchIn: searchFilters.searchIn,
-      shiftId: searchFilters.shiftId,
-      page: firstPageWithData.page
-    })).unwrap();
+    const newFilters = {
+      searchText: '',
+      searchIn: 'transcription',
+      startTime: filters.startTime,
+      endTime: filters.endTime,
+      shiftId: filters.shiftId,
+      daypart: filters.daypart
+    };
     
-    if (pageResult.data.segments && pageResult.data.segments.length > 0) {
-      console.log('Found search results on page:', firstPageWithData.page);
-      return firstPageWithData.page;
-    }
-    
-    // If first page doesn't have results, show "no results" message
-    console.log('No search results found in any page');
-    return 1;
-  } catch (error) {
-    console.error('Error checking page:', firstPageWithData.page, error);
-    return 1;
-  }
-};
-
-
-const handleClearSearch = () => {
-  setLocalSearchText('');
-  setLocalSearchIn('transcription');
-  
-  // Use local time values if they exist, otherwise fall back to Redux filters
-  const effectiveStartTime = localStartTime ? localStartTime + ':00' : filters.startTime;
-  const effectiveEndTime = localEndTime ? localEndTime + ':00' : filters.endTime;
-  
-  const newFilters = {
-    searchText: '',
-    searchIn: 'transcription',
-    // Preserve local time values if they exist, otherwise use Redux filters
-    startTime: effectiveStartTime,
-    endTime: effectiveEndTime,
-    shiftId: filters.shiftId,
-    daypart: filters.daypart
+    dispatch(setFilter(newFilters));
+    handleFilterChange({ ...filters, ...newFilters });
   };
-  
-  dispatch(setFilter(newFilters));
-  handleFilterChange({ ...filters, ...newFilters });
-};
-
 
   // Filter segments (client-side filtering for status and recognition)
-const filteredSegments = segments.filter(segment => {
-  console.log('Filtering segment:', {
-    id: segment.id,
-    is_active: segment.is_active,
-    is_recognized: segment.is_recognized,
-    hasContent: segment.analysis?.summary || segment.transcription?.transcript,
-    statusFilter: filters.status,
-    recognitionFilter: filters.recognition
-  });
-
-  // Status filter
-  if (filters.status !== 'all') {
-    if (filters.status === 'active' && !segment.is_active) {
-      console.log('❌ Filtered out - status not active');
-      return false;
+  const filteredSegments = segments.filter(segment => {
+    // Status filter
+    if (filters.status !== 'all') {
+      if (filters.status === 'active' && !segment.is_active) return false;
+      if (filters.status === 'inactive' && segment.is_active) return false;
     }
-    if (filters.status === 'inactive' && segment.is_active) {
-      console.log('❌ Filtered out - status not inactive');
-      return false;
-    }
-  }
-  
-  // Recognition filter
-  if (filters.recognition !== 'all') {
-    const hasContent = segment.analysis?.summary || segment.transcription?.transcript;
     
-    switch (filters.recognition) {
-      case 'recognized':
-        if (!segment.is_recognized) {
-          console.log('❌ Filtered out - not recognized');
-          return false;
-        }
-        break;
-      case 'unrecognized':
-        if (segment.is_recognized) {
-          console.log('❌ Filtered out - not unrecognized');
-          return false;
-        }
-        break;
-      case 'unrecognized_with_content':
-        if (segment.is_recognized || !hasContent) {
-          console.log('❌ Filtered out - not unrecognized with content');
-          return false;
-        }
-        break;
-      case 'unrecognized_without_content':
-        if (segment.is_recognized || hasContent) {
-          console.log('❌ Filtered out - not unrecognized without content');
-          return false;
-        }
-        break;
-      default:
-        break;
+    // Recognition filter
+    if (filters.recognition !== 'all') {
+      const hasContent = segment.analysis?.summary || segment.transcription?.transcript;
+      
+      switch (filters.recognition) {
+        case 'recognized':
+          if (!segment.is_recognized) return false;
+          break;
+        case 'unrecognized':
+          if (segment.is_recognized) return false;
+          break;
+        case 'unrecognized_with_content':
+          if (segment.is_recognized || !hasContent) return false;
+          break;
+        case 'unrecognized_without_content':
+          if (segment.is_recognized || hasContent) return false;
+          break;
+        default:
+          break;
+      }
     }
-  }
-  
-  console.log('✅ Segment passed filters');
-  return true;
-});
+    
+    return true;
+  });
 
   const handlePlayPauseAudio = (segmentId) => {
     if (currentPlayingId === segmentId) {
@@ -561,8 +448,8 @@ const handleDaypartChange = (selectedDaypart) => {
       startTime: defaultStartTime, 
       endTime: defaultEndTime, 
       daypart: 'none', 
-      status: 'all', 
-      recognition: 'all',
+      status: 'active', 
+      recognition: 'unrecognized',
       searchText: '',
       searchIn: 'transcription',
       shiftId: null
@@ -593,7 +480,7 @@ const handleDaypartChange = (selectedDaypart) => {
     setShowTranscriptionModal(true);
   };
 
-  if (loading && segments.length === 0) {
+if (loading && segments.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header 
@@ -601,29 +488,15 @@ const handleDaypartChange = (selectedDaypart) => {
           channelName={channelName}
           filters={filters} 
           formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)}
-          dispatch={dispatch}
-          segments={segments}
-          channelId={channelId}
-          fetchAudioSegments={fetchAudioSegments}
-          handleDaypartChange={handleDaypartChange}
-          handleSearchWithCustomTime={handleSearchWithCustomTime}
-          localStartTime={localStartTime}
-          localEndTime={localEndTime}
-          setLocalStartTime={setLocalStartTime}
-          setLocalEndTime={setLocalEndTime}
-          handleResetFilters={handleResetFilters}
           localSearchText={localSearchText}
           setLocalSearchText={setLocalSearchText}
           localSearchIn={localSearchIn}
           setLocalSearchIn={setLocalSearchIn}
           handleSearch={handleSearch}
           handleClearSearch={handleClearSearch}
-          handleDateSelect={handleDateSelect}
-          handleDateRangeSelect={handleDateRangeSelect}
-          setFilter={setFilter} 
         />
         
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-32 mt-28">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-24">
           {[...Array(3)].map((_, i) => (
             <SegmentShimmer key={i} />
           ))}
@@ -648,97 +521,206 @@ const handleDaypartChange = (selectedDaypart) => {
         channelName={channelName}
         filters={filters} 
         formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)}
-        dispatch={dispatch}
-        segments={filteredSegments} 
-        // segments={segments}
-        channelId={channelId}
-        fetchAudioSegments={fetchAudioSegments}
-        handleDaypartChange={handleDaypartChange}
-        handleSearchWithCustomTime={handleSearchWithCustomTime}
-        localStartTime={localStartTime}
-        localEndTime={localEndTime}
-        setLocalStartTime={setLocalStartTime}
-        setLocalEndTime={setLocalEndTime}
-        handleResetFilters={handleResetFilters}
         localSearchText={localSearchText}
         setLocalSearchText={setLocalSearchText}
         localSearchIn={localSearchIn}
         setLocalSearchIn={setLocalSearchIn}
         handleSearch={handleSearch}
         handleClearSearch={handleClearSearch}
-        handleDateSelect={handleDateSelect}
-        handleDateRangeSelect={handleDateRangeSelect}
-        setFilter={setFilter} 
       />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-32 mt-28">
-
-{/* Show pagination if we have pages with data in Redux */}
-{totalPages > 1 && (
-  <div className="mb-6">
-    <TimePagination
-      currentPage={currentPage}
-      totalPages={totalPages}
-      onPageChange={handlePageChange}
-      availablePages={pagination?.available_pages || []}
-    />
-  </div>
-)}
-
-        {/* Show current page info */}
-        {pagination && (
-          <div className="mb-4 text-sm text-gray-600">
-            {(() => {
-              const currentPageData = pagination.available_pages?.find(page => page.page === currentPage);
-              const pagesWithData = pagination.available_pages?.filter(page => page.has_data) || [];
-              const currentPageIndex = pagesWithData.findIndex(page => page.page === currentPage) + 1;
-              
-              return (
-                <>
-                  Time slot {currentPageIndex} of {pagesWithData.length} • 
-                  Showing {segments.length} segments • 
-                  {currentPageData?.segment_count || 0} segments in this time slot
-                </>
-              );
-            })()}
-          </div>
+      <div className="flex pt-16">
+        {/* Sidebar Toggle - Visible when sidebar is closed */}
+        {!isSidebarOpen && (
+          <button
+            aria-label="Open filters"
+            title="Open filters"
+            onClick={() => setIsSidebarOpen(true)}
+            className="fixed left-2 top-[4.5rem] z-40 bg-white border border-gray-300 shadow-sm hover:shadow-md text-gray-700 rounded-full p-2 transition-all"
+          >
+            <FilterIcon className="w-4 h-4" />
+          </button>
         )}
 
-        {loading && segments.length > 0 && (
-          <div className="mb-6">
-            <SegmentShimmer />
-            <SegmentShimmer />
+        {/* Amazon-style Left Sidebar Filters - Compact & Transparent */}
+        <div className={`w-64 bg-transparent p-4 fixed left-0 top-16 bottom-0 overflow-y-auto no-scrollbar z-40 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          {/* Collapse Button */}
+          <div className="flex justify-end mb-2">
+            <button
+              aria-label="Collapse filters"
+              title="Close filters"
+              onClick={() => setIsSidebarOpen(false)}
+              className="bg-white border border-gray-300 shadow-sm hover:shadow-md text-gray-700 rounded-full p-2 transition-all"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
           </div>
-        )}
+          <div className="space-y-6">
+            {/* Status Filter - Amazon Style */}
+            <div className="border-b border-gray-200 pb-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Status</h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' }
+                ].map((option) => (
+                  <label key={option.value} className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="status"
+                      value={option.value}
+                      checked={(filters.status || 'all') === option.value}
+                      onChange={(e) => dispatch(setFilter({ status: e.target.value }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    />
+                    <span className="ml-2">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
 
-        {filteredSegments.map((segment) => (
-          <SegmentCard
-            key={segment.id}
-            segment={segment}
-            currentPlayingId={currentPlayingId}
-            isPlaying={isPlaying}
-            handlePlayPauseAudio={handlePlayPauseAudio}
-            handleSummaryClick={handleSummaryClick}
-            handleTranscriptionClick={handleTranscriptionClick}
-            handleTrimClick={handleTrimClick}
-            handleCompactEditClick={handleCompactEditClick}
-          />
-        ))}
+            {/* Recognition Filter - Amazon Style */}
+            <div className="border-b border-gray-200 pb-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Recognition</h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'all', label: 'All Recognition' },
+                  { value: 'recognized', label: `Recognized (${recognizedCount})` },
+                  { value: 'unrecognized', label: `Unrecognized (${unrecognizedCount})` },
+                  { value: 'unrecognized_with_content', label: `With Content (${unrecognizedWithContentCount})` },
+                  { value: 'unrecognized_without_content', label: `No Content (${unrecognizedWithoutContentCount})` }
+                ].map((option) => (
+                  <label key={option.value} className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="recognition"
+                      value={option.value}
+                      checked={(filters.recognition || 'all') === option.value}
+                      onChange={(e) => dispatch(setFilter({ recognition: e.target.value }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    />
+                    <span className="ml-2">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
 
-        {!loading && segments.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No audio segments found for the selected time period.</p>
+            {/* Filter Panel (Collapsible) - Compact */}
+            <div className="border-b border-gray-200 pb-4">
+              <FilterPanel
+                filters={filters}
+                dispatch={dispatch}
+                segments={segments}
+                channelId={channelId}
+                fetchAudioSegments={fetchAudioSegments}
+                handleDaypartChange={handleDaypartChange}
+                handleSearchWithCustomTime={handleSearchWithCustomTime}
+                localStartTime={localStartTime}
+                localEndTime={localEndTime}
+                setLocalStartTime={setLocalStartTime}
+                setLocalEndTime={setLocalEndTime}
+                handleResetFilters={handleResetFilters}
+                isInHeader={false}
+                compact={true}
+                // Search props
+                localSearchText={localSearchText}
+                setLocalSearchText={setLocalSearchText}
+                localSearchIn={localSearchIn}
+                setLocalSearchIn={setLocalSearchIn}
+                handleSearch={handleSearch}
+                handleClearSearch={handleClearSearch}
+                // Date handlers
+                handleDateSelect={handleDateSelect}
+                handleDateRangeSelect={handleDateRangeSelect}
+              />
+            </div>
           </div>
-        )}
-      </main>
+        </div>
 
+        {/* Main Content - Takes remaining width */}
+        <main className={`flex-1 p-6 min-w-0 z-30 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+          {/* Show pagination if we have pages with data in Redux */}
+          {totalPages > 1 && (
+            <div className="mb-6 flex justify-center">
+              <TimePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                availablePages={pagination?.available_pages || []}
+              />
+            </div>
+          )}
+
+          {/* Show current page info */}
+          {pagination && (
+            <div className="mb-4 text-sm text-gray-600 bg-white rounded-lg p-3 shadow-sm">
+              {(() => {
+                const currentPageData = pagination.available_pages?.find(page => page.page === currentPage);
+                const pagesWithData = pagination.available_pages?.filter(page => page.has_data) || [];
+                const currentPageIndex = pagesWithData.findIndex(page => page.page === currentPage) + 1;
+                
+                return (
+                  <div className="flex items-center space-x-4">
+                    <span className="font-medium">Time slot {currentPageIndex} of {pagesWithData.length}</span>
+                    <span>•</span>
+                    <span>Showing {filteredSegments.length} segments</span>
+                    <span>•</span>
+                    <span>{currentPageData?.segment_count || 0} segments in this time slot</span>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {loading && segments.length > 0 && (
+            <div className="mb-6">
+              <SegmentShimmer />
+              <SegmentShimmer />
+            </div>
+          )}
+
+          {/* Segments Grid */}
+          <div className="space-y-4">
+            {filteredSegments.map((segment) => (
+              <SegmentCard
+                key={segment.id}
+                segment={segment}
+                currentPlayingId={currentPlayingId}
+                isPlaying={isPlaying}
+                handlePlayPauseAudio={handlePlayPauseAudio}
+                handleSummaryClick={handleSummaryClick}
+                handleTranscriptionClick={handleTranscriptionClick}
+                handleTrimClick={handleTrimClick}
+                handleCompactEditClick={handleCompactEditClick}
+              />
+            ))}
+          </div>
+
+          {!loading && segments.length === 0 && (
+            <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+              <div className="max-w-md mx-auto">
+                <div className="text-gray-400 mb-4">
+                  <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-gray-500 text-lg font-medium mb-2">No audio segments found</p>
+                <p className="text-gray-400 text-sm">Try adjusting your filters or search criteria</p>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Keep all your existing modals and players */}
       <PieChartModal 
         isOpen={showPieChartModal}
         onClose={() => setShowPieChartModal(false)}
       />
 
       {currentPlayingId && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 p-4 z-30">
+        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 p-4 z-50">
           {segments.find(s => s.id === currentPlayingId) ? (
             <AudioPlayer 
               segment={segments.find(s => s.id === currentPlayingId)} 

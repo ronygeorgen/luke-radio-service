@@ -1,8 +1,9 @@
-// FilterPanel.jsx - International/Timezone-safe version
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Search, Calendar, Filter, RotateCcw, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Calendar, RotateCcw, ChevronUp, ChevronDown, Search, X } from 'lucide-react';
 import { setFilter, fetchShifts  } from '../../store/slices/audioSegmentsSlice';
 import { useDispatch, useSelector } from 'react-redux';
+
 const FilterPanel = ({ 
   filters, 
   dispatch, 
@@ -16,6 +17,7 @@ const FilterPanel = ({
   setLocalEndTime,
   handleResetFilters,
   isInHeader = false,
+  compact = false, // NEW: Compact mode for sidebar
   localSearchText,
   setLocalSearchText,
   localSearchIn,
@@ -26,8 +28,9 @@ const FilterPanel = ({
   handleDateRangeSelect,
   fetchAudioSegments = () => {}
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const dateButtonRef = useRef(null);
+  const [calendarPosition, setCalendarPosition] = useState({ top: 0, left: 0, width: 0 });
   const [dateRange, setDateRange] = useState({
     start: null,
     end: null,
@@ -41,56 +44,52 @@ const FilterPanel = ({
   const filterRef = useRef(null);
   const calendarRef = useRef(null);
 
-    const { shifts, shiftsLoading } = useSelector(state => state.audioSegments);
-    const reduxDispatch = useDispatch();
+  const { shifts, shiftsLoading } = useSelector(state => state.audioSegments);
+  const reduxDispatch = useDispatch();
 
-      useEffect(() => {
-        reduxDispatch(fetchShifts());
-      }, [reduxDispatch]);
+  useEffect(() => {
+    reduxDispatch(fetchShifts());
+  }, [reduxDispatch]);
 
-
-      // Simple shift time display - show raw times without conversion
-const formatShiftTime = (shift) => {
-  const start = (shift.start_time || '').substring(0, 5); // "HH:MM"
-  const end = (shift.end_time || '').substring(0, 5);     // "HH:MM"
-  return `${start} - ${end}`;
-};
-
-
-// Update handleShiftChange to use raw times
-const handleShiftChange = (shiftId) => {
-  console.log('🔄 Shift changed to:', shiftId);
-  const normalizedId = shiftId ? String(shiftId) : '';
-  setLocalShiftId(normalizedId);
-  setCurrentShiftId(normalizedId);
-
-  const selectedShift = normalizedId
-    ? shifts.find((shift) => String(shift.id) === normalizedId)
-    : null;
-
-  // Use raw times without conversion
-  if (selectedShift) {
-    const newLocalStart = (selectedShift.start_time || '').substring(0, 5);
-    const newLocalEnd = (selectedShift.end_time || '').substring(0, 5);
-    setLocalStartTime(newLocalStart);
-    setLocalEndTime(newLocalEnd);
-  }
-
-  const newFilters = {
-    shiftId: normalizedId || null,
-    date: filters.date,
-    startDate: filters.startDate,
-    endDate: filters.endDate,
-    // Use raw shift times without conversion
-    startTime: selectedShift ? selectedShift.start_time : filters.startTime,
-    endTime: selectedShift ? selectedShift.end_time : filters.endTime,
-    daypart: 'none'
+  // Simple shift time display - show raw times without conversion
+  const formatShiftTime = (shift) => {
+    const start = (shift.start_time || '').substring(0, 5); // "HH:MM"
+    const end = (shift.end_time || '').substring(0, 5);     // "HH:MM"
+    return `${start} - ${end}`;
   };
 
-  dispatch(setFilter(newFilters));
-};
+  // Update handleShiftChange to use raw times
+  const handleShiftChange = (shiftId) => {
+    console.log('🔄 Shift changed to:', shiftId);
+    const normalizedId = shiftId ? String(shiftId) : '';
+    setLocalShiftId(normalizedId);
+    setCurrentShiftId(normalizedId);
 
+    const selectedShift = normalizedId
+      ? shifts.find((shift) => String(shift.id) === normalizedId)
+      : null;
 
+    // Use raw times without conversion
+    if (selectedShift) {
+      const newLocalStart = (selectedShift.start_time || '').substring(0, 5);
+      const newLocalEnd = (selectedShift.end_time || '').substring(0, 5);
+      setLocalStartTime(newLocalStart);
+      setLocalEndTime(newLocalEnd);
+    }
+
+    const newFilters = {
+      shiftId: normalizedId || null,
+      date: filters.date,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      // Use raw shift times without conversion
+      startTime: selectedShift ? selectedShift.start_time : filters.startTime,
+      endTime: selectedShift ? selectedShift.end_time : filters.endTime,
+      daypart: 'none'
+    };
+
+    dispatch(setFilter(newFilters));
+  };
 
   const daypartOptions = [
     { value: 'none', label: 'None', startTime: '', endTime: '' },
@@ -135,7 +134,6 @@ const handleShiftChange = (shiftId) => {
       }
     }
   };
-
 
   // Helper functions for timezone-safe date handling
   const convertLocalToUTCDateString = (localDate) => {
@@ -194,12 +192,9 @@ const handleShiftChange = (shiftId) => {
     }
   }, [filters.shiftId, currentShiftId]);
 
-  // Close filter when clicking outside
+  // Close date picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (filterRef.current && !filterRef.current.contains(event.target)) {
-        setIsExpanded(false);
-      }
       if (calendarRef.current && !calendarRef.current.contains(event.target)) {
         setShowDatePicker(false);
       }
@@ -211,13 +206,31 @@ const handleShiftChange = (shiftId) => {
     };
   }, []);
 
-  const toggleFilters = () => setIsExpanded(!isExpanded);
+  // No collapse/expand behavior
 
-  // Calculate counts for recognition filters
-  const recognizedCount = segments.filter(s => s.is_recognized).length;
-  const unrecognizedCount = segments.filter(s => !s.is_recognized).length;
-  const unrecognizedWithContentCount = segments.filter(s => !s.is_recognized && (s.analysis?.summary || s.transcription?.transcript)).length;
-  const unrecognizedWithoutContentCount = segments.filter(s => !s.is_recognized && !s.analysis?.summary && !s.transcription?.transcript).length;
+  // Position the calendar above all components using a portal
+  useEffect(() => {
+    const updatePosition = () => {
+      if (showDatePicker && dateButtonRef.current) {
+        const rect = dateButtonRef.current.getBoundingClientRect();
+        setCalendarPosition({
+          top: rect.bottom + 4,
+          left: rect.left,
+          width: rect.width
+        });
+      }
+    };
+
+    updatePosition();
+    if (showDatePicker) {
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+    }
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [showDatePicker]);
 
   // Date range selection handler - USING UTC DATES
   const handleDateRangeSelection = (startDateUTC, endDateUTC) => {
@@ -389,23 +402,21 @@ const handleShiftChange = (shiftId) => {
     return getLocalDateString(new Date());
   };
 
-  // Calendar component
-  const DateRangeCalendar = () => {
-    const monthNames = ["January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
+  // Compact Calendar component for sidebar
+  const CompactDateRangeCalendar = () => {
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     
     return (
-      <div ref={calendarRef} className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg z-50 p-4 min-w-80">
-        <div className="flex justify-between items-center mb-4">
+      <div ref={calendarRef} className="bg-white border border-gray-300 rounded-lg shadow-lg p-3 min-w-72 max-w-80">
+        <div className="flex justify-between items-center mb-3">
           <button
             onClick={() => navigateMonth('prev')}
             className="p-1 hover:bg-gray-100 rounded transition-colors"
           >
-            <ChevronUp className="w-4 h-4 transform -rotate-90" />
+            <ChevronUp className="w-3 h-3 transform -rotate-90" />
           </button>
           
-          <h3 className="font-semibold text-gray-700">
+          <h3 className="font-semibold text-gray-700 text-sm">
             {monthNames[currentMonth]} {currentYear}
           </h3>
           
@@ -413,20 +424,20 @@ const handleShiftChange = (shiftId) => {
             onClick={() => navigateMonth('next')}
             className="p-1 hover:bg-gray-100 rounded transition-colors"
           >
-            <ChevronUp className="w-4 h-4 transform rotate-90" />
+            <ChevronUp className="w-3 h-3 transform rotate-90" />
           </button>
         </div>
         
-        <div className="mb-3 p-2 bg-blue-50 rounded text-sm text-blue-700">
+        <div className="mb-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
           {dateRange.selecting ? (
-            `Click to select end date (after ${dateRange.start})`
+            `Select end date (after ${dateRange.start})`
           ) : (
-            'Click to select start date'
+            'Select start date'
           )}
         </div>
         
-        <div className="grid grid-cols-7 gap-1 mb-2">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+        <div className="grid grid-cols-7 gap-1 mb-1">
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
             <div key={day} className="text-center text-xs font-medium text-gray-500 py-1">
               {day}
             </div>
@@ -448,7 +459,7 @@ const handleShiftChange = (shiftId) => {
                 onClick={() => !day.isDisabled && handleDateClick(day.date)}
                 disabled={day.isDisabled}
                 className={`
-                  relative p-2 text-sm rounded transition-colors
+                  relative p-1 text-xs rounded transition-colors min-w-6 h-6
                   ${day.isDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-blue-50'}
                   ${isSelected ? 'bg-blue-500 text-white hover:bg-blue-600' : ''}
                   ${isInRange && !isSelected ? 'bg-blue-100' : ''}
@@ -457,27 +468,24 @@ const handleShiftChange = (shiftId) => {
                 `}
               >
                 {day.date.getDate()}
-                {isToday && !isSelected && (
-                  <div className="absolute inset-0 border border-blue-400 rounded pointer-events-none"></div>
-                )}
               </button>
             );
           })}
         </div>
         
-        <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
-          <div className="text-sm text-gray-600">
+        <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-200">
+          <div className="text-xs text-gray-600 flex-1 truncate mr-2">
             {dateRange.start && dateRange.end ? (
-              `Selected: ${dateRange.start} to ${dateRange.end}`
+              `${dateRange.start} to ${dateRange.end}`
             ) : dateRange.start ? (
-              `Start: ${dateRange.start} - Click end date`
+              `Start: ${dateRange.start}`
             ) : (
-              'Click to select start date'
+              'Select start date'
             )}
           </div>
           <button
             onClick={clearDateRange}
-            className="px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
+            className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors whitespace-nowrap"
           >
             Clear
           </button>
@@ -486,25 +494,121 @@ const handleShiftChange = (shiftId) => {
     );
   };
 
-  // Compact version for header - All filters in single line
+  // COMPACT VERSION FOR SIDEBAR
+  if (compact) {
+    return (
+      <div className="bg-transparent" ref={filterRef}>
+        <div className="space-y-4 bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+            {/* Shifts Dropdown */}
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-700">Shift</label>
+              <select
+                value={currentShiftId}
+                onChange={(e) => handleShiftChange(e.target.value || null)}
+                className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Shifts</option>
+                {shiftsLoading ? (
+                  <option disabled>Loading shifts...</option>
+                ) : (
+                  shifts.map(shift => (
+                    <option key={shift.id} value={shift.id}>
+                      {shift.name} ({formatShiftTime(shift)})
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            {/* Date Range Picker */}
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-700">Date Range</label>
+              <div className="relative">
+                <button
+                  ref={dateButtonRef}
+                  onClick={() => setShowDatePicker(!showDatePicker)}
+                  className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-left flex justify-between items-center"
+                >
+                  <span className={dateRange.start ? 'text-gray-900' : 'text-gray-500 truncate'}>
+                    {formatDateRangeDisplay()}
+                  </span>
+                  <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0 ml-2" />
+                </button>
+                {showDatePicker && createPortal(
+                  (
+                    <div className="fixed inset-0 z-[10000] flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/30" onClick={() => setShowDatePicker(false)} />
+                      <div ref={calendarRef} className="relative z-[10001]">
+                        <CompactDateRangeCalendar />
+                      </div>
+                    </div>
+                  ),
+                  document.body
+                )}
+              </div>
+            </div>
+
+            {/* Time inputs */}
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-700">Time Range</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Start</label>
+                  <input
+                    type="time"
+                    value={localStartTime}
+                    onChange={(e) => handleStartTimeChange(e.target.value)}
+                    onKeyDown={preventKeyboardInput}
+                    className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">End</label>
+                  <input
+                    type="time"
+                    value={localEndTime}
+                    onChange={(e) => handleEndTimeChange(e.target.value)}
+                    onKeyDown={preventKeyboardInput}
+                    className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Error message */}
+            {timeError && (
+              <div className="p-2 text-xs text-red-600 bg-red-50 rounded border border-red-200">
+                {timeError}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex space-x-2 pt-2">
+              <button
+                onClick={handleResetFilters}
+                className="flex-1 bg-gray-200 text-gray-700 text-xs px-2 py-1.5 rounded hover:bg-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-500 transition-colors"
+              >
+                Reset
+              </button>
+              <button
+                onClick={handleSearchWithCustomTime}
+                className="flex-1 bg-blue-500 text-white text-xs px-2 py-1.5 rounded hover:bg-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+      </div>
+    );
+  }
+
+// Compact version for header - Always open, single line
 if (isInHeader) {
     return (
       <div className="bg-white border-t border-gray-200" ref={filterRef}>
-        <div 
-          className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
-          onClick={toggleFilters}
-        >
-          <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4 text-blue-500" />
-            <span className="text-sm font-medium text-gray-700">Filters</span>
-          </div>
-          {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-        </div>
-
-        {isExpanded && (
-          <div className="border-t border-gray-200 p-4 bg-white">
-            {/* All filters in single line */}
-            <div className="flex flex-row items-end gap-4 mb-4">
+        <div className="border-t border-gray-200 p-4 bg-white">
+          {/* All filters in single line */}
+          <div className="flex flex-row items-end gap-4 mb-4">
               {/* NEW: Shifts Dropdown */}
               <div className="flex-1">
                 <label className="block text-xs font-medium text-gray-700 mb-1">Shift</label>
@@ -540,7 +644,17 @@ if (isInHeader) {
                     </span>
                     <Calendar className="w-4 h-4 text-gray-400" />
                   </button>
-                  {showDatePicker && <DateRangeCalendar />}
+                  {showDatePicker && createPortal(
+                    (
+                      <div className="fixed inset-0 z-[10000] flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/30" onClick={() => setShowDatePicker(false)} />
+                        <div ref={calendarRef} className="relative z-[10001]">
+                          <CompactDateRangeCalendar />
+                        </div>
+                      </div>
+                    ),
+                    document.body
+                  )}
                 </div>
               </div>
 
@@ -585,17 +699,14 @@ if (isInHeader) {
                 <RotateCcw className="w-3 h-3 mr-1" />
                 Reset
               </button>
-
               <button
-                onClick={toggleFilters}
-                className="flex items-center px-3 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
+                onClick={handleSearchWithCustomTime}
+                className="flex items-center px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
               >
-                <X className="w-3 h-3 mr-1" />
-                Close
+                Apply
               </button>
             </div>
           </div>
-        )}
       </div>
     );
   }
@@ -621,7 +732,7 @@ if (isInHeader) {
           <div className="grid grid-cols-1 gap-8">
             {/* Date & Time Section */}
             <div className="space-y-4">
-              <div className="flex items-center space-x-2 mb-4">
+            <div className="flex items-center space-x-2 mb-4">
                 <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                   <Calendar className="w-4 h-4 text-white" />
                 </div>
@@ -712,21 +823,20 @@ if (isInHeader) {
             </div>
           </div>
 
-          <div className="flex items-center justify-center mt-8 pt-6 border-t border-gray-200">
+          <div className="flex items-center justify-center mt-8 pt-6 border-t border-gray-200 gap-4">
             <button
               onClick={handleResetFilters}
-              className="flex items-center px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-all duration-200 mr-4"
+              className="flex items-center px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg shadow-sm transition-all duration-200"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Reset Filters
             </button>
 
             <button
-              onClick={toggleFilters}
-              className="flex items-center px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all duration-200"
+              onClick={handleSearchWithCustomTime}
+              className="flex items-center px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-all duration-200"
             >
-              <X className="w-4 h-4 mr-2" />
-              Close Filter
+              Apply
             </button>
           </div>
         </div>

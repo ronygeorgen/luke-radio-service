@@ -1,73 +1,65 @@
-import React, { useState } from 'react';
-import { Settings, ArrowLeft, BarChart3, Users, ChevronDown, LogOut, FileText, Search, Layers, UserCog, Music, Plus, LifeBuoy } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Settings, ChevronDown, BarChart3, FileText, Search, LifeBuoy, Music, Layers, UserCog, Plus, Clock, Filter, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
 
-const CommonHeader = ({ title, subtitle, children, showBackButton = true }) => {
+const CommonHeader = ({ title, subtitle, children }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
 
-  const channelId = localStorage.getItem('channelId');
   const channelName = localStorage.getItem('channelName');
 
   const handleLogout = () => {
     dispatch(logout());
-    setMenuOpen(false);
+    setIsDropdownOpen(false);
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleNavigation = (path) => {
     navigate(path);
-    setMenuOpen(false);
+    setIsDropdownOpen(false);
   };
 
   return (
-    <div className="bg-white border-b border-[#E9ECEF] sticky top-0 z-40">
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
-          {/* Left Section - Navigation and Title */}
-          <div className="flex items-center space-x-12">
-            {/* Back Button */}
-            {/* {showBackButton && (
-              <Link
-                to="/dashboard"
-                className="flex items-center text-sm font-medium text-[#6C757D] hover:text-[#212529] transition-colors group"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-0.5 transition-transform" />
-                Back to Dashboard
-              </Link>
-            )} */}
+    <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40 h-16">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-full">
+        <div className="flex items-center justify-between h-full space-x-4">
 
-            {/* Title Section */}
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#4B7DF5] to-[#3A63E0] rounded-2xl blur opacity-75"></div>
-                <div className="relative w-12 h-12 bg-gradient-to-br from-[#4B7DF5] to-[#3A63E0] rounded-2xl flex items-center justify-center shadow-lg">
-                  <Settings className="w-6 h-6 text-white" />
-                </div>
+          {/* Page Info */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold text-gray-900 truncate">
+              {title}
+            </h1>
+            {channelName && (
+              <div className="flex items-center space-x-4 text-sm text-gray-600">
+                <span className="flex items-center">
+                  <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  {channelName}
+                </span>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-[#212529] tracking-tight">
-                  {title}
-                </h1>
-                {subtitle && (
-                  <p className="text-gray-600 text-sm mt-0.5 font-medium">
-                    {subtitle}
-                  </p>
-                )}
-                {channelName && (
-                  <div className="flex items-center text-sm text-[#6C757D] mt-0.5">
-                    <Users className="w-3.5 h-3.5 mr-1.5" />
-                    {channelName}
-                  </div>
-                )}
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Right Section - Settings Dropdown and Additional Content */}
-          <div className="flex items-center space-x-3">
+          {/* Right Section - Additional Content and Navigation */}
+          <div className="flex items-center space-x-2">
             {/* Custom Children Content */}
             {children && (
               <div className="flex items-center space-x-3 mr-4">
@@ -75,93 +67,94 @@ const CommonHeader = ({ title, subtitle, children, showBackButton = true }) => {
               </div>
             )}
 
-            {/* Settings Dropdown */}
-            <div className="relative">
+            {/* Settings Dropdown - EXACT SAME DESIGN AS WEBSITE HEADER */}
+            <div className="relative" ref={dropdownRef}>
               <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
               >
                 <Settings className="h-5 w-5" />
                 <span>Navigation</span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
-              {menuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-20"
-                    onClick={() => setMenuOpen(false)}
-                  ></div>
-                  <div className="absolute right-0 mt-1 w-[28rem] bg-white rounded-xl shadow-2xl border border-gray-200 z-30">
-                    <div className="py-3">
-                      <div className="grid grid-cols-2 gap-2 px-2">
-                        <div>
-                          <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Channels</div>
-                          <button onClick={() => handleNavigation('/user-channels')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                            <Search className="w-4 h-4 mr-3 text-gray-500" />
-                            Search
-                          </button>
-                          <button onClick={() => handleNavigation('/dashboard')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                            <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
-                            Dashboard
-                          </button>
-                          <button onClick={() => handleNavigation(`/reports`)} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                            <FileText className="w-4 h-4 mr-3 text-gray-500" />
-                            Reports
-                          </button>
-                          <button onClick={() => { window.open('https://forms.clickup.com/9003066468/f/8c9zt34-21136/O2BX6CH5IROJJDHYMW', '_blank', 'noopener,noreferrer'); setMenuOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                            <LifeBuoy className="w-4 h-4 mr-3 text-gray-500" />
-                            Support Ticket
-                          </button>
-                        </div>
-                        <div>
-                          <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Settings</div>
-                          <button onClick={() => handleNavigation('/dashboard/settings')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                            <Settings className="w-4 h-4 mr-3 text-gray-500" />
-                            Topic Settings
-                          </button>
-                          <button onClick={() => handleNavigation('/admin/audio')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                            <Music className="w-4 h-4 mr-3 text-gray-500" />
-                            Audio Management
-                          </button>
-                          <button onClick={() => handleNavigation('/admin/settings')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                            <Layers className="w-4 h-4 mr-3 text-gray-500" />
-                            General Settings
-                          </button>
-                          <button onClick={() => handleNavigation('/admin/users')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                            <UserCog className="w-4 h-4 mr-3 text-gray-500" />
-                            User Management
-                          </button>
-                          <button onClick={() => handleNavigation('/admin/users')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                            <Plus className="w-4 h-4 mr-3 text-gray-500" />
-                            Create New User
-                          </button>
-                          <button onClick={() => handleNavigation('/admin/channels')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                            <Layers className="w-4 h-4 mr-3 text-gray-500" />
-                            Channel Settings
-                          </button>
-                          <button onClick={() => handleNavigation('/admin/channels')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                            <Plus className="w-4 h-4 mr-3 text-gray-500" />
-                            Onboard Channel
-                          </button>
-                        </div>
-                      </div>
-                      <div className="border-t border-gray-200 my-2"></div>
-                      <button onClick={handleLogout} className="mx-2 mb-1 flex items-center w-[calc(100%-1rem)] px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                        <LogOut className="w-4 h-4 mr-3" />
-                        Logout
+              {/* Dropdown Menu - EXACT SAME DESIGN AS WEBSITE HEADER */}
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-[28rem] bg-white rounded-xl shadow-2xl border border-gray-200 py-3 z-50 backdrop-blur-sm">
+                  <div className="grid grid-cols-2 gap-2 px-2">
+                    <div>
+                      <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Channels</div>
+                      <button onClick={() => handleNavigation('/user-channels')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <Search className="w-4 h-4 mr-3 text-gray-500" />
+                        Search
+                      </button>
+                      <button onClick={() => handleNavigation('/dashboard')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
+                        Dashboard
+                      </button>
+                      <button onClick={() => handleNavigation('/reports')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <FileText className="w-4 h-4 mr-3 text-gray-500" />
+                        Reports
+                      </button>
+                      <button onClick={() => { window.open('https://forms.clickup.com/9003066468/f/8c9zt34-21136/O2BX6CH5IROJJDHYMW', '_blank', 'noopener,noreferrer'); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <LifeBuoy className="w-4 h-4 mr-3 text-gray-500" />
+                        Support Ticket
+                      </button>
+                    </div>
+                    <div>
+                      <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Settings</div>
+                      <button onClick={() => handleNavigation('/dashboard/settings')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <Settings className="w-4 h-4 mr-3 text-gray-500" />
+                        Topic Settings
+                      </button>
+                      <button onClick={() => handleNavigation('/dashboard/shift-management')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <Clock className="w-4 h-4 mr-3 text-gray-500" />
+                        Shift Management
+                      </button>
+                      <button onClick={() => handleNavigation('/dashboard/predefined-filters')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <Filter className="w-4 h-4 mr-3 text-gray-500" />
+                        Predefined Filters
+                      </button>
+                      <button onClick={() => handleNavigation('/admin/audio')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <Music className="w-4 h-4 mr-3 text-gray-500" />
+                        Audio Management
+                      </button>
+                      <button onClick={() => handleNavigation('/admin/settings')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <Layers className="w-4 h-4 mr-3 text-gray-500" />
+                        General Settings
+                      </button>
+                      <button onClick={() => handleNavigation('/admin/users')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <UserCog className="w-4 h-4 mr-3 text-gray-500" />
+                        User Management
+                      </button>
+                      <button onClick={() => handleNavigation('/admin/users')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <Plus className="w-4 h-4 mr-3 text-gray-500" />
+                        Create New User
+                      </button>
+                      <button onClick={() => handleNavigation('/admin/channels')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <Layers className="w-4 h-4 mr-3 text-gray-500" />
+                        Channel Settings
+                      </button>
+                      <button onClick={() => handleNavigation('/admin/channels')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <Plus className="w-4 h-4 mr-3 text-gray-500" />
+                        Onboard Channel
                       </button>
                     </div>
                   </div>
-                </>
+                  <div className="border-t border-gray-200 my-2"></div>
+                  <button onClick={handleLogout} className="mx-2 mb-1 flex items-center w-[calc(100%-1rem)] px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 002 2h5a2 2 0 002-2V7a2 2 0 00-2-2h-5a2 2 0 00-2 2v1" />
+                    </svg>
+                    Logout
+                  </button>
+                </div>
               )}
             </div>
           </div>
         </div>
       </div>
-
- 
-    </div>
+    </header>
   );
 };
 

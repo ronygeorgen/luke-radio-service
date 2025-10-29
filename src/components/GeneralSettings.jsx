@@ -65,9 +65,6 @@ const GeneralSettings = () => {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">General Settings</h2>
-      </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">

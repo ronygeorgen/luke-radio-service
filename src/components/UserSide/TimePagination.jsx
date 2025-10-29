@@ -122,7 +122,7 @@ const pageLabels = pagesWithData.map(page => {
   const canGoNext = getCurrentPageIndex() < pageLabels.length - 1;
 
   return (
-    <div className="flex items-center justify-between space-x-1 py-4 w-full">
+    <div className="flex items-center justify-center space-x-1 py-4 w-full">
       {/* Previous button */}
       <button
         onClick={() => {
@@ -138,7 +138,7 @@ const pageLabels = pagesWithData.map(page => {
       </button>
 
       {/* Page buttons */}
-      <div className="flex items-center space-x-1 flex-1 overflow-x-auto">
+      <div className="flex items-center space-x-1 overflow-x-auto">
         {visiblePages.map((pageIndex, index) => {
           if (pageIndex === 'ellipsis-start' || pageIndex === 'ellipsis-end') {
             return (

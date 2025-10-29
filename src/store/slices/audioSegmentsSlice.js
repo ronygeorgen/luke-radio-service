@@ -250,8 +250,8 @@ const audioSegmentsSlice = createSlice({
     currentPlayingId: null,
     isPlaying: false,
     filters: {
-      status: 'all',
-      recognition: 'all',
+      status: 'active',
+      recognition: 'unrecognized',
       date: new Date().toISOString().split('T')[0],
       startDate: null, // NEW: for date range
       endDate: null,   // NEW: for date range

@@ -26,3 +26,12 @@
 .z-50 {
   z-index: 50;
 }
+
+/* Utility to hide scrollbars while allowing scroll */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}

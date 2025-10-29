@@ -7,9 +7,11 @@ import {
   setShiftForm,
   resetShiftForm
 } from '../../store/slices/shiftManagementSlice';
+import { fetchShifts } from '../../store/slices/shiftManagementSlice';
 import { fetchChannels } from '../../store/slices/channelSlice';
 import { formatTimeForDisplay, formatTimeForAPI } from '../../utils/dateUtils';
 import ShimmerLoading from './ShimmerLoading';
+import CommonHeader from './CommonHeader';
 
 const ShiftManagement = () => {
   const dispatch = useDispatch();
@@ -28,6 +30,11 @@ const ShiftManagement = () => {
     { value: 'saturday', label: 'Saturday' },
     { value: 'sunday', label: 'Sunday' }
   ];
+
+  useEffect(() => {
+    // Fetch shifts and channels when component mounts
+    dispatch(fetchShifts({ is_active: true }));
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(fetchChannels());
@@ -152,12 +159,16 @@ const ShiftManagement = () => {
 
   return (
     <>
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <CommonHeader 
+        title="Shift Management"
+        subtitle="Create and manage shift schedules"
+      />
       {/* Create New Shift Button */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Shift Management</h1>
+      <div className="flex justify-end items-center mt-2 mb-4">
         <button
           onClick={handleCreateNewShift}
-          className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg text-white font-medium transition-colors duration-200"
+          className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-white font-medium transition-colors duration-200"
         >
           Create New Shift
         </button>
@@ -405,6 +416,7 @@ const ShiftManagement = () => {
           )}
         </div>
       )}
+      </div>
     </>
   );
 };

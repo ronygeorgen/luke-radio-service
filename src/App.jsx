@@ -9,7 +9,6 @@ import SettingsPage from './pages/admin/SettingsPage';
 import UserChannelsPage from './pages/user/UserChannelsPage';
 import UserAudioSegmentsPage from './pages/user/AudioSegmentsPage';
 import Dashboard from './components/DashboardUserSide/Dashboard';
-import AppStateHydrator from './components/AppStateHydrator';
 import DashboardSettingsPage from './components/DashboardUserSide/DashboardSettingsPage';
 import ReportsPage from './pages/user/ReportsPage';
 import ReportDetailPage from './pages/user/ReportDetailPage';
@@ -19,15 +18,18 @@ import UserLogin from './pages/user/UserLogin';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import LandingRedirect from './components/LandingRedirect';
+import TranscriptionPollingHydrator from './components/TranscriptionPollingHydrator';
 import UserManagement from './pages/admin/UserManagement';
 import AudioManagement from './pages/admin/AudioManagement';
+import ShiftManagement from './components/DashboardUserSide/ShiftManagement';
+import PredefinedFilters from './components/DashboardUserSide/PredefinedFilters';
 
 function App() {
   return (
     <Provider store={store}>
       <Router>
         <div className="min-h-screen bg-gray-50">
-          <AppStateHydrator />
+          <TranscriptionPollingHydrator />
           <Routes>
             {/* Public Auth Routes */}
             <Route path="/admin-login" element={
@@ -88,6 +90,16 @@ function App() {
             <Route path="/dashboard/settings" element={
               <ProtectedRoute>
                 <DashboardSettingsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/shift-management" element={
+              <ProtectedRoute>
+                <ShiftManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/predefined-filters" element={
+              <ProtectedRoute>
+                <PredefinedFilters />
               </ProtectedRoute>
             } />
 

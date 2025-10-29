@@ -1,10 +1,11 @@
 // pages/admin/UserManagement.jsx
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Users, RefreshCw, Mail, User, Shield, Key, CheckCircle, XCircle } from 'lucide-react';
+import { Users, RefreshCw, Mail, User, Shield, Key, CheckCircle, XCircle, Plus } from 'lucide-react';
 import { fetchUsers, assignChannelToUser, clearAssignError, resetAssignState } from '../../store/slices/userManagementSlice';
 import { fetchChannels } from '../../store/slices/channelSlice';
 import AssignChannelModal from './AssignChannelModal';
+import CreateUserModal from './CreateUserModal';
 
 const UserManagement = () => {
   const dispatch = useDispatch();
@@ -12,6 +13,8 @@ const UserManagement = () => {
   const { channels } = useSelector(state => state.channels);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUsers());
@@ -27,6 +30,10 @@ const UserManagement = () => {
       }, 2000);
     }
   }, [assignSuccess, dispatch]);
+
+  const handleCloseUserModal = () => {
+    setIsUserModalOpen(false);
+  };
 
   const handleRefresh = () => {
     dispatch(fetchUsers());
@@ -65,18 +72,14 @@ const UserManagement = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
-          <p className="text-sm text-gray-600 mt-1">Manage users and assign channels</p>
-        </div>
-        <div className="flex space-x-3">
+        <div className="w-full flex justify-end">
           <button
-            onClick={handleRefresh}
-            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span>Refresh</span>
-          </button>
+          onClick={() => setIsUserModalOpen(true)}
+          className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Create User</span>
+        </button>
         </div>
       </div>
 
@@ -182,6 +185,11 @@ const UserManagement = () => {
           </table>
         </div>
       )}
+
+      <CreateUserModal
+        isOpen={isUserModalOpen}
+        onClose={handleCloseUserModal}
+      />
 
       <AssignChannelModal
         isOpen={isAssignModalOpen}

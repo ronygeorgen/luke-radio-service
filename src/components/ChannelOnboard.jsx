@@ -68,13 +68,14 @@ const ChannelOnboard = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Channel Management</h2>
-          {user && (
-            <p className="text-sm text-gray-600 mt-1">
-              Welcome, {user.name} ({user.isAdmin ? 'Admin' : 'User'})
-            </p>
-          )}
+        <div className="w-full flex justify-end">
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Onboard Channel</span>
+          </button>
         </div>
       </div>
 

@@ -1,17 +1,27 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { checkAuth } from '../store/slices/authSlice';
 
 const PublicRoute = ({ children, restricted = false }) => {
-  const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+  const { isAuthenticated, isLoading, accessToken, refreshToken } = useSelector((state) => state.auth);
 
-  // If route is restricted and user is authenticated, redirect based on user type
-  if (restricted && isAuthenticated) {
-    if (user?.isAdmin) {
-      return <Navigate to="/admin/channels" replace />;
-    } else {
-      return <Navigate to="/" replace />;
+  // If tokens exist but auth not resolved, trigger auth check
+  useEffect(() => {
+    if (!isAuthenticated && !isLoading && (accessToken || refreshToken)) {
+      dispatch(checkAuth());
     }
+  }, [isAuthenticated, isLoading, accessToken, refreshToken, dispatch]);
+
+  // Wait for auth resolution to avoid flicker/incorrect redirects
+  if (isLoading || (!isAuthenticated && (accessToken || refreshToken))) {
+    return null;
+  }
+
+  // If route is restricted and user is authenticated, send to user landing
+  if (restricted && isAuthenticated) {
+    return <Navigate to="/user-channels" replace />;
   }
 
   return children;

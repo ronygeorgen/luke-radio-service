@@ -1,19 +1,9 @@
 import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchTopics, setShowAllTopics } from '../../store/slices/dashboardSettingsSlice';
-import {
-  fetchShifts,
-  fetchPredefinedFilters,
-  setCurrentView,
-  clearError
-} from '../../store/slices/shiftManagementSlice';
 import CommonHeader from './CommonHeader';
-import NavigationTabs from './NavigationTabs';
 import TopicManagement from './TopicManagement';
-import ShiftManagement from './ShiftManagement';
-import PredefinedFilters from './PredefinedFilters';
 import ErrorDisplay from './ErrorDisplay';
-import LoadingSpinner from './LoadingSpinner';
 
 const DashboardSettingsPage = () => {
   const dispatch = useDispatch();
@@ -23,55 +13,33 @@ const DashboardSettingsPage = () => {
     error: topicsError, 
     showAllTopics 
   } = useSelector((state) => state.dashboardSettings);
-  
-  const {
-    shifts,
-    predefinedFilters,
-    loading: shiftLoading,
-    error: shiftError,
-    currentView
-  } = useSelector((state) => state.shiftManagement);
-
-  const error = topicsError || shiftError;
-  const loading = topicsLoading || shiftLoading;
 
   useEffect(() => {
-    if (currentView === 'topics') {
-      dispatch(fetchTopics(showAllTopics));
-    } else if (currentView === 'shifts') {
-      dispatch(fetchShifts({ is_active: true }));
-    } else if (currentView === 'predefined-filters') {
-      dispatch(fetchPredefinedFilters());
-    }
-  }, [dispatch, currentView, showAllTopics]);
+    dispatch(fetchTopics(showAllTopics));
+  }, [dispatch, showAllTopics]);
 
-  const renderCurrentView = () => {
-    switch (currentView) {
-      case 'topics':
-        return <TopicManagement />;
-      case 'shifts':
-        return <ShiftManagement />;
-      case 'predefined-filters':
-        return <PredefinedFilters />;
-      default:
-        return <TopicManagement />;
-    }
-  };
-
-
+  if (topicsLoading && topics.length === 0) {
+    return (
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
+        <CommonHeader 
+          title="Topic Settings"
+        />
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
       <CommonHeader 
-        title="Settings Management"
-        subtitle="Manage topics, shifts, and predefined filters"
+        title="Topic Settings"
       />
 
-      <ErrorDisplay error={error} />
+      <ErrorDisplay error={topicsError} />
 
-      <NavigationTabs />
-
-      {renderCurrentView()}
+      <TopicManagement />
     </div>
   );
 };

@@ -70,7 +70,7 @@ const TopicManagement = () => {
   return (
     <>
       {/* Add New Topic Form */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
+      <div className="bg-white rounded-lg shadow p-6 mb-6 mt-20">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Topic to Block</h2>
         <form onSubmit={handleCreateTopic} className="flex space-x-4">
           <input

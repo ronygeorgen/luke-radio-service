@@ -10,8 +10,10 @@ import {
   updateSchedule,
   removeSchedule
 } from '../../store/slices/shiftManagementSlice';
+import { fetchPredefinedFilters } from '../../store/slices/shiftManagementSlice';
 import { formatTimeForDisplay, formatTimeForAPI } from '../../utils/dateUtils';
 import ShimmerLoading from './ShimmerLoading';
+import CommonHeader from './CommonHeader';
 
 const PredefinedFilters = () => {
   const dispatch = useDispatch();
@@ -21,6 +23,11 @@ const PredefinedFilters = () => {
   const [editingFilter, setEditingFilter] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  // Fetch predefined filters on mount
+  React.useEffect(() => {
+    dispatch(fetchPredefinedFilters());
+  }, [dispatch]);
 
   // Show shimmer loading only for content
   if (loading && predefinedFilters.length === 0) {
@@ -154,16 +161,21 @@ const PredefinedFilters = () => {
 
   return (
     <>
-      {/* Create New Filter Button */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Predefined Filters</h1>
-        <button
-          onClick={handleCreateNewFilter}
-          className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg text-white font-medium transition-colors duration-200"
-        >
-          Create New Predefined Filter
-        </button>
-      </div>
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
+        <div className="flex justify-end">
+          <button
+            onClick={handleCreateNewFilter}
+            className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-white font-medium transition-colors duration-200"
+          >
+            Create New Predefined Filter
+          </button>
+        </div>
+        <div className="mt-6 mb-8">
+          <CommonHeader 
+            title="Predefined Filters"
+          />
+        </div>
+
 
       {/* Filter Form - Only show when creating/editing */}
       {showForm && (
@@ -399,6 +411,7 @@ const PredefinedFilters = () => {
           )}
         </div>
       )}
+      </div>
     </>
   );
 };

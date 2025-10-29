@@ -82,18 +82,7 @@ const AudioManagement = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Audio Management</h2>
-          <p className="text-sm text-gray-600 mt-1">Manage audio categories and title mapping rules</p>
-        </div>
-        <div className="flex space-x-3">
-          <button
-            onClick={handleRefresh}
-            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span>Refresh</span>
-          </button>
+        <div className="w-full flex justify-end">
           <button
             onClick={handleCreateCategory}
             className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
