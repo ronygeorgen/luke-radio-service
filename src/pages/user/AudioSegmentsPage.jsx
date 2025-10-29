@@ -132,7 +132,8 @@ const AudioSegmentsPage = () => {
       daypart: 'none',
       searchText: '',
       searchIn: 'transcription',
-      shiftId: null 
+      shiftId: null,
+      predefinedFilterId: null 
     };
 
     dispatch(setFilter(lastFilters.current));
@@ -153,6 +154,7 @@ const AudioSegmentsPage = () => {
       endTime: '23:59:59',
       daypart: 'none',
       shiftId: null,
+      predefinedFilterId: null,
       page: 1
     }));
   }
@@ -201,6 +203,7 @@ const AudioSegmentsPage = () => {
         searchText: filtersToUse.searchText,
         searchIn: filtersToUse.searchIn,
         shiftId: filtersToUse.shiftId,
+        predefinedFilterId: filtersToUse.predefinedFilterId,
         page: 1
       }));
     }
@@ -239,6 +242,7 @@ useEffect(() => {
         searchText: filters.searchText,
         searchIn: filters.searchIn,
         shiftId: filters.shiftId,
+        predefinedFilterId: filters.predefinedFilterId,
         page: 1
       }));
     }
@@ -259,6 +263,7 @@ useEffect(() => {
     searchText: filters.searchText,
     searchIn: filters.searchIn,
     shiftId: filters.shiftId,  // Add shiftId parameter
+    predefinedFilterId: filters.predefinedFilterId,
     page: pageNumber  // Pass the page number directly
   }));
 };
@@ -288,6 +293,7 @@ useEffect(() => {
         searchText: filters.searchText,
         searchIn: filters.searchIn,
         shiftId: filters.shiftId,
+        predefinedFilterId: filters.predefinedFilterId,
         page: 1
       }));
       

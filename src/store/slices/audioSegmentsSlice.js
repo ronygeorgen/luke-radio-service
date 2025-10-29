@@ -33,7 +33,8 @@ export const fetchAudioSegments = createAsyncThunk(
     startDate, 
     endDate,
     page = 1,
-    shiftId = null
+    shiftId = null,
+    predefinedFilterId = null
   }, { rejectWithValue }) => {
     try {
       let startDatetime = null;
@@ -105,8 +106,12 @@ export const fetchAudioSegments = createAsyncThunk(
       // Add page parameter to API call
       if (page) params.page = page;
       
-      // Add shift_id parameter to API call
-      if (shiftId) params.shift_id = shiftId;
+      // Add either shift_id or predefined_filter_id to API call (mutually exclusive)
+      if (predefinedFilterId) {
+        params.predefined_filter_id = predefinedFilterId;
+      } else if (shiftId) {
+        params.shift_id = shiftId;
+      }
       
       console.log('API Request - Final params:', params);
       
@@ -261,6 +266,7 @@ const audioSegmentsSlice = createSlice({
       searchText: '',  // NEW: search text
       searchIn: 'transcription', // NEW: search category
       shiftId: null, 
+      predefinedFilterId: null,
     },
     transcriptionLoading: {}, // Track loading state per segment
     transcriptionErrors: {}, // Track errors per segment

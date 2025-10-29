@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, RotateCcw, ChevronUp, ChevronDown, Search, X } from 'lucide-react';
 import { setFilter, fetchShifts  } from '../../store/slices/audioSegmentsSlice';
+import { fetchPredefinedFilters } from '../../store/slices/shiftManagementSlice';
 import { useDispatch, useSelector } from 'react-redux';
 
 const FilterPanel = ({ 
@@ -41,14 +42,17 @@ const FilterPanel = ({
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [localShiftId, setLocalShiftId] = useState(filters.shiftId || '');
   const [currentShiftId, setCurrentShiftId] = useState(filters.shiftId || '');
+  const [currentPredefinedFilterId, setCurrentPredefinedFilterId] = useState(filters.predefinedFilterId || '');
   const filterRef = useRef(null);
   const calendarRef = useRef(null);
 
   const { shifts, shiftsLoading } = useSelector(state => state.audioSegments);
+  const { predefinedFilters, loading: predefinedLoading } = useSelector(state => state.shiftManagement);
   const reduxDispatch = useDispatch();
 
   useEffect(() => {
     reduxDispatch(fetchShifts());
+    reduxDispatch(fetchPredefinedFilters());
   }, [reduxDispatch]);
 
   // Simple shift time display - show raw times without conversion
@@ -64,6 +68,8 @@ const FilterPanel = ({
     const normalizedId = shiftId ? String(shiftId) : '';
     setLocalShiftId(normalizedId);
     setCurrentShiftId(normalizedId);
+    // When selecting a shift, clear any selected predefined filter locally
+    setCurrentPredefinedFilterId('');
 
     const selectedShift = normalizedId
       ? shifts.find((shift) => String(shift.id) === normalizedId)
@@ -79,6 +85,7 @@ const FilterPanel = ({
 
     const newFilters = {
       shiftId: normalizedId || null,
+      predefinedFilterId: null,
       date: filters.date,
       startDate: filters.startDate,
       endDate: filters.endDate,
@@ -89,6 +96,62 @@ const FilterPanel = ({
     };
 
     dispatch(setFilter(newFilters));
+
+    // Trigger API fetch immediately on selection or deselection
+    if (fetchAudioSegments) {
+      reduxDispatch(fetchAudioSegments({
+        channelId,
+        date: newFilters.date,
+        startDate: newFilters.startDate,
+        endDate: newFilters.endDate,
+        startTime: newFilters.startTime,
+        endTime: newFilters.endTime,
+        daypart: newFilters.daypart,
+        searchText: filters.searchText,
+        searchIn: filters.searchIn,
+        shiftId: newFilters.shiftId,
+        predefinedFilterId: null,
+        page: 1
+      }));
+    }
+  };
+
+  const handlePredefinedFilterChange = (predefinedId) => {
+    const normalizedId = predefinedId ? String(predefinedId) : '';
+    setCurrentPredefinedFilterId(normalizedId);
+    // When selecting a predefined filter, clear any selected shift locally
+    setCurrentShiftId('');
+
+    const newFilters = {
+      predefinedFilterId: normalizedId || null,
+      shiftId: null,
+      // Preserve existing date/time window; clear daypart for consistency
+      date: filters.date,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      startTime: filters.startTime,
+      endTime: filters.endTime,
+      daypart: 'none'
+    };
+    dispatch(setFilter(newFilters));
+
+    // Trigger API fetch immediately on selection or deselection
+    if (fetchAudioSegments) {
+      reduxDispatch(fetchAudioSegments({
+        channelId,
+        date: newFilters.date,
+        startDate: newFilters.startDate,
+        endDate: newFilters.endDate,
+        startTime: newFilters.startTime,
+        endTime: newFilters.endTime,
+        daypart: newFilters.daypart,
+        searchText: filters.searchText,
+        searchIn: filters.searchIn,
+        shiftId: null,
+        predefinedFilterId: newFilters.predefinedFilterId,
+        page: 1
+      }));
+    }
   };
 
   const daypartOptions = [
@@ -192,6 +255,12 @@ const FilterPanel = ({
     }
   }, [filters.shiftId, currentShiftId]);
 
+  useEffect(() => {
+    if (!currentPredefinedFilterId && filters.predefinedFilterId) {
+      setCurrentPredefinedFilterId(filters.predefinedFilterId);
+    }
+  }, [filters.predefinedFilterId, currentPredefinedFilterId]);
+
   // Close date picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -247,15 +316,19 @@ const FilterPanel = ({
       }));
       
       if (fetchAudioSegments) {
-        fetchAudioSegments({ 
+        reduxDispatch(fetchAudioSegments({ 
           channelId, 
           startDate: startDateUTC,  // Send UTC dates to API
           endDate: endDateUTC,
           startTime: filters.startTime,
           endTime: filters.endTime,
           daypart: 'none',
+          searchText: filters.searchText,
+          searchIn: filters.searchIn,
+          shiftId: filters.shiftId,
+          predefinedFilterId: filters.predefinedFilterId,
           page: 1
-        });
+        }));
       }
     }
   };
@@ -520,6 +593,27 @@ const FilterPanel = ({
               </select>
             </div>
 
+            {/* Predefined Filters Dropdown */}
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-700">Predefined Filter</label>
+              <select
+                value={currentPredefinedFilterId}
+                onChange={(e) => handlePredefinedFilterChange(e.target.value || null)}
+                className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">None</option>
+                {predefinedLoading ? (
+                  <option disabled>Loading filters...</option>
+                ) : (
+                  predefinedFilters.map(f => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
             {/* Date Range Picker */}
             <div className="space-y-2">
               <label className="block text-xs font-medium text-gray-700">Date Range</label>
@@ -624,6 +718,27 @@ if (isInHeader) {
                     shifts.map(shift => (
                       <option key={shift.id} value={shift.id}>
                         {shift.name} - {(shift.start_time || '').substring(0, 5)} - {(shift.end_time || '').substring(0, 5)} {shift.days_of_week ? `(${shift.days_of_week})` : ''}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {/* Predefined Filters Dropdown */}
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Predefined Filter</label>
+                <select
+                  value={currentPredefinedFilterId}
+                  onChange={(e) => handlePredefinedFilterChange(e.target.value || null)}
+                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
+                >
+                  <option value="">None</option>
+                  {predefinedLoading ? (
+                    <option disabled>Loading filters...</option>
+                  ) : (
+                    predefinedFilters.map(f => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
                       </option>
                     ))
                   )}
@@ -764,6 +879,32 @@ if (isInHeader) {
                   </div>
                 </div>
                 
+              </div>
+
+              {/* Predefined Filters Dropdown */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Predefined Filter</label>
+                <div className="relative">
+                  <select
+                    value={currentPredefinedFilterId}
+                    onChange={(e) => handlePredefinedFilterChange(e.target.value || null)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors appearance-none bg-white"
+                  >
+                    <option value="">None</option>
+                    {predefinedLoading ? (
+                      <option disabled>Loading filters...</option>
+                    ) : (
+                      predefinedFilters.map(f => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <ChevronDown className="h-4 w-4" />
+                  </div>
+                </div>
               </div>
 
               {/* Date Range Picker */}
