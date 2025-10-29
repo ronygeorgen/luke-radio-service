@@ -1,46 +1,46 @@
 // utils/dateTimeUtils.js
-export const convertLocalToUTC = (dateString, timeString = '00:00:00') => {
+export const convertLocalToUTC = (dateString, timeString = '00:00') => {
   if (!dateString) return null;
 
-  try {
-    let resolvedTimezone = localStorage?.getItem('channelTimezone')?.trim() || 'Australia/Melbourne';
+  const tz = ((typeof localStorage !== 'undefined' && localStorage.getItem('channelTimezone')) || 'UTC').trim();
 
-    // Use Intl to break down the date in target timezone
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: resolvedTimezone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    }).formatToParts(new Date(`${dateString}T${timeString}`));
+  // Normalize to HH:mm:ss
+  const normalizeTime = (t) => {
+    const parts = String(t || '00:00').split(':');
+    if (parts.length === 2) return `${parts[0].padStart(2,'0')}:${parts[1].padStart(2,'0')}:00`;
+    if (parts.length === 3) return `${parts[0].padStart(2,'0')}:${parts[1].padStart(2,'0')}:${parts[2].padStart(2,'0')}`;
+    return '00:00:00';
+  };
 
-    // Extract the values
-    const lookup = Object.fromEntries(parts.map(p => [p.type, p.value]));
+  const safeTime = normalizeTime(timeString);
 
-    // Construct a real Date object in that timezone
-    const utcDate = new Date(
-      Date.UTC(
-        lookup.year,
-        lookup.month - 1,
-        lookup.day,
-        lookup.hour,
-        lookup.minute,
-        lookup.second
-      )
-    );
+  const [y, m, d] = dateString.split('-').map(Number);
+  const [hh, mm, ss] = safeTime.split(':').map(Number);
 
-    return utcDate.toISOString();
-  } catch (error) {
-    console.error('Error converting date:', error);
-    return null;
-  }
+  // Initial UTC guess for desired wall time
+  const initialGuess = new Date(Date.UTC(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, ss || 0));
+
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+
+  const partsToObj = (date) => Object.fromEntries(fmt.formatToParts(date).map(p => [p.type, p.value]));
+  const apparent = partsToObj(initialGuess);
+
+  // The wall time produced by formatting the guess in tz, expressed as a UTC timestamp
+  const apparentUTC = Date.UTC(+apparent.year, +apparent.month - 1, +apparent.day, +apparent.hour, +apparent.minute, +apparent.second);
+  // The desired wall time (same clock time/date), expressed as if it were UTC
+  const desiredUTC = Date.UTC(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, ss || 0);
+
+  // Shift the instant so the wall time in tz matches the desired wall time
+  const corrected = new Date(initialGuess.getTime() + (desiredUTC - apparentUTC));
+
+  // Full ISO with milliseconds and Z
+  return corrected.toISOString();
 };
-
-
-
 
 // Alternative: If you need to handle timezone offsets manually
 export const convertLocalToUTCManual = (dateString, timeString = '00:00:00') => {
