@@ -5,6 +5,20 @@ const UserChannelCard = ({ channel }) => {
   const navigate = useNavigate();
 
   const handleClick = () => {
+      // Persist selected channel details in localStorage
+      try {
+        if (channel?.id) {
+          localStorage.setItem("channelId", String(channel.id));
+        }
+        if (channel?.name) {
+          localStorage.setItem("channelName", channel.name);
+        }
+        const channelTimezone = channel?.timezone || "Australia/Melbourne";
+        localStorage.setItem("channelTimezone", channelTimezone);
+      } catch (e) {
+        // No-op: localStorage might be unavailable; navigation should still proceed
+      }
+
       const today = new Date().toISOString().split("T")[0].replace(/-/g, "");
       navigate(
         `/channels/${channel.id}/segments?date=${today}&hour=0&name=${encodeURIComponent(channel.name)}`

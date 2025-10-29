@@ -1,27 +1,46 @@
 // utils/dateTimeUtils.js
 export const convertLocalToUTC = (dateString, timeString = '00:00:00') => {
   if (!dateString) return null;
-  
+
   try {
-    // Combine date and time in local timezone
-    const localDateTime = `${dateString}T${timeString}`;
-    const date = new Date(localDateTime);
-    
-    // Validate the date
-    if (isNaN(date.getTime())) {
-      console.error('Invalid date:', dateString, timeString);
-      return null;
-    }
-    
-    // Convert to UTC ISO string
-    const utcString = date.toISOString();
-    console.log('Date conversion - Local:', `${dateString}T${timeString}`, 'UTC:', utcString);
-    return utcString;
+    let resolvedTimezone = localStorage?.getItem('channelTimezone')?.trim() || 'Australia/Melbourne';
+
+    // Use Intl to break down the date in target timezone
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: resolvedTimezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(new Date(`${dateString}T${timeString}`));
+
+    // Extract the values
+    const lookup = Object.fromEntries(parts.map(p => [p.type, p.value]));
+
+    // Construct a real Date object in that timezone
+    const utcDate = new Date(
+      Date.UTC(
+        lookup.year,
+        lookup.month - 1,
+        lookup.day,
+        lookup.hour,
+        lookup.minute,
+        lookup.second
+      )
+    );
+
+    return utcDate.toISOString();
   } catch (error) {
     console.error('Error converting date:', error);
     return null;
   }
 };
+
+
+
 
 // Alternative: If you need to handle timezone offsets manually
 export const convertLocalToUTCManual = (dateString, timeString = '00:00:00') => {
