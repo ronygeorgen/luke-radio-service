@@ -152,16 +152,6 @@ const UserChannelsPage = () => {
                       <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Channels</div>
                       <button
                         onClick={() => {
-                          setIsChannelSelectionOpen(true);
-                          setIsDropdownOpen(false);
-                        }}
-                        className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                      >
-                        <Search className="w-4 h-4 mr-3 text-gray-500" />
-                        Search
-                      </button>
-                      <button
-                        onClick={() => {
                           navigate('/user-channels');
                           setIsDropdownOpen(false);
                         }}
@@ -169,6 +159,16 @@ const UserChannelsPage = () => {
                       >
                         <Radio className="w-4 h-4 mr-3 text-gray-500" />
                         My Channels
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsChannelSelectionOpen(true);
+                          setIsDropdownOpen(false);
+                        }}
+                        className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                      >
+                        <Search className="w-4 h-4 mr-3 text-gray-500" />
+                        Search
                       </button>
                       <button onClick={() => handleNavigation('/dashboard')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                         <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
