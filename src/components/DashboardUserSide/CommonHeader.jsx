@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings, ChevronDown, BarChart3, FileText, Search, LifeBuoy, Music, Layers, UserCog, Plus, Clock, Filter, LogOut } from 'lucide-react';
+import { Settings, ChevronDown, BarChart3, FileText, Search, LifeBuoy, Music, Layers, UserCog, Plus, Clock, Filter, LogOut, Radio } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
@@ -84,9 +84,29 @@ const CommonHeader = ({ title, subtitle, children }) => {
                   <div className="grid grid-cols-2 gap-2 px-2">
                     <div>
                       <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Channels</div>
-                      <button onClick={() => handleNavigation('/user-channels')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <button
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          const channelId = localStorage.getItem('channelId');
+                          const channelName = localStorage.getItem('channelName');
+                          if (channelId && channelName) {
+                            const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+                            navigate(`/channels/${channelId}/segments?date=${today}&hour=0&name=${encodeURIComponent(channelName)}`);
+                          } else {
+                            navigate('/user-channels');
+                          }
+                        }}
+                        className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                      >
                         <Search className="w-4 h-4 mr-3 text-gray-500" />
                         Search
+                      </button>
+                      <button
+                        onClick={() => { navigate('/user-channels'); setIsDropdownOpen(false); }}
+                        className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                      >
+                        <Radio className="w-4 h-4 mr-3 text-gray-500" />
+                        My Channels
                       </button>
                       <button onClick={() => handleNavigation('/dashboard')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                         <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />

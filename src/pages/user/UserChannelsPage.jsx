@@ -62,6 +62,23 @@ const UserChannelsPage = () => {
       
       navigate(finalPath);
       setPendingNavigation(null);
+    } else if (channel) {
+      // Same behavior as UserChannelCard: set localStorage fields
+      try {
+        if (channel?.id) {
+          localStorage.setItem("channelId", String(channel.id));
+        }
+        if (channel?.name) {
+          localStorage.setItem("channelName", channel.name);
+        }
+        const channelTimezone = channel?.timezone || "Australia/Melbourne";
+        localStorage.setItem("channelTimezone", channelTimezone);
+      } catch (e) {
+        // No-op: localStorage might be unavailable; navigation should still proceed
+      }
+      const today = new Date().toISOString().split("T")[0].replace(/-/g, "");
+      navigate(`/channels/${channel.id}/segments?date=${today}&hour=0&name=${encodeURIComponent(channel.name)}`);
+      setIsChannelSelectionOpen(false);
     }
   };
 
@@ -133,9 +150,25 @@ const UserChannelsPage = () => {
                   <div className="grid grid-cols-2 gap-2 px-2">
                     <div>
                       <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Channels</div>
-                      <button onClick={() => handleNavigation('/user-channels')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <button
+                        onClick={() => {
+                          setIsChannelSelectionOpen(true);
+                          setIsDropdownOpen(false);
+                        }}
+                        className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                      >
                         <Search className="w-4 h-4 mr-3 text-gray-500" />
                         Search
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigate('/user-channels');
+                          setIsDropdownOpen(false);
+                        }}
+                        className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                      >
+                        <Radio className="w-4 h-4 mr-3 text-gray-500" />
+                        My Channels
                       </button>
                       <button onClick={() => handleNavigation('/dashboard')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                         <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
@@ -156,11 +189,11 @@ const UserChannelsPage = () => {
                         <Settings className="w-4 h-4 mr-3 text-gray-500" />
                         Topic Settings
                       </button>
-                      <button onClick={() => navigate('/dashboard/shift-management')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <button onClick={() => handleNavigation('/dashboard/shift-management')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                         <Clock className="w-4 h-4 mr-3 text-gray-500" />
                         Shift Management
                       </button>
-                      <button onClick={() => navigate('/dashboard/predefined-filters')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                      <button onClick={() => handleNavigation('/dashboard/predefined-filters')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                         <Filter className="w-4 h-4 mr-3 text-gray-500" />
                         Predefined Filters
                       </button>

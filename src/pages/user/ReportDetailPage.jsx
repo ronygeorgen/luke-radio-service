@@ -24,6 +24,7 @@ import {
   LogOut,
   Clock,
   Filter,
+  Radio,
 } from 'lucide-react';
 import { 
   fetchReportSegments,
@@ -43,6 +44,7 @@ import SummaryModal from './SummaryModal';
 import TranscriptionModal from './TranscriptionModal';
 import AudioPlayer from './AudioPlayer';
 import ReportAudioPlayer from './ReportAudioPlayer';
+import SimpleChannelSelectionModal from './SimpleChannelSelectionModal';
 
 const ReportDetailPage = () => {
   const { id } = useParams();
@@ -63,6 +65,18 @@ const ReportDetailPage = () => {
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
   const [selectedSegment, setSelectedSegment] = useState(null);
+  const [isChannelSelectionOpen, setIsChannelSelectionOpen] = useState(false);
+  const userChannels = [];
+  const handleChannelSelect = (channel) => {
+    try {
+      if (channel?.id) localStorage.setItem('channelId', String(channel.id));
+      if (channel?.name) localStorage.setItem('channelName', channel.name);
+      localStorage.setItem('channelTimezone', channel?.timezone || 'Australia/Melbourne');
+    } catch (e) {}
+    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    navigate(`/channels/${channel.id}/segments?date=${today}&hour=0&name=${encodeURIComponent(channel.name)}`);
+    setIsChannelSelectionOpen(false);
+  };
 
   const folder = folders.find(f => f.id === parseInt(id)) || currentReport;
 
@@ -325,9 +339,29 @@ const formatDateTime = (backendTime) => {
                     <div className="grid grid-cols-2 gap-2 px-2">
                       <div>
                         <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Channels</div>
-                        <button onClick={() => { navigate("/user-channels"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <button
+                          onClick={() => {
+                            setIsDropdownOpen(false);
+                            const channelId = localStorage.getItem('channelId');
+                            const channelName = localStorage.getItem('channelName');
+                            if (channelId && channelName) {
+                              const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+                              navigate(`/channels/${channelId}/segments?date=${today}&hour=0&name=${encodeURIComponent(channelName)}`);
+                            } else {
+                              navigate('/user-channels');
+                            }
+                          }}
+                          className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                        >
                           <Search className="w-4 h-4 mr-3 text-gray-500" />
                           Search
+                        </button>
+                        <button
+                          onClick={() => { navigate('/user-channels'); setIsDropdownOpen(false); }}
+                          className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                        >
+                          <Radio className="w-4 h-4 mr-3 text-gray-500" />
+                          My Channels
                         </button>
                         <button onClick={() => { navigate("/dashboard"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                           <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
