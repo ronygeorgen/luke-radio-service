@@ -14,6 +14,7 @@ const TitleRulesModal = ({ isOpen, onClose, category }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
     before_title: '',
+    after_title: '',
     skip_transcription: true,
     is_active: true,
     notes: ''
@@ -46,6 +47,7 @@ const TitleRulesModal = ({ isOpen, onClose, category }) => {
         .then(() => {
           setFormData({
             before_title: '',
+            after_title: '',
             skip_transcription: true,
             is_active: true,
             notes: ''
@@ -131,7 +133,22 @@ const TitleRulesModal = ({ isOpen, onClose, category }) => {
                   value={formData.before_title}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter title text"
+                  placeholder="Enter before title text"
+                />
+              </div>
+              <div>
+                <label htmlFor="after_title" className="block text-sm font-medium text-gray-700 mb-1">
+                  After Title *
+                </label>
+                <input
+                  type="text"
+                  id="after_title"
+                  name="after_title"
+                  required
+                  value={formData.after_title}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter after title text"
                 />
               </div>
 
@@ -217,7 +234,7 @@ const TitleRulesModal = ({ isOpen, onClose, category }) => {
                   <div className="flex justify-between items-start">
                     <div className="space-y-2 flex-1">
                       <div className="flex items-center space-x-2">
-                        <h5 className="font-medium text-gray-900">{rule.before_title}</h5>
+                        <h5 className="font-medium text-gray-900">{rule.before_title} {rule.after_title ? `- ${rule.after_title}` : ''}</h5>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                           rule.is_active 
                             ? 'bg-green-100 text-green-800' 
