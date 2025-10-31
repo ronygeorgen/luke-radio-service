@@ -110,28 +110,20 @@ const UserManagement = () => {
           </div>
         </div>
       ) : (
-        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="sw-table-wrap">
+          <table className="sw-table">
+            <thead className="sw-thead">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className="sw-th">User</th>
+                <th className="sw-th">Status</th>
+                <th className="sw-th">Role</th>
+                <th className="sw-th">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="sw-tbody">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                <tr key={user.id} className="sw-tr">
+                  <td className="sw-td whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
                         <User className="h-5 w-5 text-blue-600" />
@@ -145,7 +137,7 @@ const UserManagement = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="sw-td whitespace-nowrap">
                     <div className="flex items-center">
                       {user.password_set ? (
                         <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
@@ -157,7 +149,7 @@ const UserManagement = () => {
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="sw-td whitespace-nowrap">
                     <div className="flex items-center">
                       {user.is_admin ? (
                         <Shield className="h-4 w-4 text-purple-500 mr-1" />
@@ -169,11 +161,11 @@ const UserManagement = () => {
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td className="sw-td whitespace-nowrap text-sm font-medium">
                     {!user.is_admin && (
                       <button
                         onClick={() => handleAssignChannel(user)}
-                        className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md text-xs font-medium transition-colors"
+                        className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors"
                       >
                         Assign Channel
                       </button>

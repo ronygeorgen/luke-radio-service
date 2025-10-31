@@ -310,37 +310,21 @@ const ShiftManagement = () => {
 
       {/* Shifts Table - Always show when form is not visible */}
       {!showForm && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="sw-table-wrap">
+          <table className="sw-table">
+            <thead className="sw-thead">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Shift Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Time Range
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Days
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Flag Seconds
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Channel
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className="sw-th">Shift Name</th>
+                <th className="sw-th">Time Range</th>
+                <th className="sw-th">Days</th>
+                <th className="sw-th">Flag Seconds</th>
+                <th className="sw-th">Channel</th>
+                <th className="sw-th">Description</th>
+                <th className="sw-th">Status</th>
+                <th className="sw-th">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="sw-tbody">
               {shifts.map((shift) => {
                 const channelName = channels.find(c => c.id === shift.channel?.toString())?.name || 
                                   `Channel ${shift.channel}` || 'N/A';
@@ -349,66 +333,62 @@ const ShiftManagement = () => {
                 ).join(', ') : 'N/A';
                 
                 return (
-                  <tr key={shift.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={shift.id} className="sw-tr">
+                    <td className="sw-td whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{shift.name}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="sw-td whitespace-nowrap">
                       <div className="text-sm text-gray-900">
                         {formatTimeForDisplay(shift.start_time)} - {formatTimeForDisplay(shift.end_time)}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="sw-td">
                       <div className="text-sm text-gray-900">{daysList}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="sw-td whitespace-nowrap">
                       <div className="text-sm text-gray-900">{shift.flag_seconds || 'N/A'}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="sw-td whitespace-nowrap">
                       <div className="text-sm text-gray-900">{channelName}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="sw-td">
                       <div className="text-sm text-gray-900">{shift.description}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          shift.is_active
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
+                    <td className="sw-td whitespace-nowrap">
+                      <span className={shift.is_active ? 'sw-badge-success' : 'sw-badge-danger'}>
                         {shift.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap space-x-2">
-                      <button
-                        onClick={() => handleEditShift(shift)}
-                        className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteShift(shift.id)}
-                        disabled={isShiftDeleting(shift.id)}
-                        className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200"
-                      >
-                        {isShiftDeleting(shift.id) ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white inline-block mr-2"></div>
-                            Deleting...
-                          </>
-                        ) : (
-                          'Delete'
-                        )}
-                      </button>
+                    <td className="sw-td whitespace-nowrap">
+                      <div className="sw-actions">
+                        <button
+                          onClick={() => handleEditShift(shift)}
+                          className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteShift(shift.id)}
+                          disabled={isShiftDeleting(shift.id)}
+                          className="px-3 py-1.5 rounded-md bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white text-xs font-medium"
+                        >
+                          {isShiftDeleting(shift.id) ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white inline-block mr-2"></div>
+                              Deleting...
+                            </>
+                          ) : (
+                            'Delete'
+                          )}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          
+
           {shifts.length === 0 && !loading && (
             <div className="text-center py-8">
               <p className="text-gray-500">No shifts found.</p>

@@ -92,25 +92,17 @@ const TopicManagement = () => {
       </div>
 
       {/* Topics Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      <div className="sw-table-wrap">
+        <table className="sw-table">
+          <thead className="sw-thead">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Topic Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Delete
-              </th>
+              <th className="sw-th">Topic Name</th>
+              <th className="sw-th">Status</th>
+              <th className="sw-th">Actions</th>
+              <th className="sw-th">Delete</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="sw-tbody">
             {[...topics]
               .sort((a, b) => {
                 // Sort blocked topics first (is_active: false), then active topics (is_active: true)
@@ -121,26 +113,20 @@ const TopicManagement = () => {
                 return a.is_active ? 1 : -1;
               })
               .map((topic) => (
-              <tr key={topic.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
+              <tr key={topic.id} className="sw-tr">
+                <td className="sw-td whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">{topic.topic_name}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      topic.is_active
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}
-                  >
+                <td className="sw-td whitespace-nowrap">
+                  <span className={topic.is_active ? 'sw-badge-success' : 'sw-badge-danger'}>
                     {topic.is_active ? 'Active' : 'Blocked'}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="sw-td whitespace-nowrap">
                   <button
                     onClick={() => handleToggleTopic(topic)}
                     disabled={isTopicUpdating(topic.id)}
-                    className={`px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200 flex items-center justify-center space-x-2 w-24 ${
+                    className={`px-3 py-1.5 rounded-md text-white text-xs font-medium transition-colors duration-200 flex items-center justify-center space-x-2 ${
                       topic.is_active
                         ? 'bg-red-600 hover:bg-red-700'
                         : 'bg-green-600 hover:bg-green-700'
@@ -164,11 +150,11 @@ const TopicManagement = () => {
                     )}
                   </button>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td className="sw-td whitespace-nowrap">
                   <button
                     onClick={() => handleDeleteTopic(topic)}
                     disabled={isTopicDeleting(topic.id) || isTopicUpdating(topic.id)}
-                    className="px-4 py-2 rounded-lg text-white font-medium transition-colors duration-200 flex items-center justify-center space-x-2 w-24 bg-red-600 hover:bg-red-700 disabled:bg-gray-400"
+                    className="px-3 py-1.5 rounded-md text-white text-xs font-medium transition-colors duration-200 flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400"
                   >
                     {isTopicDeleting(topic.id) ? (
                       <>

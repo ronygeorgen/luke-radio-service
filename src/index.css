@@ -35,3 +35,52 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
 }
+
+/* Unified modern table styles */
+@layer components {
+  .sw-card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-200;
+  }
+  .sw-card-header {
+    @apply px-6 py-4 border-b border-gray-200 flex items-center justify-between;
+  }
+  .sw-card-title {
+    @apply text-base font-semibold text-gray-900;
+  }
+  .sw-table-wrap {
+    @apply overflow-hidden sw-card;
+  }
+  .sw-table {
+    @apply min-w-full border-collapse;
+  }
+  .sw-thead {
+    @apply bg-gray-50 sticky top-0 z-10;
+  }
+  .sw-th {
+    @apply px-6 py-3 text-left text-xs font-semibold tracking-wide text-gray-600 uppercase;
+  }
+  .sw-tbody {
+    @apply divide-y divide-gray-200;
+  }
+  .sw-tr {
+    @apply hover:bg-gray-50 transition-colors;
+  }
+  .sw-td {
+    @apply px-6 py-4 align-middle text-sm text-gray-800;
+  }
+  .sw-td-muted {
+    @apply text-gray-500;
+  }
+  .sw-badge {
+    @apply inline-flex items-center px-2 py-1 text-xs font-medium rounded-full;
+  }
+  .sw-badge-success {
+    @apply sw-badge bg-green-100 text-green-800;
+  }
+  .sw-badge-danger {
+    @apply sw-badge bg-red-100 text-red-800;
+  }
+  .sw-actions {
+    @apply flex items-center gap-2;
+  }
+}
