@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { checkAuth } from '../store/slices/authSlice';
+import LoadingSpinner from './DashboardUserSide/LoadingSpinner';
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const dispatch = useDispatch();
@@ -17,7 +18,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
   // Wait for auth resolution to avoid incorrect redirects on refresh
   if (isLoading || (!isAuthenticated && (accessToken || refreshToken))) {
-    return null;
+    return <LoadingSpinner message="Loading..." />;
   }
 
   if (!isAuthenticated) {

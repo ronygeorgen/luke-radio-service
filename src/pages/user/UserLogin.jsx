@@ -82,6 +82,10 @@ const UserLogin = () => {
       return;
     }
     
+    // Clear any previous errors
+    setErrors({});
+    dispatch(clearError());
+    
     dispatch(loginUser({ ...formData, isAdmin: false }));
   };
 
@@ -276,7 +280,7 @@ const UserLogin = () => {
                 {isLoading ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Signing in...
+                    Logging in...
                   </div>
                 ) : (
                   <div className="flex items-center">
