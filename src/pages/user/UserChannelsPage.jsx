@@ -236,7 +236,7 @@ const UserChannelsPage = () => {
       </header>
 
       {/* Content */}
-      <main className="flex-1 max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full pt-24">
+      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-8 pt-24">
         <p className="text-gray-600 text-center mb-8 text-base sm:text-lg">
           Select a channel to view its audio segments
         </p>

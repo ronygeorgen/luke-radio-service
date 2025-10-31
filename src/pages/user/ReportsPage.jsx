@@ -268,7 +268,7 @@ const ReportsPage = () => {
       {/* Main Content */}
       <main className="pt-20 p-6">
         {/* Page Header with New Report Button */}
-        <div className="max-w-[1600px] mx-auto mb-6">
+        <div className="w-full mb-6">
           <div className="flex items-center">
 
             <button
@@ -286,7 +286,7 @@ const ReportsPage = () => {
 
 
         {/* Reports Grid */}
-        <div className="max-w-[1600px] mx-auto">
+        <div className="w-full">
           {folderLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {[...Array(6)].map((_, i) => (
