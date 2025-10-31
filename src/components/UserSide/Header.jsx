@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { formatDateForDisplay } from "../../utils/formatters";
 import { useNavigate } from "react-router-dom";
-import { Settings, ArrowLeft, FileText, BarChart3, ChevronDown, Search, Layers, UserCog, Music, Plus, LifeBuoy,Clock, Filter, Radio } from "lucide-react";
+import { Menu, Settings, ArrowLeft, FileText, BarChart3, Search, Layers, UserCog, Music, Plus, LifeBuoy,Clock, Filter, Radio } from "lucide-react";
 import { useDispatch } from 'react-redux';
 import { logout } from "../../store/slices/authSlice";
 
@@ -62,7 +62,7 @@ const Header = ({
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40 h-16">
-      <div className="max-w-12xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+      <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
         
         {/* Single Row: Back Button, Channel Info, Search, and Navigation */}
         <div className="flex items-center justify-between h-full space-x-4">
@@ -128,15 +128,13 @@ const Header = ({
             )}
           </div>
 
-          {/* Settings Dropdown - EXACT SAME DESIGN AS BEFORE */}
+          {/* Navigation Dropdown - hamburger trigger */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
+              className="flex items-center px-3 py-2.5 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
             >
-              <Settings className="h-5 w-5" />
-              <span>Navigation</span>
-              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              <Menu className="h-5 w-5" />
             </button>
 
             {/* Dropdown Menu - EXACT SAME DESIGN AS BEFORE */}
