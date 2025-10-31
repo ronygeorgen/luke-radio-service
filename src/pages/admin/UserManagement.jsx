@@ -74,12 +74,12 @@ const UserManagement = () => {
       <div className="flex justify-between items-center">
         <div className="w-full flex justify-end">
           <button
-          onClick={() => setIsUserModalOpen(true)}
-          className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Create User</span>
-        </button>
+            onClick={() => setIsUserModalOpen(true)}
+            className="sw-btn-primary"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Create User</span>
+          </button>
         </div>
       </div>
 

@@ -34,7 +34,7 @@ const ChannelCard = ({ channel, onEdit }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
+    <div className="sw-card p-6 hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5">
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -60,17 +60,17 @@ const ChannelCard = ({ channel, onEdit }) => {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => onEdit(channel)}
-            className="p-2 rounded-full text-blue-600 hover:bg-blue-50 transition-colors duration-200"
+            className="sw-icon-btn text-blue-600"
           >
             <Edit className="h-4 w-4" />
           </button>
           <button
             onClick={handleToggle}
             disabled={isToggling}
-            className={`p-2 rounded-full transition-colors duration-200 ${
+            className={`sw-icon-btn ${
               channel.isActive
-                ? 'bg-green-100 text-green-600 hover:bg-green-200'
-                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                ? 'bg-green-50 border-green-200 text-green-600 hover:bg-green-100'
+                : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
             } ${isToggling ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {channel.isActive ? (
@@ -82,9 +82,7 @@ const ChannelCard = ({ channel, onEdit }) => {
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className={`p-2 rounded-full text-red-600 hover:bg-red-50 transition-colors duration-200 ${
-              isDeleting ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            className={`sw-icon-btn text-red-600 ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <Trash2 className="h-4 w-4" />
           </button>

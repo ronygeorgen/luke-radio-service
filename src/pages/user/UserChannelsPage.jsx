@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { logout } from "../../store/slices/authSlice";
 import { Calendar, BarChart3, FileText, Menu, Settings, Radio, Search, Layers, UserCog, Music, Plus, LifeBuoy, Clock, Filter } from "lucide-react";
 import SimpleChannelSelectionModal from "./SimpleChannelSelectionModal";
+import Shimmer from "../../components/DashboardUserSide/Shimmer";
 
 const UserChannelsPage = () => {
   const dispatch = useDispatch();
@@ -90,8 +91,49 @@ const UserChannelsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        {/* Header */}
+        <header className="sw-header">
+          <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
+            <div className="flex items-center justify-between h-full space-x-4">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg font-bold text-gray-900 truncate">My Channels</h1>
+                <div className="flex items-center space-x-4 text-sm text-gray-600">
+                  <span className="flex items-center">
+                    <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    {user?.email || 'User'}
+                  </span>
+                </div>
+              </div>
+              <div className="relative">
+                <button className="sw-header-btn">
+                  <Menu className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content Shimmers */}
+        <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-8 pt-24">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <div key={idx} className="sw-card p-4">
+                <Shimmer className="w-full h-40 mb-4 rounded-lg" />
+                <div className="space-y-3">
+                  <Shimmer type="text" className="w-2/3" />
+                  <Shimmer type="text" className="w-1/2" />
+                  <div className="flex gap-2">
+                    <Shimmer className="h-8 w-20 rounded-md" />
+                    <Shimmer className="h-8 w-24 rounded-md" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
@@ -115,7 +157,7 @@ const UserChannelsPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40 h-16">
+      <header className="sw-header">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
           <div className="flex items-center justify-between h-full space-x-4">
             {/* Channel Info */}
@@ -137,7 +179,7 @@ const UserChannelsPage = () => {
             <div className="relative">
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center px-3 py-2.5 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
+                className="sw-header-btn"
               >
                 <Menu className="h-5 w-5" />
               </button>
@@ -242,7 +284,7 @@ const UserChannelsPage = () => {
         </p>
 
         {userChannels.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="sw-empty">
             <div className="text-gray-400 mb-4">
               <Calendar className="h-12 w-12" />
             </div>

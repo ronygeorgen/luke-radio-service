@@ -37,7 +37,7 @@ const CommonHeader = ({ title, subtitle, children }) => {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40 h-16">
+    <header className="sw-header">
       <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
         <div className="flex items-center justify-between h-full space-x-4">
 
@@ -71,7 +71,7 @@ const CommonHeader = ({ title, subtitle, children }) => {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center px-3 py-2.5 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
+                className="sw-header-btn"
               >
                 <Menu className="h-5 w-5" />
               </button>
