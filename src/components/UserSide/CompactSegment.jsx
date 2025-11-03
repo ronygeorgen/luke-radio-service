@@ -1,6 +1,6 @@
 // components/UserSide/CompactSegment.jsx
 import React from "react";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, Info } from "lucide-react";
 import TranscribeButton from "./TranscribeButton";
 import dayjs from "dayjs";
 
@@ -71,8 +71,21 @@ function formatDateTime(dateTimeString) {
   </div>
 
   <div className="flex space-x-2">
-    <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
+    <span
+      className={`text-xs px-2 py-1 rounded ${segment?.flag?.duration?.exceeded ? 'text-gray-900' : 'bg-blue-100 text-blue-800'}`}
+      title={segment?.flag?.duration?.exceeded ? segment?.flag?.duration?.message : ''}
+      style={segment?.flag?.duration?.exceeded ? {
+        backgroundImage: 'linear-gradient(transparent 55%, rgba(250, 204, 21, 0.75) 0)',
+        backgroundRepeat: 'no-repeat',
+        backgroundSize: '100% 100%'
+      } : undefined}
+    >
       {segment.duration_seconds}s
+      {segment?.flag?.duration?.exceeded && (
+        <span className="inline-flex items-center ml-1 align-middle">
+          <Info className="w-3 h-3 text-yellow-600" />
+        </span>
+      )}
     </span>
     {isMusicSegment && (
       <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">
@@ -127,7 +140,23 @@ function formatDateTime(dateTimeString) {
             </span> */}
           </div>
 
-          <div className="text-xs text-gray-700">{segment.duration_seconds}s</div>
+          <div className="text-xs text-gray-700 flex items-center">
+            <span
+              className={segment?.flag?.duration?.exceeded ? 'font-semibold' : ''}
+              style={segment?.flag?.duration?.exceeded ? {
+                backgroundImage: 'linear-gradient(transparent 55%, rgba(250, 204, 21, 0.75) 0)',
+                backgroundRepeat: 'no-repeat',
+                backgroundSize: '100% 100%'
+              } : undefined}
+            >
+              {segment.duration_seconds}s
+            </span>
+            {segment?.flag?.duration?.exceeded && (
+              <span className="inline-flex items-center ml-1" title={segment?.flag?.duration?.message}>
+                <Info className="w-3 h-3 text-yellow-600" />
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center space-x-2">

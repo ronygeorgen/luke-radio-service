@@ -45,6 +45,8 @@ const ShiftManagement = () => {
     }
     // Set flag_seconds to empty by default
     dispatch(setShiftForm({ flag_seconds: '' }));
+    // Ensure default should_transcribe is false
+    dispatch(setShiftForm({ should_transcribe: false }));
   }, [dispatch]);
 
   const handleCreateShift = (e) => {
@@ -55,7 +57,9 @@ const ShiftManagement = () => {
       end_time: formatTimeForAPI(shiftForm.end_time),
       days: shiftForm.days.join(','),
       flag_seconds: shiftForm.flag_seconds ? parseInt(shiftForm.flag_seconds) : null,
-      channel: parseInt(shiftForm.channel)
+      channel: parseInt(shiftForm.channel),
+      // ensure boolean for API
+      should_transcribe: !!shiftForm.should_transcribe
     };
     
     if (editingShift) {
@@ -90,7 +94,8 @@ const ShiftManagement = () => {
       start_time: formatTimeForDisplay(shift.start_time),
       end_time: formatTimeForDisplay(shift.end_time),
       days: shift.days ? shift.days.split(',') : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-      flag_seconds: shift.flag_seconds || ''
+      flag_seconds: shift.flag_seconds || '',
+      should_transcribe: typeof shift.should_transcribe === 'boolean' ? shift.should_transcribe : false
     }));
   };
 
@@ -112,6 +117,8 @@ const ShiftManagement = () => {
     }
     // Set flag_seconds to empty
     dispatch(setShiftForm({ flag_seconds: '' }));
+    // Reset should_transcribe to default false
+    dispatch(setShiftForm({ should_transcribe: false }));
   };
 
   const handleDeleteShift = (shiftId) => {
@@ -139,6 +146,8 @@ const ShiftManagement = () => {
     }
     // Set flag_seconds to empty
     dispatch(setShiftForm({ flag_seconds: '' }));
+    // Default should_transcribe to false
+    dispatch(setShiftForm({ should_transcribe: false }));
   };
 
   const isShiftDeleting = (shiftId) => {
@@ -239,7 +248,7 @@ const ShiftManagement = () => {
                   onChange={(e) => dispatch(setShiftForm({ flag_seconds: e.target.value }))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   min="1"
-                  placeholder="Optional"
+                  placeholder="Optional"  
                 />
               </div>
             </div>
@@ -278,16 +287,27 @@ const ShiftManagement = () => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center">
+            <div className="flex items-center space-x-8">
+              <label className="flex items-center cursor-pointer">
                 <input
+                  id="shift-active"
                   type="checkbox"
-                  checked={shiftForm.is_active}
+                  checked={!!shiftForm.is_active}
                   onChange={(e) => dispatch(setShiftForm({ is_active: e.target.checked }))}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-400 rounded"
                 />
-                <label className="ml-2 text-sm text-gray-700">Active</label>
-              </div>
+                <span className="ml-2 text-sm text-gray-800 font-medium">Active</span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  id="shift-should-transcribe"
+                  type="checkbox"
+                  checked={!!shiftForm.should_transcribe}
+                  onChange={(e) => dispatch(setShiftForm({ should_transcribe: e.target.checked }))}
+                  className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-400 rounded"
+                />
+                <span className="ml-2 text-sm text-gray-800 font-medium">Do you want to transcribe</span>
+              </label>
             </div>
             <div className="flex space-x-4">
               <button

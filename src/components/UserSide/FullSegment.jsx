@@ -1,5 +1,6 @@
 // components/UserSide/FullSegment.jsx
 import React, { useState } from 'react';
+import { Info } from 'lucide-react';
 import { SelectReportModal, CreateReportModal } from '../../pages/user/ReportModals';
 import dayjs from "dayjs";
 
@@ -101,8 +102,21 @@ function formatDateTime(dateTimeString) {
         </div>
 
         <div className="flex space-x-2">
-          <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
+          <span
+            className={`text-xs px-2 py-1 rounded ${segment?.flag?.duration?.exceeded ? 'text-gray-900' : 'bg-blue-100 text-blue-800'}`}
+            title={segment?.flag?.duration?.exceeded ? segment?.flag?.duration?.message : ''}
+            style={segment?.flag?.duration?.exceeded ? {
+              backgroundImage: 'linear-gradient(transparent 55%, rgba(250, 204, 21, 0.75) 0)',
+              backgroundRepeat: 'no-repeat',
+              backgroundSize: '100% 100%'
+            } : undefined}
+          >
             {segment.duration_seconds}s
+            {segment?.flag?.duration?.exceeded && (
+              <span className="inline-flex items-center ml-1 align-middle">
+                <Info className="w-3 h-3 text-yellow-600" />
+              </span>
+            )}
           </span>
           {isMusicSegment && (
             <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">
@@ -147,7 +161,23 @@ function formatDateTime(dateTimeString) {
 
           <div>
             <label className="block text-sm font-medium text-gray-500">Duration</label>
-            <p className="text-gray-900 text-sm">{segment.duration_seconds} seconds</p>
+            <p className="text-gray-900 text-sm flex items-center">
+              <span
+                className={segment?.flag?.duration?.exceeded ? 'font-semibold' : ''}
+                style={segment?.flag?.duration?.exceeded ? {
+                  backgroundImage: 'linear-gradient(transparent 55%, rgba(250, 204, 21, 0.75) 0)',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundSize: '100% 100%'
+                } : undefined}
+              >
+                {segment.duration_seconds} seconds
+              </span>
+              {segment?.flag?.duration?.exceeded && (
+                <span className="inline-flex items-center ml-2" title={segment?.flag?.duration?.message}>
+                  <Info className="w-4 h-4 text-yellow-600" />
+                </span>
+              )}
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-500">Sentiment</label>
