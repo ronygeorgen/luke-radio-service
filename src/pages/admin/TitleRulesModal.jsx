@@ -7,12 +7,21 @@ import {
   deleteTitleRule,
   clearError 
 } from '../../store/slices/audioManagementSlice';
+import { updateTitleRule } from '../../store/slices/audioManagementSlice';
 
 const TitleRulesModal = ({ isOpen, onClose, category }) => {
   const dispatch = useDispatch();
   const { currentCategoryTitles, titleLoading, titleError, loading } = useSelector(state => state.audioManagement);
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
+    before_title: '',
+    after_title: '',
+    skip_transcription: true,
+    is_active: true,
+    notes: ''
+  });
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({
     before_title: '',
     after_title: '',
     skip_transcription: true,
@@ -62,6 +71,41 @@ const TitleRulesModal = ({ isOpen, onClose, category }) => {
     if (window.confirm('Are you sure you want to delete this title rule?')) {
       dispatch(deleteTitleRule(titleId));
     }
+  };
+
+  const startEditing = (rule) => {
+    setEditingId(rule.id);
+    setEditForm({
+      before_title: rule.before_title || '',
+      after_title: rule.after_title || '',
+      skip_transcription: !!rule.skip_transcription,
+      is_active: !!rule.is_active,
+      notes: rule.notes || ''
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setEditForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleEditSubmit = (e) => {
+    e.preventDefault();
+    if (!category || !editingId) return;
+    const payload = { ...editForm, category: category.id };
+    dispatch(updateTitleRule({ id: editingId, data: payload }))
+      .unwrap()
+      .then(() => {
+        setEditingId(null);
+      })
+      .catch(() => {});
   };
 
   const handleChange = (e) => {
@@ -255,13 +299,104 @@ const TitleRulesModal = ({ isOpen, onClose, category }) => {
                         Created: { rule.created_at }
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleDeleteTitle(rule.id)}
-                      className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-1 rounded transition-colors ml-4"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-2 ml-4">
+                      <button
+                        onClick={() => startEditing(rule)}
+                        className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 p-1 rounded transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTitle(rule.id)}
+                        className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-1 rounded transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
+                  {editingId === rule.id && (
+                    <form onSubmit={handleEditSubmit} className="mt-4 bg-gray-50 p-4 rounded-lg space-y-4">
+                      <h4 className="font-medium text-gray-900">Edit Title Rule</h4>
+                      <div>
+                        <label htmlFor={`before_title_${rule.id}`} className="block text-sm font-medium text-gray-700 mb-1">Before Title *</label>
+                        <input
+                          type="text"
+                          id={`before_title_${rule.id}`}
+                          name="before_title"
+                          required
+                          value={editForm.before_title}
+                          onChange={handleEditChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter before title text"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor={`after_title_${rule.id}`} className="block text-sm font-medium text-gray-700 mb-1">After Title *</label>
+                        <input
+                          type="text"
+                          id={`after_title_${rule.id}`}
+                          name="after_title"
+                          required
+                          value={editForm.after_title}
+                          onChange={handleEditChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter after title text"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor={`notes_${rule.id}`} className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea
+                          id={`notes_${rule.id}`}
+                          name="notes"
+                          rows={2}
+                          value={editForm.notes}
+                          onChange={handleEditChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Enter notes"
+                        />
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id={`skip_transcription_${rule.id}`}
+                            name="skip_transcription"
+                            checked={editForm.skip_transcription}
+                            onChange={handleEditChange}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor={`skip_transcription_${rule.id}`} className="ml-2 block text-sm text-gray-700">Skip Transcription</label>
+                        </div>
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id={`is_active_${rule.id}`}
+                            name="is_active"
+                            checked={editForm.is_active}
+                            onChange={handleEditChange}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <label htmlFor={`is_active_${rule.id}`} className="ml-2 block text-sm text-gray-700">Active</label>
+                        </div>
+                      </div>
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          type="button"
+                          onClick={cancelEditing}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {loading ? 'Saving...' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               ))}
             </div>

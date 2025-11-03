@@ -9,6 +9,7 @@ export const audioManagementApi = {
   
   // Title Mapping Rules APIs
   createTitleRule: (data) => axiosInstance.post('/segmentor/title-mapping-rules/', data),
+  updateTitleRule: (id, data) => axiosInstance.put(`/segmentor/title-mapping-rules/${id}/`, data),
   deleteTitleRule: (id) => axiosInstance.delete(`/segmentor/title-mapping-rules/${id}/`),
   getCategoryTitles: (categoryId) => axiosInstance.get(`/segmentor/categories/${categoryId}/titles/`),
 };

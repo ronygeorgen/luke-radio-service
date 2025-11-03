@@ -63,6 +63,18 @@ export const createTitleRule = createAsyncThunk(
   }
 );
 
+export const updateTitleRule = createAsyncThunk(
+  'audioManagement/updateTitleRule',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await audioManagementApi.updateTitleRule(id, data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || 'Failed to update title rule');
+    }
+  }
+);
+
 export const deleteTitleRule = createAsyncThunk(
   'audioManagement/deleteTitleRule',
   async (id, { rejectWithValue }) => {
@@ -154,6 +166,14 @@ const audioManagementSlice = createSlice({
         if (state.currentCategoryTitles && state.currentCategoryTitles.category_id === action.payload.category) {
           state.currentCategoryTitles.title_mapping_rules.unshift(action.payload);
           state.currentCategoryTitles.count += 1;
+        }
+      })
+      .addCase(updateTitleRule.fulfilled, (state, action) => {
+        if (state.currentCategoryTitles) {
+          const index = state.currentCategoryTitles.title_mapping_rules.findIndex(rule => rule.id === action.payload.id);
+          if (index !== -1) {
+            state.currentCategoryTitles.title_mapping_rules[index] = action.payload;
+          }
         }
       })
       .addCase(deleteTitleRule.fulfilled, (state, action) => {
