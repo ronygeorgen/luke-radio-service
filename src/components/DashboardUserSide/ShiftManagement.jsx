@@ -306,7 +306,7 @@ const ShiftManagement = () => {
                   onChange={(e) => dispatch(setShiftForm({ should_transcribe: e.target.checked }))}
                   className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-400 rounded"
                 />
-                <span className="ml-2 text-sm text-gray-800 font-medium">Do you want to transcribe</span>
+                <span className="ml-2 text-sm text-gray-800 font-medium">Do you want to transcribe?</span>
               </label>
             </div>
             <div className="flex space-x-4">
