@@ -114,7 +114,12 @@ const CreateReportModal = ({ isOpen, onClose, onBack, segmentId }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    dispatch(createReportFolder(formData))
+    const channelId = localStorage.getItem('channelId');
+    const payload = {
+      ...formData,
+      channel_id: channelId ? parseInt(channelId) : undefined
+    };
+    dispatch(createReportFolder(payload))
       .unwrap()
       .then((newFolder) => {
         // Add the segment to the newly created report
