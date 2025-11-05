@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { X, ChevronLeft } from 'lucide-react';
 import { 
@@ -43,9 +44,9 @@ const SelectReportModal = ({ isOpen, onClose, segmentId, onCreateNew }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={onClose}>
+      <div className="bg-white rounded-lg p-6 w-96 max-w-md relative z-[101] shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Add to Report</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -94,7 +95,8 @@ const SelectReportModal = ({ isOpen, onClose, segmentId, onCreateNew }) => {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -143,9 +145,9 @@ const CreateReportModal = ({ isOpen, onClose, onBack, segmentId }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={onClose}>
+      <div className="bg-white rounded-lg p-6 w-96 max-w-md relative z-[101] shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center mb-4">
           <button onClick={onBack} className="mr-2 text-gray-400 hover:text-gray-600">
             <ChevronLeft className="w-5 h-5" />
@@ -210,7 +212,8 @@ const CreateReportModal = ({ isOpen, onClose, onBack, segmentId }) => {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

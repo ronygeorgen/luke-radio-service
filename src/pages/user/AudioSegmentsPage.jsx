@@ -542,14 +542,14 @@ if (loading && segments.length === 0) {
             aria-label="Open filters"
             title="Open filters"
             onClick={() => setIsSidebarOpen(true)}
-            className="fixed left-2 top-[4.5rem] z-10 bg-white border border-gray-300 shadow-sm hover:shadow-md text-gray-700 rounded-full p-2 transition-all"
+            className="fixed left-2 top-[4.5rem] z-50 bg-white border border-gray-300 shadow-sm hover:shadow-md text-gray-700 rounded-full p-2 transition-all"
           >
             <FilterIcon className="w-4 h-4" />
           </button>
         )}
 
         {/* Amazon-style Left Sidebar Filters - Compact & Transparent */}
-        <div className={`w-64 bg-transparent p-4 fixed left-0 top-16 bottom-0 overflow-y-auto no-scrollbar z-10 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className={`w-64 bg-transparent p-4 fixed left-0 top-16 bottom-0 overflow-y-auto no-scrollbar z-40 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           {/* Collapse Button */}
           <div className="flex justify-end mb-2">
             <button
