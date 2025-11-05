@@ -116,7 +116,7 @@ const AdminLayout = () => {
                     {/* Dropdown Menu - EXACT SAME DESIGN AS BEFORE */}
                     {isDropdownOpen === 'settings' && (
                     <div className="absolute right-0 mt-2 w-[28rem] bg-white rounded-xl shadow-2xl border border-gray-200 py-3 z-50 backdrop-blur-sm">
-                        <div className="grid grid-cols-2 gap-2 px-2">
+                        <div className={`grid ${user?.isAdmin ? 'grid-cols-2' : 'grid-cols-1'} gap-2 px-2`}>
                             <div>
                             <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Channels</div>
                                 <button onClick={() => { navigate('/user-channels'); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
@@ -151,7 +151,8 @@ const AdminLayout = () => {
                             Support Ticket
                             </button>
                         </div>
-                        <div>
+                        {user?.isAdmin && (
+                            <div>
                             <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Settings</div>
                             <button onClick={() => { navigate("/dashboard/settings"); setIsDropdownOpen(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                             <Settings className="w-4 h-4 mr-3 text-gray-500" />
@@ -190,6 +191,7 @@ const AdminLayout = () => {
                             Onboard Channel
                             </button>
                         </div>
+                        )}
                         </div>
                         <div className="border-t border-gray-200 my-2"></div>
                         <button onClick={() => { handleLogout(); setIsDropdownOpen(null); }} className="mx-2 mb-1 flex items-center w-[calc(100%-1rem)] px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200">
