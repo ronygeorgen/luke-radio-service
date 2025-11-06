@@ -61,7 +61,8 @@ export const addSegmentToReport = createAsyncThunk(
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to add segment to report');
+      const apiError = error.response?.data?.error || error.response?.data?.message;
+      return rejectWithValue(apiError || 'Failed to add segment to report');
     }
   }
 );

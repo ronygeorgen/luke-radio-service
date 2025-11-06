@@ -8,11 +8,14 @@ import {
     addSegmentToReport,
     clearReportError
 } from '../../store/slices/reportSlice';
+import AddInsightModal from '../../components/UserSide/AddInsightModal.jsx';
 
 const SelectReportModal = ({ isOpen, onClose, segmentId, onCreateNew }) => {
   const dispatch = useDispatch();
-  const { folders, folderLoading, folderError } = useSelector((state) => state.reports);
+  const { folders, folderLoading, folderError, loading, error } = useSelector((state) => state.reports);
   const [selectedFolder, setSelectedFolder] = useState('');
+  const [askInsightsOpen, setAskInsightsOpen] = useState(false);
+  const [savedSegmentId, setSavedSegmentId] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -26,6 +29,12 @@ const SelectReportModal = ({ isOpen, onClose, segmentId, onCreateNew }) => {
     }
   }, [folderError, dispatch]);
 
+  useEffect(() => {
+    if (error) {
+      setTimeout(() => dispatch(clearReportError()), 4000);
+    }
+  }, [error, dispatch]);
+
   const handleAddToReport = () => {
     if (selectedFolder) {
       dispatch(addSegmentToReport({ 
@@ -33,8 +42,14 @@ const SelectReportModal = ({ isOpen, onClose, segmentId, onCreateNew }) => {
         audio_segment_id: segmentId 
       }))
         .unwrap()
-        .then(() => {
-          onClose();
+        .then((res) => {
+          const id = res?.data?.id;
+          if (id) {
+            setSavedSegmentId(id);
+            setAskInsightsOpen(true);
+          } else {
+            onClose();
+          }
         })
         .catch(() => {
           // Error handled by Redux
@@ -43,6 +58,17 @@ const SelectReportModal = ({ isOpen, onClose, segmentId, onCreateNew }) => {
   };
 
   if (!isOpen) return null;
+
+  // When asking for insights, render only that flow to avoid overlapping layers
+  if (askInsightsOpen) {
+    return createPortal(
+      <AskInsightsModal 
+        onClose={() => { setAskInsightsOpen(false); onClose(); }}
+        savedSegmentId={savedSegmentId}
+      />,
+      document.body
+    );
+  }
 
   return createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={onClose}>
@@ -54,9 +80,9 @@ const SelectReportModal = ({ isOpen, onClose, segmentId, onCreateNew }) => {
           </button>
         </div>
 
-        {folderError && (
+        {(folderError || error) && (
           <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded mb-4 text-sm">
-            {folderError}
+            {folderError || error}
           </div>
         )}
 
@@ -68,7 +94,7 @@ const SelectReportModal = ({ isOpen, onClose, segmentId, onCreateNew }) => {
             value={selectedFolder}
             onChange={(e) => setSelectedFolder(e.target.value)}
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={folderLoading}
+            disabled={folderLoading || loading}
           >
             <option value="">Choose a report...</option>
             {folders.map((folder) => (
@@ -88,13 +114,14 @@ const SelectReportModal = ({ isOpen, onClose, segmentId, onCreateNew }) => {
           </button>
           <button
             onClick={handleAddToReport}
-            disabled={!selectedFolder || folderLoading}
+            disabled={!selectedFolder || folderLoading || loading}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {folderLoading ? 'Adding...' : 'Add to Report'}
+            {folderLoading || loading ? 'Adding...' : 'Add to Report'}
           </button>
         </div>
       </div>
+      {/* AskInsightsModal is rendered exclusively above via early return */}
     </div>,
     document.body
   );
@@ -107,6 +134,8 @@ const CreateReportModal = ({ isOpen, onClose, onBack, segmentId }) => {
     name: '',
     description: ''
   });
+  const [askInsightsOpen, setAskInsightsOpen] = useState(false);
+  const [savedSegmentId, setSavedSegmentId] = useState(null);
 
   useEffect(() => {
     if (error) {
@@ -130,8 +159,14 @@ const CreateReportModal = ({ isOpen, onClose, onBack, segmentId }) => {
           audio_segment_id: segmentId 
         }))
           .unwrap()
-          .then(() => {
-            onClose();
+          .then((res) => {
+            const id = res?.data?.id;
+            if (id) {
+              setSavedSegmentId(id);
+              setAskInsightsOpen(true);
+            } else {
+              onClose();
+            }
           });
       });
   };
@@ -144,6 +179,17 @@ const CreateReportModal = ({ isOpen, onClose, onBack, segmentId }) => {
   };
 
   if (!isOpen) return null;
+
+  // When asking for insights, render only that flow to avoid overlapping layers
+  if (askInsightsOpen) {
+    return createPortal(
+      <AskInsightsModal 
+        onClose={() => { setAskInsightsOpen(false); onClose(); }}
+        savedSegmentId={savedSegmentId}
+      />,
+      document.body
+    );
+  }
 
   return createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={onClose}>
@@ -211,6 +257,7 @@ const CreateReportModal = ({ isOpen, onClose, onBack, segmentId }) => {
             </button>
           </div>
         </form>
+        {/* AskInsightsModal is rendered exclusively above via early return */}
       </div>
     </div>,
     document.body
@@ -218,3 +265,39 @@ const CreateReportModal = ({ isOpen, onClose, onBack, segmentId }) => {
 };
 
 export { SelectReportModal, CreateReportModal };
+
+// Inline modal to ask whether to add insights, and if yes open AddInsightModal
+const AskInsightsModal = ({ onClose, savedSegmentId }) => {
+  const [showAddInsight, setShowAddInsight] = useState(false);
+
+  const handleYes = () => {
+    setShowAddInsight(true);
+  };
+
+  if (showAddInsight) {
+    return createPortal(
+      <AddInsightModal 
+        isOpen={true}
+        onClose={onClose}
+        savedSegmentId={savedSegmentId}
+      />,
+      document.body
+    );
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[150]" onClick={onClose}>
+      <div className="bg-white rounded-lg p-6 w-96 max-w-md relative z-[151] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">Add insights?</h3>
+          <p className="text-sm text-gray-600 mt-1">Do you want to add insights to this report?</p>
+        </div>
+        <div className="flex justify-end space-x-3">
+          <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">No</button>
+          <button onClick={handleYes} className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Yes</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
