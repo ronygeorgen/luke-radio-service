@@ -732,7 +732,7 @@ const formatDateTime = (backendTime) => {
 
         {/* Audio Player - Fixed to match AudioSegmentsPage */}
         {currentPlayingId && (
-          <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 p-4 z-30">
+          <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 p-4 z-50">
             <ReportAudioPlayer 
               segment={segments.find(s => s.audio_segment_id === currentPlayingId)} 
               onClose={handleCloseAudioPlayer}

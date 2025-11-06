@@ -726,7 +726,7 @@ if (loading && segments.length === 0) {
       />
 
       {currentPlayingId && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 p-4 z-30">
+        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 p-4 z-50">
           {segments.find(s => s.id === currentPlayingId) ? (
             <AudioPlayer 
               segment={segments.find(s => s.id === currentPlayingId)} 
