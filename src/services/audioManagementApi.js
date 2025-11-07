@@ -10,6 +10,9 @@ export const audioManagementApi = {
   // Title Mapping Rules APIs
   createTitleRule: (data) => axiosInstance.post('/segmentor/title-mapping-rules/', data),
   updateTitleRule: (id, data) => axiosInstance.put(`/segmentor/title-mapping-rules/${id}/`, data),
-  deleteTitleRule: (id) => axiosInstance.delete(`/segmentor/title-mapping-rules/${id}/`),
+  deleteTitleRule: (id) => axiosInstance.delete(`/segmentor/title-mapping-rules/${id}/`, data),
   getCategoryTitles: (categoryId) => axiosInstance.get(`/segmentor/categories/${categoryId}/titles/`),
+  
+  // Merge Audio Segments
+  mergeSegments: (segmentIds) => axiosInstance.post('/process_segments', { segment_ids: segmentIds }),
 };

@@ -13,7 +13,10 @@ const SegmentCard = ({
   handleSummaryClick, 
   handleTranscriptionClick,
   handleTrimClick,
-  handleCompactEditClick 
+  handleCompactEditClick,
+  isMergeMode,
+  isSelected,
+  onSelect
 }) => {
   const dispatch = useDispatch();
   
@@ -58,6 +61,9 @@ const SegmentCard = ({
           handleSummaryClick={handleSummaryClick}
           handleTranscriptionClick={handleTranscriptionClick}
           handleTrimClick={handleTrimClick}
+          isMergeMode={isMergeMode}
+          isSelected={isSelected}
+          onSelect={onSelect}
         />
       ) : (
         <CompactSegment
@@ -67,6 +73,9 @@ const SegmentCard = ({
           handlePlayPauseAudio={handlePlayPauseAudio}
           handleTrimClick={handleTrimClick}
           handleCompactEditClick={handleCompactEditClick}
+          isMergeMode={isMergeMode}
+          isSelected={isSelected}
+          onSelect={onSelect}
         />
       )}
     </div>

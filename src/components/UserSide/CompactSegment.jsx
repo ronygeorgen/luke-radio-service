@@ -4,7 +4,17 @@ import { Play, Pause, Info } from "lucide-react";
 import TranscribeButton from "./TranscribeButton";
 import dayjs from "dayjs";
 
-const CompactSegment = ({ segment, currentPlayingId, isPlaying, handlePlayPauseAudio, handleTrimClick, handleCompactEditClick }) => {
+const CompactSegment = ({ 
+  segment, 
+  currentPlayingId, 
+  isPlaying, 
+  handlePlayPauseAudio, 
+  handleTrimClick, 
+  handleCompactEditClick,
+  isMergeMode,
+  isSelected,
+  onSelect
+}) => {
   const isMusicSegment = segment.metadata_json?.source === 'music';
   const artistNames = isMusicSegment 
     ? segment.metadata_json.artists?.map(artist => artist.name).join(', ') 
@@ -49,25 +59,35 @@ function formatDateTime(dateTimeString) {
 
 
   return (
-    <div className="p-4">
+    <div className={`p-4 ${isMergeMode && isSelected ? 'bg-blue-50 border-2 border-blue-500' : ''}`}>
       <div className="flex items-center justify-between mb-2">
-  <div>
-    {/* Segment ID as top heading */}
-    <h1 className="text-md font-bold text-blue-700 mb-1">
-      Segment ID: {segment.id}
-    </h1>
+  <div className="flex items-center space-x-3">
+    {isMergeMode && (
+      <input
+        type="checkbox"
+        checked={isSelected}
+        onChange={onSelect}
+        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+      />
+    )}
+    <div>
+      {/* Segment ID as top heading */}
+      <h1 className="text-md font-bold text-blue-700 mb-1">
+        Segment ID: {segment.id}
+      </h1>
 
-    {/* Existing title */}
-    <h2 className="text-lg font-bold text-gray-900 flex items-center">
-      {segment.title ? (
-        segment.title
-      ) : (
-        `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
-          segment.title_before && segment.title_after ? " - " : ""
-        }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() || 
-        "Untitled Report Item"
-      )}
-    </h2>
+      {/* Existing title */}
+      <h2 className="text-lg font-bold text-gray-900 flex items-center">
+        {segment.title ? (
+          segment.title
+        ) : (
+          `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
+            segment.title_before && segment.title_after ? " - " : ""
+          }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() || 
+          "Untitled Report Item"
+        )}
+      </h2>
+    </div>
   </div>
 
   <div className="flex space-x-2">
