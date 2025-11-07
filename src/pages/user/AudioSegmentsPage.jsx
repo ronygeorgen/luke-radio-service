@@ -525,12 +525,20 @@ const handleDaypartChange = (selectedDaypart) => {
     
     try {
       const segmentIdsArray = Array.from(selectedSegmentIds);
-      await audioManagementApi.mergeSegments(segmentIdsArray);
+      const response = await audioManagementApi.mergeSegments(segmentIdsArray);
       
       // Reset selection and merge mode
       setSelectedSegmentIds(new Set());
       setIsMergeMode(false);
       setMergeError(null);
+      
+      // Check if merge was successful and get the merged segment
+      if (response?.data?.success && response?.data?.data?.segments?.length > 0) {
+        const mergedSegment = response.data.data.segments[0];
+        
+        // Open AudioTrimmer with the merged segment
+        dispatch(openTrimmer(mergedSegment));
+      }
       
       // Refresh segments
       dispatch(fetchAudioSegments({ 
@@ -857,7 +865,7 @@ if (loading && segments.length === 0) {
       />
 
       {currentPlayingId && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t border-gray-200 p-4 z-50">
+        <div className={`fixed bottom-0 bg-white shadow-lg border-t border-gray-200 p-4 z-50 transition-all duration-300 ${isSidebarOpen ? 'left-64 right-0' : 'left-0 right-0'}`}>
           {segments.find(s => s.id === currentPlayingId) ? (
             <AudioPlayer 
               segment={segments.find(s => s.id === currentPlayingId)} 
