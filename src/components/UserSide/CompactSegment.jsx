@@ -1,6 +1,6 @@
 // components/UserSide/CompactSegment.jsx
 import React from "react";
-import { Play, Pause, Info } from "lucide-react";
+import { Play, Pause, Info, Server, User, GitMerge } from "lucide-react";
 import TranscribeButton from "./TranscribeButton";
 import dayjs from "dayjs";
 
@@ -19,6 +19,21 @@ const CompactSegment = ({
   const artistNames = isMusicSegment 
     ? segment.metadata_json.artists?.map(artist => artist.name).join(', ') 
     : null;
+
+  // Get source icon and tooltip
+  const getSourceIcon = (source) => {
+    if (!source) return null;
+    
+    const sourceConfig = {
+      system: { Icon: Server, color: 'text-blue-600', tooltip: 'System' },
+      user: { Icon: User, color: 'text-green-600', tooltip: 'User' },
+      merged: { Icon: GitMerge, color: 'text-purple-600', tooltip: 'Merged' }
+    };
+    
+    return sourceConfig[source.toLowerCase()] || null;
+  };
+
+  const sourceConfig = getSourceIcon(segment.source);
 
 
 function formatDateTime(dateTimeString) {
@@ -90,7 +105,7 @@ function formatDateTime(dateTimeString) {
     </div>
   </div>
 
-  <div className="flex space-x-2">
+  <div className="flex space-x-2 items-center">
     <span
       className={`text-xs px-2 py-1 rounded ${segment?.flag?.duration?.exceeded ? 'text-gray-900' : 'bg-blue-100 text-blue-800'}`}
       title={segment?.flag?.duration?.exceeded ? segment?.flag?.duration?.message : ''}
@@ -112,6 +127,20 @@ function formatDateTime(dateTimeString) {
         Music
       </span>
     )}
+    {sourceConfig && (() => {
+      const IconComponent = sourceConfig.Icon;
+      return (
+        <div className="relative group">
+          <IconComponent 
+            className={`w-5 h-5 ${sourceConfig.color} cursor-help`}
+            title={sourceConfig.tooltip}
+          />
+          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+            {sourceConfig.tooltip}
+          </div>
+        </div>
+      );
+    })()}
   </div>
 </div>
 
