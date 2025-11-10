@@ -484,20 +484,20 @@ const FilterPanel = ({
   // Wrapper function to handle Apply button click with duration
   const handleApplyWithDuration = () => {
     // Get duration value and convert to number (handle empty string, null, undefined)
-    const durationValue = localDuration && localDuration.toString().trim() !== '' 
-      ? parseInt(localDuration, 10) 
-      : null;
+    let durationValue = null;
     
-    // Validate duration is a valid number
-    const validDuration = (!isNaN(durationValue) && durationValue !== null && durationValue >= 0) 
-      ? durationValue 
-      : null;
+    if (localDuration && localDuration.toString().trim() !== '') {
+      const parsed = parseInt(localDuration.toString().trim(), 10);
+      // Only use if it's a valid positive number
+      if (!isNaN(parsed) && parsed > 0) {
+        durationValue = parsed;
+      }
+    }
     
-    console.log('🔍 Apply clicked - Duration value:', {
+    console.log('🔍 Apply clicked - Duration processing:', {
       localDuration,
       durationValue,
-      validDuration,
-      filters: filters
+      type: typeof durationValue
     });
     
     // Prepare complete filter update with time and duration
@@ -505,7 +505,7 @@ const FilterPanel = ({
       startTime: localStartTime ? localStartTime + ':00' : '',
       endTime: localEndTime ? localEndTime + ':00' : '',
       daypart: 'none',
-      duration: validDuration
+      duration: durationValue
     };
     
     // Update Redux filters with time and duration
@@ -517,26 +517,12 @@ const FilterPanel = ({
       ...timeFilters
     };
     
-    console.log('🔍 Calling fetchAudioSegments with:', {
-      channelId,
-      date: completeFilters.date,
-      startDate: completeFilters.startDate,
-      endDate: completeFilters.endDate,
-      startTime: completeFilters.startTime,
-      endTime: completeFilters.endTime,
-      daypart: completeFilters.daypart,
-      searchText: completeFilters.searchText,
-      searchIn: completeFilters.searchIn,
-      shiftId: completeFilters.shiftId,
-      predefinedFilterId: completeFilters.predefinedFilterId,
-      duration: validDuration,
-      page: 1
-    });
+    console.log('🔍 Calling fetchAudioSegments with duration:', durationValue);
     
     // Directly call fetchAudioSegments with all current filters plus duration
     // This ensures duration is included in the API call immediately
     if (fetchAudioSegments) {
-      reduxDispatch(fetchAudioSegments({
+      const apiParams = {
         channelId,
         date: completeFilters.date,
         startDate: completeFilters.startDate,
@@ -548,9 +534,17 @@ const FilterPanel = ({
         searchIn: completeFilters.searchIn,
         shiftId: completeFilters.shiftId,
         predefinedFilterId: completeFilters.predefinedFilterId,
-        duration: validDuration,  // Explicitly pass duration
         page: 1
-      }));
+      };
+      
+      // Only add duration if it has a valid value
+      if (durationValue !== null && durationValue !== undefined) {
+        apiParams.duration = durationValue;
+      }
+      
+      console.log('🔍 Final API params:', apiParams);
+      
+      reduxDispatch(fetchAudioSegments(apiParams));
     }
   };
 

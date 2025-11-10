@@ -122,12 +122,12 @@ export const fetchAudioSegments = createAsyncThunk(
         params.search_in = searchIn;
       }
       
-      // Add duration parameter if provided (including 0 as a valid value)
-      if (duration !== null && duration !== undefined && duration !== '') {
+      // Add duration parameter if provided (must be a positive number)
+      if (duration !== null && duration !== undefined && duration !== '' && !isNaN(duration) && duration > 0) {
         params.duration = duration;
         console.log('✅ Duration parameter added to API request:', duration);
       } else {
-        console.log('ℹ️ No duration parameter (value was:', duration, ')');
+        console.log('ℹ️ No duration parameter (value was:', duration, ', type:', typeof duration, ')');
       }
       
       const response = await axiosInstance.get('/audio_segments', {
