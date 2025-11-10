@@ -34,14 +34,15 @@ export const fetchAudioSegments = createAsyncThunk(
     endDate,
     page = 1,
     shiftId = null,
-    predefinedFilterId = null
+    predefinedFilterId = null,
+    duration = null
   }, { rejectWithValue }) => {
     try {
       let startDatetime = null;
       let endDatetime = null;
       
       console.log('API Request - Received params:', {
-        channelId, date, startTime, endTime, startDate, endDate, daypart, page, shiftId
+        channelId, date, startTime, endTime, startDate, endDate, daypart, page, shiftId, duration
       });
 
       // Handle date range with specific time
@@ -119,6 +120,14 @@ export const fetchAudioSegments = createAsyncThunk(
       if (searchText && searchIn) {
         params.search_text = searchText;
         params.search_in = searchIn;
+      }
+      
+      // Add duration parameter if provided (including 0 as a valid value)
+      if (duration !== null && duration !== undefined && duration !== '') {
+        params.duration = duration;
+        console.log('✅ Duration parameter added to API request:', duration);
+      } else {
+        console.log('ℹ️ No duration parameter (value was:', duration, ')');
       }
       
       const response = await axiosInstance.get('/audio_segments', {
@@ -267,6 +276,7 @@ const audioSegmentsSlice = createSlice({
       searchIn: 'transcription', // NEW: search category
       shiftId: null, 
       predefinedFilterId: null,
+      duration: null, // Duration filter in seconds
     },
     transcriptionLoading: {}, // Track loading state per segment
     transcriptionErrors: {}, // Track errors per segment

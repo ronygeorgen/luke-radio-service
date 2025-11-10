@@ -164,6 +164,7 @@ const AudioSegmentsPage = () => {
       daypart: 'none',
       shiftId: null,
       predefinedFilterId: null,
+      duration: null,
       page: 1
     }));
   }
@@ -213,6 +214,7 @@ const AudioSegmentsPage = () => {
         searchIn: filtersToUse.searchIn,
         shiftId: filtersToUse.shiftId,
         predefinedFilterId: filtersToUse.predefinedFilterId,
+        duration: filtersToUse.duration,
         page: 1
       }));
     }
@@ -252,6 +254,7 @@ useEffect(() => {
         searchIn: filters.searchIn,
         shiftId: filters.shiftId,
         predefinedFilterId: filters.predefinedFilterId,
+        duration: filters.duration,
         page: 1
       }));
     }
@@ -273,6 +276,7 @@ useEffect(() => {
     searchIn: filters.searchIn,
     shiftId: filters.shiftId,  // Add shiftId parameter
     predefinedFilterId: filters.predefinedFilterId,
+    duration: filters.duration,
     page: pageNumber  // Pass the page number directly
   }));
 };
@@ -303,6 +307,7 @@ useEffect(() => {
         searchIn: filters.searchIn,
         shiftId: filters.shiftId,
         predefinedFilterId: filters.predefinedFilterId,
+        duration: filters.duration,
         page: 1
       }));
       
@@ -424,6 +429,7 @@ const handleDaypartChange = (selectedDaypart) => {
       startTime: localStartTime ? localStartTime + ':00' : '',
       endTime: localEndTime ? localEndTime + ':00' : '',
       daypart: 'none',
+      duration: filters.duration || null,
     };
     dispatch(setFilter(newFilters));
     handleFilterChange({ ...filters, ...newFilters });
@@ -467,7 +473,9 @@ const handleDaypartChange = (selectedDaypart) => {
       recognition: 'unrecognized',
       searchText: '',
       searchIn: 'transcription',
-      shiftId: null
+      shiftId: null,
+      predefinedFilterId: null,
+      duration: null
     };
     
     dispatch(setFilter(newFilters));
@@ -553,6 +561,7 @@ const handleDaypartChange = (selectedDaypart) => {
         searchIn: filters.searchIn,
         shiftId: filters.shiftId,
         predefinedFilterId: filters.predefinedFilterId,
+        duration: filters.duration,
         page: currentPage
       }));
     } catch (error) {

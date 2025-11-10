@@ -43,6 +43,8 @@ const FilterPanel = ({
   const [localShiftId, setLocalShiftId] = useState(filters.shiftId || '');
   const [currentShiftId, setCurrentShiftId] = useState(filters.shiftId || '');
   const [currentPredefinedFilterId, setCurrentPredefinedFilterId] = useState(filters.predefinedFilterId || '');
+  const [localDuration, setLocalDuration] = useState(filters.duration || '');
+  const [isExpanded, setIsExpanded] = useState(false); // For expanded version
   const filterRef = useRef(null);
   const calendarRef = useRef(null);
 
@@ -111,6 +113,7 @@ const FilterPanel = ({
         searchIn: filters.searchIn,
         shiftId: newFilters.shiftId,
         predefinedFilterId: null,
+        duration: filters.duration,
         page: 1
       }));
     }
@@ -149,6 +152,7 @@ const FilterPanel = ({
         searchIn: filters.searchIn,
         shiftId: null,
         predefinedFilterId: newFilters.predefinedFilterId,
+        duration: filters.duration,
         page: 1
       }));
     }
@@ -246,7 +250,8 @@ const FilterPanel = ({
   useEffect(() => {
     setLocalStartTime(filters.startTime?.substring(0, 5) || '');
     setLocalEndTime(filters.endTime?.substring(0, 5) || '');
-  }, [filters.startTime, filters.endTime]);
+    setLocalDuration(filters.duration || '');
+  }, [filters.startTime, filters.endTime, filters.duration]);
 
   // Only sync local shift state with Redux state on initial load, not on every change
   useEffect(() => {
@@ -327,6 +332,7 @@ const FilterPanel = ({
           searchIn: filters.searchIn,
           shiftId: filters.shiftId,
           predefinedFilterId: filters.predefinedFilterId,
+          duration: filters.duration,
           page: 1
         }));
       }
@@ -473,6 +479,79 @@ const FilterPanel = ({
   // Get today's date in local format for the calendar
   const getTodayDateString = () => {
     return getLocalDateString(new Date());
+  };
+
+  // Wrapper function to handle Apply button click with duration
+  const handleApplyWithDuration = () => {
+    // Get duration value and convert to number (handle empty string, null, undefined)
+    const durationValue = localDuration && localDuration.toString().trim() !== '' 
+      ? parseInt(localDuration, 10) 
+      : null;
+    
+    // Validate duration is a valid number
+    const validDuration = (!isNaN(durationValue) && durationValue !== null && durationValue >= 0) 
+      ? durationValue 
+      : null;
+    
+    console.log('🔍 Apply clicked - Duration value:', {
+      localDuration,
+      durationValue,
+      validDuration,
+      filters: filters
+    });
+    
+    // Prepare complete filter update with time and duration
+    const timeFilters = {
+      startTime: localStartTime ? localStartTime + ':00' : '',
+      endTime: localEndTime ? localEndTime + ':00' : '',
+      daypart: 'none',
+      duration: validDuration
+    };
+    
+    // Update Redux filters with time and duration
+    dispatch(setFilter(timeFilters));
+    
+    // Prepare complete filter object for API call
+    const completeFilters = {
+      ...filters,
+      ...timeFilters
+    };
+    
+    console.log('🔍 Calling fetchAudioSegments with:', {
+      channelId,
+      date: completeFilters.date,
+      startDate: completeFilters.startDate,
+      endDate: completeFilters.endDate,
+      startTime: completeFilters.startTime,
+      endTime: completeFilters.endTime,
+      daypart: completeFilters.daypart,
+      searchText: completeFilters.searchText,
+      searchIn: completeFilters.searchIn,
+      shiftId: completeFilters.shiftId,
+      predefinedFilterId: completeFilters.predefinedFilterId,
+      duration: validDuration,
+      page: 1
+    });
+    
+    // Directly call fetchAudioSegments with all current filters plus duration
+    // This ensures duration is included in the API call immediately
+    if (fetchAudioSegments) {
+      reduxDispatch(fetchAudioSegments({
+        channelId,
+        date: completeFilters.date,
+        startDate: completeFilters.startDate,
+        endDate: completeFilters.endDate,
+        startTime: completeFilters.startTime,
+        endTime: completeFilters.endTime,
+        daypart: completeFilters.daypart,
+        searchText: completeFilters.searchText,
+        searchIn: completeFilters.searchIn,
+        shiftId: completeFilters.shiftId,
+        predefinedFilterId: completeFilters.predefinedFilterId,
+        duration: validDuration,  // Explicitly pass duration
+        page: 1
+      }));
+    }
   };
 
   // Compact Calendar component for sidebar
@@ -676,6 +755,20 @@ const FilterPanel = ({
               </div>
             )}
 
+            {/* Duration Filter */}
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-700">Duration (seconds)</label>
+              <input
+                type="number"
+                value={localDuration}
+                onChange={(e) => setLocalDuration(e.target.value)}
+                placeholder="Enter duration in seconds"
+                min="0"
+                step="1"
+                className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
             {/* Action Buttons */}
             <div className="flex space-x-2 pt-2">
               <button
@@ -685,7 +778,7 @@ const FilterPanel = ({
                 Reset
               </button>
               <button
-                onClick={handleSearchWithCustomTime}
+                onClick={handleApplyWithDuration}
                 className="flex-1 bg-blue-500 text-white text-xs px-2 py-1.5 rounded hover:bg-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
               >
                 Apply
@@ -796,6 +889,19 @@ if (isInHeader) {
                 />
               </div>
 
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-600 mb-1">Duration (seconds)</label>
+                <input
+                  type="number"
+                  value={localDuration}
+                  onChange={(e) => setLocalDuration(e.target.value)}
+                  placeholder="Enter duration"
+                  min="0"
+                  step="1"
+                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
             </div>
 
             {/* Error message */}
@@ -815,7 +921,7 @@ if (isInHeader) {
                 Reset
               </button>
               <button
-                onClick={handleSearchWithCustomTime}
+                onClick={handleApplyWithDuration}
                 className="flex items-center px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
               >
                 Apply
@@ -825,6 +931,11 @@ if (isInHeader) {
       </div>
     );
   }
+
+  // Toggle function for expanded version
+  const toggleFilters = () => {
+    setIsExpanded(!isExpanded);
+  };
 
   // Original expanded version - All filters in single line for time section
   return (
@@ -921,7 +1032,17 @@ if (isInHeader) {
                       </span>
                       <Calendar className="w-5 h-5 text-gray-400" />
                     </button>
-                    {showDatePicker && <DateRangeCalendar />}
+                    {showDatePicker && createPortal(
+                      (
+                        <div className="fixed inset-0 z-[10000] flex items-center justify-center">
+                          <div className="absolute inset-0 bg-black/30" onClick={() => setShowDatePicker(false)} />
+                          <div ref={calendarRef} className="relative z-[10001]">
+                            <CompactDateRangeCalendar />
+                          </div>
+                        </div>
+                      ),
+                      document.body
+                    )}
                   </div>
                 </div>
 
@@ -960,6 +1081,20 @@ if (isInHeader) {
                     </div>
                   )}
                 </div>
+
+                {/* Duration Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Duration (seconds)</label>
+                  <input
+                    type="number"
+                    value={localDuration}
+                    onChange={(e) => setLocalDuration(e.target.value)}
+                    placeholder="Enter duration in seconds"
+                    min="0"
+                    step="1"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -974,7 +1109,7 @@ if (isInHeader) {
             </button>
 
             <button
-              onClick={handleSearchWithCustomTime}
+              onClick={handleApplyWithDuration}
               className="flex items-center px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-all duration-200"
             >
               Apply
