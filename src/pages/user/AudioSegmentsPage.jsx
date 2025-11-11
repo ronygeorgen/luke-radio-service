@@ -894,7 +894,7 @@ if (loading && segments.length === 0) {
             {isFabHovered && (
               <div className="absolute right-16 top-1/2 transform -translate-y-1/2">
                 <div className="bg-gray-900 text-white text-sm py-2 px-3 rounded-lg whitespace-nowrap shadow-lg">
-                  More
+                  {isFabExpanded ? 'Hide' : 'More'}
                   <div className="absolute top-1/2 right-0 transform -translate-y-1/2 translate-x-1">
                     <div className="w-3 h-3 bg-gray-900 transform rotate-45"></div>
                   </div>
