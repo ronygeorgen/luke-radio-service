@@ -115,7 +115,10 @@ const AudioSegmentsPage = () => {
     { value: 'weekend', label: 'Weekend (Saturday & Sunday)', startTime: '00:00:00', endTime: '23:59:59' }
   ];
 
-  // Calculate counts for recognition filters
+  // Calculate counts for status & recognition filters
+  const totalSegmentsCount = segments.length;
+  const activeCount = segments.filter(s => s.is_active).length;
+  const inactiveCount = totalSegmentsCount - activeCount;
   const recognizedCount = segments.filter(s => s.is_recognized).length;
   const unrecognizedCount = segments.filter(s => !s.is_recognized).length;
   const unrecognizedWithContentCount = segments.filter(s => !s.is_recognized && (s.analysis?.summary || s.transcription?.transcript)).length;
@@ -988,9 +991,9 @@ if (loading && segments.length === 0) {
               <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Status</h3>
               <div className="space-y-2">
                 {[
-                  { value: 'all', label: 'All Status' },
-                  { value: 'active', label: 'Active' },
-                  { value: 'inactive', label: 'Inactive' }
+                  { value: 'all', label: `All Status (${totalSegmentsCount})` },
+                  { value: 'active', label: `Active (${activeCount})` },
+                  { value: 'inactive', label: `Inactive (${inactiveCount})` }
                 ].map((option) => (
                   <label key={option.value} className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer">
                     <input
@@ -1012,7 +1015,7 @@ if (loading && segments.length === 0) {
               <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Recognition</h3>
               <div className="space-y-2">
                 {[
-                  { value: 'all', label: 'All Recognition' },
+                  { value: 'all', label: `All Recognition (${totalSegmentsCount})` },
                   { value: 'recognized', label: `Recognized (${recognizedCount})` },
                   { value: 'unrecognized', label: `Unrecognized (${unrecognizedCount})` },
                   { value: 'unrecognized_with_content', label: `With Content (${unrecognizedWithContentCount})` },
