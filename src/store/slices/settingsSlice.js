@@ -25,7 +25,7 @@ export const fetchSettings = createAsyncThunk(
         generalTopicsPrompt: response.data.settings.general_topics_prompt || '',
         iabTopicsPrompt: response.data.settings.iab_topics_prompt || '',
         bucketPrompt: response.data.settings.bucket_prompt || '',
-        determineRadioContentType: response.data.settings.radio_content_type_prompt || '',
+        determineRadioContentType: response.data.settings.content_type_prompt || '',
         bucketDefinitionErrorRate: response.data.settings.bucket_error_rate || '',
         chatGptModel: response.data.settings.chatgpt_model || '',
         chatGptMaxTokens: response.data.settings.chatgpt_max_tokens || '',
@@ -83,6 +83,11 @@ export const updateSetting = createAsyncThunk(
 
     const apiKey = keyMapping[key] || key;
     const updatedSettings = { ...settings, [apiKey]: value };
+
+    // If updating determineRadioContentType, also add content_type_prompt with the same value
+    if (key === 'determineRadioContentType') {
+      updatedSettings.content_type_prompt = value;
+    }
 
     const response = await axiosInstance.put('/settings', {
       settings: {
