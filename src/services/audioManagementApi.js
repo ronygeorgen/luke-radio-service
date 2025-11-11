@@ -15,4 +15,11 @@ export const audioManagementApi = {
   
   // Merge Audio Segments
   mergeSegments: (segmentIds) => axiosInstance.post('/process_segments', { segment_ids: segmentIds }),
+
+  // Status Toggle
+  updateSegmentActiveStatus: (segmentIds, isActive) =>
+    axiosInstance.patch('/audio_segments/update_active_status', {
+      segment_ids: segmentIds,
+      is_active: isActive,
+    }),
 };

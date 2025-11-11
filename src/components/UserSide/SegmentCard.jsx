@@ -16,7 +16,10 @@ const SegmentCard = ({
   handleCompactEditClick,
   isMergeMode,
   isSelected,
-  onSelect
+  onSelect,
+  isStatusToggleMode,
+  isStatusSelected,
+  onStatusSelect
 }) => {
   const dispatch = useDispatch();
   
@@ -64,6 +67,9 @@ const SegmentCard = ({
           isMergeMode={isMergeMode}
           isSelected={isSelected}
           onSelect={onSelect}
+          isStatusToggleMode={isStatusToggleMode}
+          isStatusSelected={isStatusSelected}
+          onStatusSelect={onStatusSelect}
         />
       ) : (
         <CompactSegment
@@ -76,6 +82,9 @@ const SegmentCard = ({
           isMergeMode={isMergeMode}
           isSelected={isSelected}
           onSelect={onSelect}
+          isStatusToggleMode={isStatusToggleMode}
+          isStatusSelected={isStatusSelected}
+          onStatusSelect={onStatusSelect}
         />
       )}
     </div>

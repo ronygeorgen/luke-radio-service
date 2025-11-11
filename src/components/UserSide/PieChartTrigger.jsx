@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
 import { Eye } from 'lucide-react';
 
-const PieChartTrigger = ({ onClick }) => {
+const DEFAULT_STYLE = { top: 'calc(4rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem)' };
+
+const PieChartTrigger = ({ onClick, inline = false, wrapperClassName = '', style }) => {
   const [isHovered, setIsHovered] = useState(false);
 
+  const containerClassName = inline
+    ? `relative ${wrapperClassName}`
+    : `fixed right-8 z-40 ${wrapperClassName}`;
+
+  const containerStyle = inline ? style : { ...DEFAULT_STYLE, ...style };
+
   return (
-    <div className="fixed right-8 z-40" style={{ top: 'calc(4rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem)' }}>
+    <div className={containerClassName} style={containerStyle}>
       <button
         onClick={onClick}
         onMouseEnter={() => setIsHovered(true)}

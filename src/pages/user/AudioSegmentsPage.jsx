@@ -19,6 +19,7 @@ import TimePagination from '../../components/UserSide/TimePagination';
 import PieChartModal from '../../components/UserSide/PieChartModal';
 import PieChartTrigger from '../../components/UserSide/PieChartTrigger';
 import MergeAudioTrigger from '../../components/UserSide/MergeAudioTrigger';
+import StatusToggleTrigger from '../../components/UserSide/StatusToggleTrigger';
 import Toast from '../../components/UserSide/Toast';
 import { audioManagementApi } from '../../services/audioManagementApi';
 
@@ -47,6 +48,17 @@ const AudioSegmentsPage = () => {
   const [selectedSegmentIds, setSelectedSegmentIds] = useState(new Set());
   const [isMerging, setIsMerging] = useState(false);
   const [mergeError, setMergeError] = useState(null);
+  
+  // Status toggle state
+  const [isStatusToggleMode, setIsStatusToggleMode] = useState(false);
+  const [statusSelectedSegmentIds, setStatusSelectedSegmentIds] = useState(new Set());
+  const [showStatusToggleOptions, setShowStatusToggleOptions] = useState(false);
+  
+  const [isFabExpanded, setIsFabExpanded] = useState(false);
+  const [isFabHovered, setIsFabHovered] = useState(false);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
+  const [statusMessage, setStatusMessage] = useState(null);
+  const [statusMessageType, setStatusMessageType] = useState('success');
   
   const handleTrimClick = (segment) => {
     dispatch(openTrimmer(segment));
@@ -389,6 +401,140 @@ const handleSearch = () => {
     return true;
   });
 
+  const handleToggleActiveStatusClick = () => {
+    setShowStatusToggleOptions(true);
+  };
+
+  const handleToggleAllStatus = async () => {
+    setShowStatusToggleOptions(false);
+    
+    if (filteredSegments.length === 0) {
+      setStatusMessage('No segments available to update.');
+      setStatusMessageType('success');
+      return;
+    }
+
+    const activeSegmentIds = filteredSegments
+      .filter(segment => segment.is_active)
+      .map(segment => segment.id);
+
+    const inactiveSegmentIds = filteredSegments
+      .filter(segment => !segment.is_active)
+      .map(segment => segment.id);
+
+    if (activeSegmentIds.length === 0 && inactiveSegmentIds.length === 0) {
+      setStatusMessage('No segments available to update.');
+      setStatusMessageType('success');
+      return;
+    }
+
+    await updateSegmentStatuses(activeSegmentIds, inactiveSegmentIds);
+  };
+
+  const handleSelectSegmentsForStatus = () => {
+    setShowStatusToggleOptions(false);
+    setIsStatusToggleMode(true);
+    setStatusSelectedSegmentIds(new Set());
+    // Exit merge mode if active
+    if (isMergeMode) {
+      setIsMergeMode(false);
+      setSelectedSegmentIds(new Set());
+    }
+  };
+
+  const handleStatusSegmentSelect = (segmentId) => {
+    const newSelected = new Set(statusSelectedSegmentIds);
+    if (newSelected.has(segmentId)) {
+      newSelected.delete(segmentId);
+    } else {
+      newSelected.add(segmentId);
+    }
+    setStatusSelectedSegmentIds(newSelected);
+  };
+
+  const handleToggleSelectedStatus = async () => {
+    if (statusSelectedSegmentIds.size === 0) {
+      setStatusMessage('Please select at least one segment to update.');
+      setStatusMessageType('error');
+      return;
+    }
+
+    const selectedSegments = filteredSegments.filter(s => statusSelectedSegmentIds.has(s.id));
+    const activeSegmentIds = selectedSegments
+      .filter(segment => segment.is_active)
+      .map(segment => segment.id);
+
+    const inactiveSegmentIds = selectedSegments
+      .filter(segment => !segment.is_active)
+      .map(segment => segment.id);
+
+    await updateSegmentStatuses(activeSegmentIds, inactiveSegmentIds);
+    
+    // Reset selection mode
+    setIsStatusToggleMode(false);
+    setStatusSelectedSegmentIds(new Set());
+  };
+
+  const updateSegmentStatuses = async (activeSegmentIds, inactiveSegmentIds) => {
+    setIsStatusUpdating(true);
+
+    try {
+      const requests = [];
+
+      if (inactiveSegmentIds.length > 0) {
+        requests.push(audioManagementApi.updateSegmentActiveStatus(inactiveSegmentIds, true));
+      }
+
+      if (activeSegmentIds.length > 0) {
+        requests.push(audioManagementApi.updateSegmentActiveStatus(activeSegmentIds, false));
+      }
+
+      await Promise.all(requests);
+
+      dispatch(fetchAudioSegments({ 
+        channelId, 
+        date: filters.date,
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        startTime: filters.startTime,
+        endTime: filters.endTime,
+        daypart: filters.daypart,
+        searchText: filters.searchText,
+        searchIn: filters.searchIn,
+        shiftId: filters.shiftId,
+        predefinedFilterId: filters.predefinedFilterId,
+        duration: filters.duration,
+        page: currentPage
+      }));
+
+      setStatusMessage('Segment statuses updated successfully.');
+      setStatusMessageType('success');
+    } catch (error) {
+      console.error('Error updating segment statuses:', error);
+
+      let errorMessage = 'Failed to update segment statuses. Please try again.';
+
+      if (error.response?.data) {
+        const errorData = error.response.data;
+
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      setStatusMessage(errorMessage);
+      setStatusMessageType('error');
+    } finally {
+      setIsStatusUpdating(false);
+    }
+  };
+
   const handlePlayPauseAudio = (segmentId) => {
     if (currentPlayingId === segmentId) {
       dispatch(setIsPlaying(!isPlaying));
@@ -510,6 +656,18 @@ const handleDaypartChange = (selectedDaypart) => {
       setSelectedSegmentIds(new Set());
     }
     setMergeError(null);
+    // Exit status toggle mode if active
+    if (isStatusToggleMode) {
+      setIsStatusToggleMode(false);
+      setStatusSelectedSegmentIds(new Set());
+    }
+    // Close status toggle options if open
+    setShowStatusToggleOptions(false);
+  };
+
+  const handleCancelStatusToggleMode = () => {
+    setIsStatusToggleMode(false);
+    setStatusSelectedSegmentIds(new Set());
   };
 
   const handleSegmentSelect = (segmentId) => {
@@ -626,12 +784,123 @@ if (loading && segments.length === 0) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <PieChartTrigger onClick={() => setShowPieChartModal(true)} />
-      <MergeAudioTrigger 
-        onClick={handleToggleMergeMode}
-        isMergeMode={isMergeMode}
-        selectedCount={selectedSegmentIds.size}
-      />
+      <div
+        className="fixed right-8 z-50"
+        style={{ top: 'calc(4rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem)' }}
+      >
+        <div className="relative flex flex-col items-end space-y-3">
+          {isFabExpanded && (
+            <>
+              <PieChartTrigger
+                onClick={() => setShowPieChartModal(true)}
+                inline
+              />
+              <MergeAudioTrigger
+                onClick={handleToggleMergeMode}
+                isMergeMode={isMergeMode}
+                selectedCount={selectedSegmentIds.size}
+                inline
+              />
+              <div className="relative">
+                {isStatusToggleMode && statusSelectedSegmentIds.size > 0 && (
+                  <div className="absolute right-0 bottom-full flex flex-col space-y-3 mb-3">
+                    <button
+                      onClick={handleToggleSelectedStatus}
+                      disabled={isStatusUpdating}
+                      className={`
+                        flex items-center justify-center w-12 h-12 rounded-full shadow-lg
+                        transition-all duration-300 transform hover:scale-110
+                        ${isStatusUpdating
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-amber-500 hover:bg-amber-600 shadow-xl'
+                        }
+                      `}
+                      title="Toggle Selected Segments Status"
+                    >
+                      {isStatusUpdating ? (
+                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleCancelStatusToggleMode}
+                      className="flex items-center justify-center w-12 h-12 rounded-full shadow-lg bg-red-500 hover:bg-red-600 text-white transition-all duration-300 transform hover:scale-110"
+                      title="Cancel"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+                <StatusToggleTrigger
+                  onClick={handleToggleActiveStatusClick}
+                  inline
+                  isLoading={isStatusUpdating}
+                />
+                {showStatusToggleOptions && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowStatusToggleOptions(false)}
+                    ></div>
+                    <div className="absolute right-16 top-0 bg-white border border-gray-200 rounded-lg shadow-xl z-50 min-w-[200px]">
+                      <div className="py-1">
+                        <button
+                          onClick={handleToggleAllStatus}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          Toggle All Segments
+                        </button>
+                        <button
+                          onClick={handleSelectSegmentsForStatus}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          Select Segments
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+          <div className="relative">
+            <button
+              onClick={() => setIsFabExpanded(prev => !prev)}
+              onMouseEnter={() => setIsFabHovered(true)}
+              onMouseLeave={() => setIsFabHovered(false)}
+              className={`
+                flex items-center justify-center w-12 h-12 rounded-full bg-white border-2 border-gray-300 text-gray-700
+                shadow-lg transition-all duration-300 transform hover:scale-110 hover:bg-gray-50
+              `}
+            >
+              <ChevronLeft
+                className={`
+                  w-5 h-5 transition-transform duration-300
+                  ${isFabExpanded ? 'transform rotate-180' : ''}
+                `}
+              />
+            </button>
+            {isFabHovered && (
+              <div className="absolute right-16 top-1/2 transform -translate-y-1/2">
+                <div className="bg-gray-900 text-white text-sm py-2 px-3 rounded-lg whitespace-nowrap shadow-lg">
+                  More
+                  <div className="absolute top-1/2 right-0 transform -translate-y-1/2 translate-x-1">
+                    <div className="w-3 h-3 bg-gray-900 transform rotate-45"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       {isMergeMode && selectedSegmentIds.size >= 2 && (
         <div className="fixed right-8 z-40" style={{ top: 'calc(4rem + 1.5rem + 7rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem)' }}>
           <button
@@ -665,6 +934,13 @@ if (loading && segments.length === 0) {
           message={mergeError} 
           onClose={() => setMergeError(null)}
           type="error"
+        />
+      )}
+      {statusMessage && (
+        <Toast 
+          message={statusMessage} 
+          onClose={() => setStatusMessage(null)}
+          type={statusMessageType}
         />
       )}
       <Header 
@@ -847,6 +1123,9 @@ if (loading && segments.length === 0) {
                 isMergeMode={isMergeMode}
                 isSelected={selectedSegmentIds.has(segment.id)}
                 onSelect={() => handleSegmentSelect(segment.id)}
+                isStatusToggleMode={isStatusToggleMode}
+                isStatusSelected={statusSelectedSegmentIds.has(segment.id)}
+                onStatusSelect={() => handleStatusSegmentSelect(segment.id)}
               />
             ))}
           </div>

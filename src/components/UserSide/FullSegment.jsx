@@ -14,7 +14,10 @@ const FullSegment = ({
   handleTrimClick,
   isMergeMode,
   isSelected,
-  onSelect
+  onSelect,
+  isStatusToggleMode,
+  isStatusSelected,
+  onStatusSelect
 }) => {
   const [showSelectModal, setShowSelectModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -101,7 +104,7 @@ function formatDateTime(dateTimeString) {
 
 
   return (
-    <div className={`p-6 ${isMergeMode && isSelected ? 'bg-blue-50 border-2 border-blue-500' : ''}`}>
+    <div className={`p-6 ${(isMergeMode && isSelected) || (isStatusToggleMode && isStatusSelected) ? 'bg-blue-50 border-2 border-blue-500' : ''}`}>
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center space-x-3">
           {isMergeMode && (
@@ -110,6 +113,14 @@ function formatDateTime(dateTimeString) {
               checked={isSelected}
               onChange={onSelect}
               className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+            />
+          )}
+          {isStatusToggleMode && (
+            <input
+              type="checkbox"
+              checked={isStatusSelected}
+              onChange={onStatusSelect}
+              className="w-5 h-5 text-amber-600 border-gray-300 rounded focus:ring-amber-500 cursor-pointer"
             />
           )}
           <div>
