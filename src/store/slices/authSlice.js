@@ -333,6 +333,20 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
       
+      // Resend Magic Link
+      .addCase(resendMagicLink.pending, (state) => {
+        state.resendMagicLinkLoading = true;
+        state.error = null;
+      })
+      .addCase(resendMagicLink.fulfilled, (state) => {
+        state.resendMagicLinkLoading = false;
+        state.error = null;
+      })
+      .addCase(resendMagicLink.rejected, (state, action) => {
+        state.resendMagicLinkLoading = false;
+        state.error = action.payload;
+      })
+      
       // Resend Magic Link Admin
       .addCase(resendMagicLinkAdmin.pending, (state) => {
         state.resendMagicLinkLoading = true;

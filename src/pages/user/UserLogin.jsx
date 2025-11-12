@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, Radio, Eye, EyeOff, ArrowRight, Waves, Signal } from 'lucide-react';
+import { Mail, Lock, Radio, Eye, EyeOff, ArrowRight, Waves, Signal, ArrowLeft } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { loginUser, clearError } from '../../store/slices/authSlice';
+import { loginUser, clearError, resendMagicLink } from '../../store/slices/authSlice';
 const UserLogin = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState('');
   
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   
-  const { isLoading, error, isAuthenticated, user } = useSelector((state) => state.auth);
+  const { isLoading, error, isAuthenticated, user, resendMagicLinkLoading } = useSelector((state) => state.auth);
   
   const from = location.state?.from?.pathname || '/user-channels';
 
@@ -26,13 +29,18 @@ const UserLogin = () => {
   }, [isAuthenticated, user, navigate, from]);
 
   useEffect(() => {
-    if (error) {
+    if (error && !showForgotPassword) {
       setErrors(prev => ({
         ...prev,
         submit: error.error || error.detail || 'Login failed. Please check your credentials and try again.'
       }));
+    } else if (error && showForgotPassword) {
+      setErrors(prev => ({
+        ...prev,
+        email: error.error || error.detail || 'Failed to send magic link. Please try again.'
+      }));
     }
-  }, [error]);
+  }, [error, showForgotPassword]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -87,6 +95,55 @@ const UserLogin = () => {
     dispatch(clearError());
     
     dispatch(loginUser({ ...formData, isAdmin: false }));
+  };
+
+  const handleForgotPasswordEmailChange = (e) => {
+    setForgotPasswordEmail(e.target.value);
+    if (errors.email) {
+      setErrors(prev => ({
+        ...prev,
+        email: ''
+      }));
+    }
+    setSuccessMessage('');
+  };
+
+  const validateForgotPasswordEmail = () => {
+    if (!forgotPasswordEmail) {
+      setErrors(prev => ({
+        ...prev,
+        email: 'Email is required'
+      }));
+      return false;
+    } else if (!/\S+@\S+\.\S+/.test(forgotPasswordEmail)) {
+      setErrors(prev => ({
+        ...prev,
+        email: 'Email is invalid'
+      }));
+      return false;
+    }
+    return true;
+  };
+
+  const handleSendMagicLink = async (e) => {
+    e.preventDefault();
+    setErrors({});
+    setSuccessMessage('');
+    dispatch(clearError());
+    
+    if (!validateForgotPasswordEmail()) {
+      return;
+    }
+    
+    try {
+      const result = await dispatch(resendMagicLink(forgotPasswordEmail));
+      if (resendMagicLink.fulfilled.match(result)) {
+        setSuccessMessage('Magic link has been sent to your email. Please check your inbox.');
+        setForgotPasswordEmail('');
+      }
+    } catch (err) {
+      // Error is handled by the reducer
+    }
   };
 
   return (
@@ -186,6 +243,7 @@ const UserLogin = () => {
 
           {/* Form */}
           <div className="bg-white py-8 px-6 shadow-xl rounded-xl border border-gray-100">
+            {!showForgotPassword ? (
             <form className="space-y-6" onSubmit={handleSubmit}>
               {/* Email Field */}
               <div>
@@ -266,9 +324,18 @@ const UserLogin = () => {
                     Remember me
                   </label>
                 </div>
-                <Link to="/create-password" className="text-sm text-blue-600 hover:text-blue-500">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword(true);
+                    setErrors({});
+                    setSuccessMessage('');
+                    dispatch(clearError());
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-500"
+                >
                   Forgot password?
-                </Link>
+                </button>
               </div>
 
               {/* Submit Button */}
@@ -290,6 +357,90 @@ const UserLogin = () => {
                 )}
               </button>
             </form>
+            ) : (
+            <form className="space-y-6" onSubmit={handleSendMagicLink}>
+              {/* Back Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  setForgotPasswordEmail('');
+                  setErrors({});
+                  setSuccessMessage('');
+                  dispatch(clearError());
+                }}
+                className="flex items-center text-sm text-gray-600 hover:text-gray-800 mb-4"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to login
+              </button>
+
+              {/* Title */}
+              <div className="text-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Forgot Password?</h3>
+                <p className="text-sm text-gray-600">
+                  Enter your email address and we'll send you a magic link to reset your password.
+                </p>
+              </div>
+
+              {/* Email Field */}
+              <div>
+                <label htmlFor="forgot-email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="forgot-email"
+                    name="forgot-email"
+                    type="email"
+                    value={forgotPasswordEmail}
+                    onChange={handleForgotPasswordEmailChange}
+                    className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors.email ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="you@example.com"
+                  />
+                </div>
+                {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+              </div>
+
+              {/* Success Message */}
+              {successMessage && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <p className="text-green-600 text-sm">{successMessage}</p>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {errors.submit && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-red-600 text-sm">{errors.submit}</p>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={resendMagicLinkLoading}
+                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                {resendMagicLinkLoading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Sending...
+                  </div>
+                ) : (
+                  <div className="flex items-center">
+                    Send Magic Link
+                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                )}
+              </button>
+            </form>
+            )}
           </div>
 
           {/* Footer */}
