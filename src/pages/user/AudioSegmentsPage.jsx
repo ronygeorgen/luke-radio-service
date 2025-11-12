@@ -752,6 +752,24 @@ const handleDaypartChange = (selectedDaypart) => {
     }
   };
 
+  const handleFabToggle = () => {
+    setIsFabExpanded((prev) => {
+      const next = !prev;
+
+      if (prev && !next) {
+        if (isMergeMode) {
+          setIsMergeMode(false);
+        }
+        if (selectedSegmentIds.size > 0) {
+          setSelectedSegmentIds(new Set());
+        }
+        setMergeError(null);
+      }
+
+      return next;
+    });
+  };
+
 if (loading && segments.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -876,7 +894,7 @@ if (loading && segments.length === 0) {
           )}
           <div className="relative">
             <button
-              onClick={() => setIsFabExpanded(prev => !prev)}
+              onClick={handleFabToggle}
               onMouseEnter={() => setIsFabHovered(true)}
               onMouseLeave={() => setIsFabHovered(false)}
               className={`
@@ -905,7 +923,10 @@ if (loading && segments.length === 0) {
         </div>
       </div>
       {isMergeMode && selectedSegmentIds.size >= 2 && (
-        <div className="fixed right-8 z-40" style={{ top: 'calc(4rem + 1.5rem + 7rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem)' }}>
+        <div
+          className="fixed right-8 z-40"
+          style={{ top: 'calc(4rem + 1.5rem + 7rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem + 0.5rem)' }}
+        >
           <button
             onClick={handleMergeSegments}
             disabled={isMerging}
