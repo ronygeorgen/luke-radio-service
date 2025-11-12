@@ -94,6 +94,36 @@ export const createUser = createAsyncThunk(
   }
 );
 
+export const updateUser = createAsyncThunk(
+  'auth/updateUser',
+  async ({ user_id, email, name, is_active }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.put(`/accounts/admin/update-user/${user_id}/`, {
+        email,
+        name,
+        is_active
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const resendMagicLinkAdmin = createAsyncThunk(
+  'auth/resendMagicLinkAdmin',
+  async (email, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post('/accounts/auth/resend-magic-link/', {
+        email
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 export const refreshToken = createAsyncThunk(
   'auth/refreshToken',
   async (_, { rejectWithValue }) => {
@@ -191,7 +221,9 @@ const initialState = {
   isAuthenticated: false,
   isLoading: false,
   error: null,
-  magicLinkData: null // Stores data from magic link verification
+  magicLinkData: null, // Stores data from magic link verification
+  resendMagicLinkLoading: false, // Separate loading state for resend magic link
+  updateUserLoading: false // Separate loading state for update user
 };
 
 const authSlice = createSlice({
@@ -285,6 +317,34 @@ const authSlice = createSlice({
         state.user = null;
         state.accessToken = null;
         state.refreshToken = null;
+      })
+      
+      // Update User
+      .addCase(updateUser.pending, (state) => {
+        state.updateUserLoading = true;
+        state.error = null;
+      })
+      .addCase(updateUser.fulfilled, (state, action) => {
+        state.updateUserLoading = false;
+        state.error = null;
+      })
+      .addCase(updateUser.rejected, (state, action) => {
+        state.updateUserLoading = false;
+        state.error = action.payload;
+      })
+      
+      // Resend Magic Link Admin
+      .addCase(resendMagicLinkAdmin.pending, (state) => {
+        state.resendMagicLinkLoading = true;
+        state.error = null;
+      })
+      .addCase(resendMagicLinkAdmin.fulfilled, (state) => {
+        state.resendMagicLinkLoading = false;
+        state.error = null;
+      })
+      .addCase(resendMagicLinkAdmin.rejected, (state, action) => {
+        state.resendMagicLinkLoading = false;
+        state.error = action.payload;
       })
       
       // Refresh Token

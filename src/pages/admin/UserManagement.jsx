@@ -1,11 +1,13 @@
 // pages/admin/UserManagement.jsx
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Users, RefreshCw, Mail, User, Shield, Key, CheckCircle, XCircle, Plus } from 'lucide-react';
+import { Users, RefreshCw, Mail, User, Shield, Key, CheckCircle, XCircle, Plus, Edit, Send, Radio } from 'lucide-react';
 import { fetchUsers, assignChannelToUser, clearAssignError, resetAssignState } from '../../store/slices/userManagementSlice';
 import { fetchChannels } from '../../store/slices/channelSlice';
+import { resendMagicLinkAdmin } from '../../store/slices/authSlice';
 import AssignChannelModal from './AssignChannelModal';
 import CreateUserModal from './CreateUserModal';
+import UpdateUserModal from './UpdateUserModal';
 
 const UserManagement = () => {
   const dispatch = useDispatch();
@@ -13,8 +15,11 @@ const UserManagement = () => {
   const { channels } = useSelector(state => state.channels);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [userToUpdate, setUserToUpdate] = useState(null);
+  const [resendSuccess, setResendSuccess] = useState({});
+  const [resendLoading, setResendLoading] = useState({});
 
   useEffect(() => {
     dispatch(fetchUsers());
@@ -58,6 +63,47 @@ const UserManagement = () => {
         user_id: selectedUser.id,
         channel_id: channelId
       }));
+    }
+  };
+
+  const handleUpdateUser = (user) => {
+    setUserToUpdate(user);
+    setIsUpdateModalOpen(true);
+  };
+
+  const handleCloseUpdateModal = () => {
+    setIsUpdateModalOpen(false);
+    setUserToUpdate(null);
+  };
+
+  const handleResendMagicLink = async (e, user) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setResendLoading(prev => ({ ...prev, [user.id]: true }));
+    setResendSuccess(prev => {
+      const newState = { ...prev };
+      delete newState[user.id];
+      return newState;
+    });
+    
+    const result = await dispatch(resendMagicLinkAdmin(user.email));
+    
+    setResendLoading(prev => {
+      const newState = { ...prev };
+      delete newState[user.id];
+      return newState;
+    });
+    
+    if (resendMagicLinkAdmin.fulfilled.match(result)) {
+      setResendSuccess(prev => ({ ...prev, [user.id]: true }));
+      setTimeout(() => {
+        setResendSuccess(prev => {
+          const newState = { ...prev };
+          delete newState[user.id];
+          return newState;
+        });
+      }, 3000);
     }
   };
 
@@ -117,7 +163,7 @@ const UserManagement = () => {
                 <th className="sw-th">User</th>
                 <th className="sw-th">Status</th>
                 <th className="sw-th">Role</th>
-                <th className="sw-th">Actions</th>
+                <th className="sw-th text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="sw-tbody">
@@ -161,15 +207,42 @@ const UserManagement = () => {
                       </span>
                     </div>
                   </td>
-                  <td className="sw-td whitespace-nowrap text-sm font-medium">
-                    {!user.is_admin && (
+                  <td className="sw-td whitespace-nowrap text-sm font-medium text-center">
+                    <div className="flex items-center justify-center space-x-2">
                       <button
-                        onClick={() => handleAssignChannel(user)}
-                        className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors"
+                        onClick={() => handleUpdateUser(user)}
+                        className="px-2 py-2 rounded-md bg-gray-600 hover:bg-gray-700 text-white transition-colors flex items-center justify-center"
+                        title="Update User"
                       >
-                        Assign Channel
+                        <Edit className="h-4 w-4" />
                       </button>
-                    )}
+                      {!user.is_admin && (
+                        <button
+                          onClick={() => handleAssignChannel(user)}
+                          className="px-2 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center justify-center"
+                          title="Assign Channel"
+                        >
+                          <Radio className="h-4 w-4" />
+                        </button>
+                      )}
+                      {!user.is_admin && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleResendMagicLink(e, user)}
+                          disabled={resendLoading[user.id] || resendSuccess[user.id]}
+                          className="px-2 py-2 rounded-md bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors flex items-center justify-center"
+                          title={resendLoading[user.id] ? "Sending..." : resendSuccess[user.id] ? "Magic link sent!" : "Resend Magic Link"}
+                        >
+                          {resendLoading[user.id] ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          ) : resendSuccess[user.id] ? (
+                            <CheckCircle className="h-4 w-4" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -181,6 +254,12 @@ const UserManagement = () => {
       <CreateUserModal
         isOpen={isUserModalOpen}
         onClose={handleCloseUserModal}
+      />
+
+      <UpdateUserModal
+        isOpen={isUpdateModalOpen}
+        onClose={handleCloseUpdateModal}
+        user={userToUpdate}
       />
 
       <AssignChannelModal
