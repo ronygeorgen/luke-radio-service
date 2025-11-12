@@ -29,7 +29,7 @@ const AdminLogin = () => {
     if (error) {
       setErrors(prev => ({
         ...prev,
-        submit: error.detail || 'Login failed. Please try again.'
+        submit: error.error || error.detail || 'Login failed. Please try again.'
       }));
     }
   }, [error]);

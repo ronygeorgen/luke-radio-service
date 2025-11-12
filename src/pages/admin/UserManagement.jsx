@@ -162,6 +162,7 @@ const UserManagement = () => {
               <tr>
                 <th className="sw-th">User</th>
                 <th className="sw-th">Status</th>
+                <th className="sw-th">Setup Status</th>
                 <th className="sw-th">Role</th>
                 <th className="sw-th text-center">Actions</th>
               </tr>
@@ -185,13 +186,25 @@ const UserManagement = () => {
                   </td>
                   <td className="sw-td whitespace-nowrap">
                     <div className="flex items-center">
+                      {user.is_active ? (
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-red-500 mr-1" />
+                      )}
+                      <span className={`text-sm ${user.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                        {user.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="sw-td whitespace-nowrap">
+                    <div className="flex items-center">
                       {user.password_set ? (
                         <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
                       ) : (
                         <XCircle className="h-4 w-4 text-red-500 mr-1" />
                       )}
                       <span className={`text-sm ${user.password_set ? 'text-green-600' : 'text-red-600'}`}>
-                        {user.password_set ? 'Active' : 'Pending Setup'}
+                        {user.password_set ? 'Completed Setup' : 'Pending Setup'}
                       </span>
                     </div>
                   </td>

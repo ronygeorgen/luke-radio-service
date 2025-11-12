@@ -29,7 +29,7 @@ const UserLogin = () => {
     if (error) {
       setErrors(prev => ({
         ...prev,
-        submit: error.detail || 'Login failed. Please check your credentials and try again.'
+        submit: error.error || error.detail || 'Login failed. Please check your credentials and try again.'
       }));
     }
   }, [error]);
