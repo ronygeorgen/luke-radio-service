@@ -1,6 +1,6 @@
 // components/UserSide/FullSegment.jsx
 import React, { useState } from 'react';
-import { Info, Server, User, GitMerge } from 'lucide-react';
+import { Info, Server, User, GitMerge, Play, Pause, Scissors, FilePlus } from 'lucide-react';
 import { SelectReportModal, CreateReportModal } from '../../pages/user/ReportModals';
 import dayjs from "dayjs";
 
@@ -30,6 +30,14 @@ const FullSegment = ({
 
   // Check if segment has content for showing "Add to Report" button
   const hasContent = segment.analysis?.summary || segment.transcription?.transcript;
+
+  const generalTopics = segment.analysis?.general_topics
+    ? segment.analysis.general_topics
+        .split('\n')
+        .map(topic => topic.trim())
+        .filter(Boolean)
+        .join(', ')
+    : null;
 
   // Get source icon and tooltip
   const getSourceIcon = (source) => {
@@ -245,33 +253,44 @@ function formatDateTime(dateTimeString) {
             </div>
           </div>
           
-          <div className="flex flex-col space-y-2">
+          <div className="flex items-center space-x-2">
             <button
+              type="button"
               onClick={() => handlePlayPauseAudio(segment.id)}
-              className={`w-full ${
-                currentPlayingId === segment.id && isPlaying 
-                  ? 'bg-yellow-600 hover:bg-yellow-700' 
+              className={`p-2 rounded-md text-white transition-colors ${
+                currentPlayingId === segment.id && isPlaying
+                  ? 'bg-yellow-600 hover:bg-yellow-700'
                   : 'bg-green-600 hover:bg-green-700'
-              } text-white py-2 px-4 rounded-md flex items-center justify-center text-sm`}
+              }`}
+              title={currentPlayingId === segment.id && isPlaying ? 'Pause Audio' : 'Play Audio'}
+              aria-label={currentPlayingId === segment.id && isPlaying ? 'Pause Audio' : 'Play Audio'}
             >
-              {currentPlayingId === segment.id && isPlaying ? 'Pause Audio' : 'Play Audio'}
+              {currentPlayingId === segment.id && isPlaying ? (
+                <Pause className="w-5 h-5" />
+              ) : (
+                <Play className="w-5 h-5" />
+              )}
             </button>
 
-            {/* Add Trim Audio Button */}
               <button
+              type="button"
                 onClick={() => handleTrimClick(segment)}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md flex items-center justify-center text-sm"
+              className="p-2 rounded-md bg-purple-600 hover:bg-purple-700 text-white transition-colors"
+              title="Edit Audio"
+              aria-label="Edit Audio"
               >
-                Edit Audio
+              <Scissors className="w-5 h-5" />
               </button>
             
-            {/* Add to Report Button - Only show if segment has content */}
             {hasContent && (
               <button
+                type="button"
                 onClick={handleAddToReport}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center justify-center text-sm"
+                className="p-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                title="Add to Report"
+                aria-label="Add to Report"
               >
-                Add to Report
+                <FilePlus className="w-5 h-5" />
               </button>
             )}
           </div>
@@ -334,11 +353,22 @@ function formatDateTime(dateTimeString) {
                 <div>
                   <label className="block text-sm font-medium text-gray-500">General Topics</label>
                   <div className="mt-1 bg-gray-50 p-2 rounded">
-                    {segment.analysis.general_topics.split('\n').map((topic, index) => (
-                      <div key={index} className="text-sm text-gray-700">{topic}</div>
-                    ))}
+                    <div className="text-sm text-gray-700">
+                      {generalTopics || 'N/A'}
+                    </div>
                   </div>
                 </div>
+
+                {segment.analysis?.content_type_prompt && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">Content Type</label>
+                    <div className="mt-1 bg-gray-50 p-2 rounded">
+                      <div className="text-sm text-gray-700">
+                        {segment.analysis.content_type_prompt}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Bucket Prompt</label>
