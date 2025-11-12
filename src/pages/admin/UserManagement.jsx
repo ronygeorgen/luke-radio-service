@@ -1,7 +1,7 @@
 // pages/admin/UserManagement.jsx
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Users, RefreshCw, Mail, User, Shield, Key, CheckCircle, XCircle, Plus, Edit, Send, Radio } from 'lucide-react';
+import { Users, RefreshCw, Mail, User, Shield, Key, CheckCircle, XCircle, Plus, Edit, Send, Radio, Search } from 'lucide-react';
 import { fetchUsers, assignChannelToUser, clearAssignError, resetAssignState } from '../../store/slices/userManagementSlice';
 import { fetchChannels } from '../../store/slices/channelSlice';
 import { resendMagicLinkAdmin } from '../../store/slices/authSlice';
@@ -20,6 +20,7 @@ const UserManagement = () => {
   const [userToUpdate, setUserToUpdate] = useState(null);
   const [resendSuccess, setResendSuccess] = useState({});
   const [resendLoading, setResendLoading] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     dispatch(fetchUsers());
@@ -107,6 +108,15 @@ const UserManagement = () => {
     }
   };
 
+  // Filter users based on search query
+  const filteredUsers = users.filter(user => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    const emailMatch = user.email?.toLowerCase().includes(query);
+    const nameMatch = user.name?.toLowerCase().includes(query);
+    return emailMatch || nameMatch;
+  });
+
   if (loading && users.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -117,8 +127,22 @@ const UserManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="w-full flex justify-end">
+      <div className="flex justify-between items-center gap-4">
+        <div className="flex-1 max-w-md">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search by email or name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end">
           <button
             onClick={() => setIsUserModalOpen(true)}
             className="sw-btn-primary"
@@ -155,6 +179,14 @@ const UserManagement = () => {
             <p className="text-gray-600">Users will appear here once they are created.</p>
           </div>
         </div>
+      ) : filteredUsers.length === 0 && searchQuery ? (
+        <div className="text-center py-12">
+          <div className="bg-gray-50 rounded-lg p-8">
+            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
+            <p className="text-gray-600">No users match your search criteria.</p>
+          </div>
+        </div>
       ) : (
         <div className="sw-table-wrap">
           <table className="sw-table">
@@ -168,7 +200,7 @@ const UserManagement = () => {
               </tr>
             </thead>
             <tbody className="sw-tbody">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id} className="sw-tr">
                   <td className="sw-td whitespace-nowrap">
                     <div className="flex items-center">
