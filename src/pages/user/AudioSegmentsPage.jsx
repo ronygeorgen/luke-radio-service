@@ -935,6 +935,13 @@ const handleDaypartChange = (selectedDaypart) => {
         if (selectedSegmentIds.size > 0) {
           setSelectedSegmentIds(new Set());
         }
+        // Clear status toggle mode and selection when hiding
+        if (isStatusToggleMode) {
+          setIsStatusToggleMode(false);
+        }
+        if (statusSelectedSegmentIds.size > 0) {
+          setStatusSelectedSegmentIds(new Set());
+        }
         setMergeError(null);
       }
 
