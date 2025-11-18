@@ -1,6 +1,4 @@
-import React from 'react';
-import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
-import dayjs from "dayjs";
+import React, { useMemo } from 'react';
 
 const TimePagination = ({ 
   currentPage, 
@@ -9,183 +7,176 @@ const TimePagination = ({
   availablePages = []
 }) => {
 
-function formatDateTime(dateTimeString) {
-  if (!dateTimeString) return "N/A";
-
-  try {
-    // Split into date and time parts
-    const [datePart, timePartWithOffset] = dateTimeString.split("T");
-    const [timePart] = timePartWithOffset.split(/[+-]/);
-    const offsetMatch = dateTimeString.match(/([+-]\d{2}:\d{2})$/);
-    const offset = offsetMatch ? `UTC${offsetMatch[1]}` : "UTC";
-
-    // Extract date components
-    const [year, month, day] = datePart.split("-").map(Number);
-
-    // Extract time components
-    const [hour, minute, second] = timePart.split(":").map(Number);
-
-    // Format month and 12-hour time
-    const months = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    ];
-    const hour12 = hour % 12 || 12;
-    const ampm = hour < 12 ? "AM" : "PM";
-
-    // Construct readable string
-    const formatted = `${day.toString().padStart(2, "0")} ${months[month - 1]} ${year}, ` +
-                      `${hour12.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}:${second.toString().padStart(2, "0")} ${ampm}`;
-
-    return `${formatted}`;
-  } catch (error) {
-    console.error("Error formatting date:", error);
-    return dateTimeString;
-  }
-}
-
-
-  // Filter out pages without data and create page labels
-  const pagesWithData = availablePages.filter(page => page.has_data);
-  console.log('🎯 Pages with data:', pagesWithData);
-
-  // Create page labels with date and time
-  // Create page labels with raw backend data
-const pageLabels = pagesWithData.map(page => {
-  // Show raw backend timestamps without any conversion
-  const startTime = formatDateTime(page.start_time); 
-  const endTime = formatDateTime(page.end_time);
-
-  // Simply show the raw timestamps
-  const label = `${startTime} - ${endTime}`;
-
-  return {
-    pageNumber: page.page,
-    label,
-    segmentCount: page.segment_count
-  };
-});
-
-  console.log('🎯 Generated page labels:', pageLabels);
-
-  const getVisiblePages = () => {
-    const totalVisiblePages = pageLabels.length;
-    
-    if (totalVisiblePages <= 7) {
-      return Array.from({ length: totalVisiblePages }, (_, i) => i);
-    }
-
-    const currentIndex = pageLabels.findIndex(p => p.pageNumber === currentPage);
-    const pages = [];
-    
-    // Always show first page
-    pages.push(0);
-    
-    if (currentIndex > 3) {
-      pages.push('ellipsis-start');
-    }
-    
-    // Show pages around current page
-    const start = Math.max(1, currentIndex - 1);
-    const end = Math.min(totalVisiblePages - 2, currentIndex + 1);
-    
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-    
-    if (currentIndex < totalVisiblePages - 4) {
-      pages.push('ellipsis-end');
-    }
-    
-    // Always show last page
-    if (totalVisiblePages > 1) {
-      pages.push(totalVisiblePages - 1);
-    }
-    
-    return pages;
-  };
-
-  const visiblePages = getVisiblePages();
-
-  const handlePageClick = (index) => {
-    const pageData = pageLabels[index];
-    if (pageData && pageData.pageNumber) {
-      onPageChange(pageData.pageNumber);
+  // Parse date and hour from timestamp
+  const parseDateTime = (dateTimeString) => {
+    if (!dateTimeString) return null;
+    try {
+      const [datePart, timePartWithOffset] = dateTimeString.split("T");
+      const [timePart] = timePartWithOffset.split(/[+-]/);
+      const [year, month, day] = datePart.split("-").map(Number);
+      const [hour] = timePart.split(":").map(Number);
+      return { year, month, day, hour, dateKey: `${year}-${month}-${day}` };
+    } catch (error) {
+      return null;
     }
   };
 
-  const getCurrentPageIndex = () => {
-    return pageLabels.findIndex(p => p.pageNumber === currentPage);
+  // Get current page data
+  const currentPageData = availablePages.find(page => page.page === currentPage);
+  const currentDateTime = currentPageData ? parseDateTime(currentPageData.start_time) : null;
+  const selectedDate = currentDateTime ? currentDateTime.dateKey : null;
+  const selectedHour = currentDateTime ? currentDateTime.hour : null;
+
+  // Extract unique dates from available pages
+  const uniqueDates = useMemo(() => {
+    const dateMap = new Map();
+    availablePages
+      .filter(page => page.has_data)
+      .forEach(page => {
+        const dt = parseDateTime(page.start_time);
+        if (dt) {
+          const dateKey = dt.dateKey;
+          if (!dateMap.has(dateKey)) {
+            dateMap.set(dateKey, {
+              dateKey,
+              month: dt.month,
+              day: dt.day,
+              year: dt.year,
+              pages: []
+            });
+          }
+          dateMap.get(dateKey).pages.push(page);
+        }
+      });
+    return Array.from(dateMap.values()).sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      if (a.month !== b.month) return a.month - b.month;
+      return a.day - b.day;
+    });
+  }, [availablePages]);
+
+  // Get available hours for selected date
+  const availableHoursForDate = useMemo(() => {
+    if (!selectedDate) return new Set();
+    const dateData = uniqueDates.find(d => d.dateKey === selectedDate);
+    if (!dateData) return new Set();
+    const hours = new Set();
+    dateData.pages.forEach(page => {
+      const dt = parseDateTime(page.start_time);
+      if (dt) hours.add(dt.hour);
+    });
+    return hours;
+  }, [selectedDate, uniqueDates]);
+
+
+  // Handle date selection
+  const handleDateClick = (dateKey) => {
+    const dateData = uniqueDates.find(d => d.dateKey === dateKey);
+    if (dateData && dateData.pages.length > 0) {
+      // Select the first page for this date
+      onPageChange(dateData.pages[0].page);
+    }
   };
 
-  const canGoPrevious = getCurrentPageIndex() > 0;
-  const canGoNext = getCurrentPageIndex() < pageLabels.length - 1;
+  // Handle hour selection
+  const handleHourClick = (hour) => {
+    if (!selectedDate) return;
+    const dateData = uniqueDates.find(d => d.dateKey === selectedDate);
+    if (!dateData) return;
+    
+    // Find page with matching hour
+    const matchingPage = dateData.pages.find(page => {
+      const dt = parseDateTime(page.start_time);
+      return dt && dt.hour === hour;
+    });
+    
+    if (matchingPage) {
+      onPageChange(matchingPage.page);
+    }
+  };
+
+  // Check if hour is available
+  const isHourAvailable = (hour) => {
+    return availableHoursForDate.has(hour);
+  };
+
+  // Check if hour is in the past (for current date)
+  const isHourPast = (hour) => {
+    if (!currentDateTime) return false;
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentDate = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+    
+    if (selectedDate === currentDate) {
+      return hour < currentHour;
+    }
+    return false;
+  };
+
+  // Check if hour is in the future (for current date)
+  const isHourFuture = (hour) => {
+    if (!currentDateTime) return false;
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentDate = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+    
+    if (selectedDate === currentDate) {
+      return hour > currentHour;
+    }
+    return false;
+  };
 
   return (
-    <div className="flex items-center justify-center space-x-1 py-4 w-full">
-      {/* Previous button */}
-      <button
-        onClick={() => {
-          const currentIndex = getCurrentPageIndex();
-          if (currentIndex > 0) {
-            handlePageClick(currentIndex - 1);
-          }
-        }}
-        disabled={!canGoPrevious}
-        className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex-shrink-0"
-      >
-        <ChevronLeft className="w-4 h-4" />
-      </button>
-
-      {/* Page buttons */}
-      <div className="flex items-center space-x-1 overflow-x-auto">
-        {visiblePages.map((pageIndex, index) => {
-          if (pageIndex === 'ellipsis-start' || pageIndex === 'ellipsis-end') {
-            return (
-              <span key={`ellipsis-${index}`} className="px-2 py-1 flex-shrink-0">
-                <MoreHorizontal className="w-4 h-4 text-gray-400" />
-              </span>
-            );
-          }
-
-          const pageData = pageLabels[pageIndex];
-          if (!pageData) return null;
-
-          const isCurrentPage = pageData.pageNumber === currentPage;
+    <div className="flex flex-col items-center space-y-3 py-4 w-full">
+      {/* Date Row */}
+      <div className="flex items-center justify-center space-x-2 w-full overflow-x-auto">
+        {uniqueDates.map((date) => {
+          const isSelected = date.dateKey === selectedDate;
+          const dateLabel = `${date.month}/${date.day}`;
 
           return (
             <button
-              key={pageData.pageNumber}
-              onClick={() => handlePageClick(pageIndex)}
-              className={`px-4 py-2 rounded-lg border text-sm font-medium min-w-[160px] flex-shrink-0 ${
-                isCurrentPage
-                  ? 'bg-blue-500 text-white border-blue-500'
-                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+              key={date.dateKey}
+              onClick={() => handleDateClick(date.dateKey)}
+              className={`px-4 py-2 rounded-lg text-white font-medium text-sm whitespace-nowrap flex-shrink-0 ${
+                isSelected
+                  ? 'bg-teal-500'
+                  : 'bg-pink-500 hover:bg-pink-600'
               }`}
-              title={`${pageData.label} (${pageData.segmentCount} segments)`}
             >
-              <div className="text-xs whitespace-nowrap">{pageData.label}</div>
-              <div className="text-xs opacity-75">
-                {pageData.segmentCount} segments
-              </div>
+              {dateLabel}
             </button>
           );
         })}
       </div>
 
-      {/* Next button */}
-      <button
-        onClick={() => {
-          const currentIndex = getCurrentPageIndex();
-          if (currentIndex < pageLabels.length - 1) {
-            handlePageClick(currentIndex + 1);
-          }
-        }}
-        disabled={!canGoNext}
-        className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 flex-shrink-0"
-      >
-        <ChevronRight className="w-4 h-4" />
-      </button>
+      {/* Hour Row */}
+      <div className="flex items-center justify-center space-x-1 w-full overflow-x-auto">
+        {Array.from({ length: 24 }, (_, i) => i).map((hour) => {
+          const isSelected = selectedHour === hour;
+          const isAvailable = isHourAvailable(hour);
+          const isPast = isHourPast(hour);
+          const isFuture = isHourFuture(hour);
+          const isUnavailable = !isAvailable || isPast || isFuture;
+
+          return (
+            <button
+              key={hour}
+              onClick={() => !isUnavailable && handleHourClick(hour)}
+              disabled={isUnavailable}
+              className={`px-3 py-2 rounded-lg text-white font-medium text-sm whitespace-nowrap flex-shrink-0 ${
+                isSelected
+                  ? 'bg-teal-500'
+                  : isUnavailable
+                  ? 'bg-gray-600 cursor-not-allowed opacity-60'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {hour}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };
