@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Filter as FilterIcon } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { fetchAudioSegments, setCurrentPlaying, setIsPlaying, setFilter } from '../../store/slices/audioSegmentsSlice';
+import { fetchAudioSegments, setCurrentPlaying, setIsPlaying, setFilter, clearError } from '../../store/slices/audioSegmentsSlice';
 import Header from '../../components/UserSide/Header';
 import FilterPanel from '../../components/UserSide/FilterPanel';
 import SegmentCard from '../../components/UserSide/SegmentCard';
@@ -59,6 +59,8 @@ const AudioSegmentsPage = () => {
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null);
   const [statusMessageType, setStatusMessageType] = useState('success');
+  const [errorToast, setErrorToast] = useState(null);
+  const [showToggleAllConfirm, setShowToggleAllConfirm] = useState(false);
   
   const handleTrimClick = (segment) => {
     dispatch(openTrimmer(segment));
@@ -115,14 +117,167 @@ const AudioSegmentsPage = () => {
     { value: 'weekend', label: 'Weekend (Saturday & Sunday)', startTime: '00:00:00', endTime: '23:59:59' }
   ];
 
+  // Filter segments (client-side filtering for status and recognition)
+  const filteredSegments = segments.filter(segment => {
+    // Status filter
+    if (filters.status !== 'all') {
+      if (filters.status === 'active' && !segment.is_active) return false;
+      if (filters.status === 'inactive' && segment.is_active) return false;
+    }
+    
+    // Recognition filter
+    if (filters.recognition !== 'all') {
+      const hasContent = segment.analysis?.summary || segment.transcription?.transcript;
+      
+      switch (filters.recognition) {
+        case 'recognized':
+          if (!segment.is_recognized) return false;
+          break;
+        case 'unrecognized':
+          if (segment.is_recognized) return false;
+          break;
+        case 'unrecognized_with_content':
+          if (segment.is_recognized || !hasContent) return false;
+          break;
+        case 'unrecognized_without_content':
+          if (segment.is_recognized || hasContent) return false;
+          break;
+        default:
+          break;
+      }
+    }
+    
+    return true;
+  });
+
   // Calculate counts for status & recognition filters
+  // These counts should reflect segments that match the OTHER filter (if any)
+  const getStatusCounts = () => {
+    // If recognition filter is active, count only segments matching that recognition
+    let baseSegments = segments;
+    if (filters.recognition !== 'all') {
+      const hasContent = (s) => s.analysis?.summary || s.transcription?.transcript;
+      baseSegments = segments.filter(s => {
+        switch (filters.recognition) {
+          case 'recognized':
+            return s.is_recognized;
+          case 'unrecognized':
+            return !s.is_recognized;
+          case 'unrecognized_with_content':
+            return !s.is_recognized && hasContent(s);
+          case 'unrecognized_without_content':
+            return !s.is_recognized && !hasContent(s);
+          default:
+            return true;
+        }
+      });
+    }
+    
+    return {
+      total: baseSegments.length,
+      active: baseSegments.filter(s => s.is_active).length,
+      inactive: baseSegments.filter(s => !s.is_active).length
+    };
+  };
+
+  const getRecognitionCounts = () => {
+    // If status filter is active, count only segments matching that status
+    let baseSegments = segments;
+    if (filters.status !== 'all') {
+      baseSegments = segments.filter(s => {
+        if (filters.status === 'active') return s.is_active;
+        if (filters.status === 'inactive') return !s.is_active;
+        return true;
+      });
+    }
+    
+    const hasContent = (s) => s.analysis?.summary || s.transcription?.transcript;
+    return {
+      total: baseSegments.length,
+      recognized: baseSegments.filter(s => s.is_recognized).length,
+      unrecognized: baseSegments.filter(s => !s.is_recognized).length,
+      unrecognizedWithContent: baseSegments.filter(s => !s.is_recognized && hasContent(s)).length,
+      unrecognizedWithoutContent: baseSegments.filter(s => !s.is_recognized && !hasContent(s)).length
+    };
+  };
+
+  const statusCounts = getStatusCounts();
+  const recognitionCounts = getRecognitionCounts();
+  
   const totalSegmentsCount = segments.length;
-  const activeCount = segments.filter(s => s.is_active).length;
-  const inactiveCount = totalSegmentsCount - activeCount;
-  const recognizedCount = segments.filter(s => s.is_recognized).length;
-  const unrecognizedCount = segments.filter(s => !s.is_recognized).length;
-  const unrecognizedWithContentCount = segments.filter(s => !s.is_recognized && (s.analysis?.summary || s.transcription?.transcript)).length;
-  const unrecognizedWithoutContentCount = segments.filter(s => !s.is_recognized && !s.analysis?.summary && !s.transcription?.transcript).length;
+  const activeCount = statusCounts.active;
+  const inactiveCount = statusCounts.inactive;
+  const recognizedCount = recognitionCounts.recognized;
+  const unrecognizedCount = recognitionCounts.unrecognized;
+  const unrecognizedWithContentCount = recognitionCounts.unrecognizedWithContent;
+  const unrecognizedWithoutContentCount = recognitionCounts.unrecognizedWithoutContent;
+
+  // Auto-switch status filter if current selection has 0 segments
+  useEffect(() => {
+    if (segments.length > 0) {
+      const currentStatus = filters.status || 'all';
+      if (currentStatus === 'active' && activeCount === 0) {
+        // Switch to inactive if it has segments, otherwise 'all'
+        const newStatus = inactiveCount > 0 ? 'inactive' : 'all';
+        dispatch(setFilter({ status: newStatus }));
+      } else if (currentStatus === 'inactive' && inactiveCount === 0) {
+        // Switch to active if it has segments, otherwise 'all'
+        const newStatus = activeCount > 0 ? 'active' : 'all';
+        dispatch(setFilter({ status: newStatus }));
+      }
+    }
+  }, [segments.length, activeCount, inactiveCount, filters.status, dispatch]);
+
+  // Auto-switch recognition filter if current selection has 0 segments
+  useEffect(() => {
+    if (segments.length > 0) {
+      const currentRecognition = filters.recognition || 'all';
+      let shouldSwitch = false;
+      let newRecognition = 'all';
+
+      if (currentRecognition === 'recognized' && recognizedCount === 0) {
+        shouldSwitch = true;
+        if (unrecognizedCount > 0) {
+          newRecognition = 'unrecognized';
+        } else if (unrecognizedWithContentCount > 0) {
+          newRecognition = 'unrecognized_with_content';
+        } else if (unrecognizedWithoutContentCount > 0) {
+          newRecognition = 'unrecognized_without_content';
+        }
+      } else if (currentRecognition === 'unrecognized' && unrecognizedCount === 0) {
+        shouldSwitch = true;
+        if (recognizedCount > 0) {
+          newRecognition = 'recognized';
+        } else if (unrecognizedWithContentCount > 0) {
+          newRecognition = 'unrecognized_with_content';
+        } else if (unrecognizedWithoutContentCount > 0) {
+          newRecognition = 'unrecognized_without_content';
+        }
+      } else if (currentRecognition === 'unrecognized_with_content' && unrecognizedWithContentCount === 0) {
+        shouldSwitch = true;
+        if (recognizedCount > 0) {
+          newRecognition = 'recognized';
+        } else if (unrecognizedCount > 0) {
+          newRecognition = 'unrecognized';
+        } else if (unrecognizedWithoutContentCount > 0) {
+          newRecognition = 'unrecognized_without_content';
+        }
+      } else if (currentRecognition === 'unrecognized_without_content' && unrecognizedWithoutContentCount === 0) {
+        shouldSwitch = true;
+        if (recognizedCount > 0) {
+          newRecognition = 'recognized';
+        } else if (unrecognizedCount > 0) {
+          newRecognition = 'unrecognized';
+        } else if (unrecognizedWithContentCount > 0) {
+          newRecognition = 'unrecognized_with_content';
+        }
+      }
+
+      if (shouldSwitch) {
+        dispatch(setFilter({ recognition: newRecognition }));
+      }
+    }
+  }, [segments.length, recognizedCount, unrecognizedCount, unrecognizedWithContentCount, unrecognizedWithoutContentCount, filters.recognition, dispatch]);
 
   const formatShortDate = (date) => {
     const options = { month: 'short', day: 'numeric' };
@@ -180,6 +335,7 @@ const AudioSegmentsPage = () => {
       shiftId: null,
       predefinedFilterId: null,
       duration: null,
+      showFlaggedOnly: false,
       page: 1
     }));
   }
@@ -230,6 +386,7 @@ const AudioSegmentsPage = () => {
         shiftId: filtersToUse.shiftId,
         predefinedFilterId: filtersToUse.predefinedFilterId,
         duration: filtersToUse.duration,
+        showFlaggedOnly: filtersToUse.showFlaggedOnly || false,
         page: 1
       }));
     }
@@ -270,6 +427,7 @@ useEffect(() => {
         shiftId: filters.shiftId,
         predefinedFilterId: filters.predefinedFilterId,
         duration: filters.duration,
+        showFlaggedOnly: filters.showFlaggedOnly || false,
         page: 1
       }));
     }
@@ -292,6 +450,7 @@ useEffect(() => {
     shiftId: filters.shiftId,  // Add shiftId parameter
     predefinedFilterId: filters.predefinedFilterId,
     duration: filters.duration,
+    showFlaggedOnly: filters.showFlaggedOnly || false,
     page: pageNumber  // Pass the page number directly
   }));
 };
@@ -323,6 +482,7 @@ useEffect(() => {
         shiftId: filters.shiftId,
         predefinedFilterId: filters.predefinedFilterId,
         duration: filters.duration,
+        showFlaggedOnly: filters.showFlaggedOnly || false,
         page: 1
       }));
       
@@ -330,9 +490,41 @@ useEffect(() => {
       lastFilters.current = { ...filters };
     }
   }
-}, [filters.startTime, filters.endTime, channelId]);
+  }, [filters.startTime, filters.endTime, channelId]);
 
-
+  // Handle errors with toast instead of replacing entire UI
+  useEffect(() => {
+    if (error) {
+      // Check if error is about flag_seconds configuration
+      if (error.includes('flag_seconds') || error.includes('Cannot filter flagged segments')) {
+        // Automatically uncheck showFlaggedOnly
+        dispatch(setFilter({ showFlaggedOnly: false }));
+        setErrorToast('This shift does not have flag duration configured. Flagged filter has been disabled.');
+        
+        // Refetch data without showFlaggedOnly
+        dispatch(fetchAudioSegments({ 
+          channelId, 
+          date: filters.date,
+          startDate: filters.startDate,
+          endDate: filters.endDate,
+          startTime: filters.startTime,
+          endTime: filters.endTime,
+          daypart: filters.daypart,
+          searchText: filters.searchText,
+          searchIn: filters.searchIn,
+          shiftId: filters.shiftId,
+          predefinedFilterId: filters.predefinedFilterId,
+          duration: filters.duration,
+          showFlaggedOnly: false,
+          page: currentPage
+        }));
+      } else {
+        setErrorToast(error);
+      }
+      // Clear error after showing toast
+      dispatch(clearError());
+    }
+  }, [error, dispatch, channelId, filters, currentPage]);
 
 const handleSearch = () => {
     console.log('🔍 Search button clicked - Current state:');
@@ -371,44 +563,11 @@ const handleSearch = () => {
     handleFilterChange({ ...filters, ...newFilters });
   };
 
-  // Filter segments (client-side filtering for status and recognition)
-  const filteredSegments = segments.filter(segment => {
-    // Status filter
-    if (filters.status !== 'all') {
-      if (filters.status === 'active' && !segment.is_active) return false;
-      if (filters.status === 'inactive' && segment.is_active) return false;
-    }
-    
-    // Recognition filter
-    if (filters.recognition !== 'all') {
-      const hasContent = segment.analysis?.summary || segment.transcription?.transcript;
-      
-      switch (filters.recognition) {
-        case 'recognized':
-          if (!segment.is_recognized) return false;
-          break;
-        case 'unrecognized':
-          if (segment.is_recognized) return false;
-          break;
-        case 'unrecognized_with_content':
-          if (segment.is_recognized || !hasContent) return false;
-          break;
-        case 'unrecognized_without_content':
-          if (segment.is_recognized || hasContent) return false;
-          break;
-        default:
-          break;
-      }
-    }
-    
-    return true;
-  });
-
   const handleToggleActiveStatusClick = () => {
     setShowStatusToggleOptions(true);
   };
 
-  const handleToggleAllStatus = async () => {
+  const handleToggleAllStatus = () => {
     setShowStatusToggleOptions(false);
     
     if (filteredSegments.length === 0) {
@@ -416,6 +575,13 @@ const handleSearch = () => {
       setStatusMessageType('success');
       return;
     }
+
+    // Show confirmation modal
+    setShowToggleAllConfirm(true);
+  };
+
+  const handleConfirmToggleAll = async () => {
+    setShowToggleAllConfirm(false);
 
     const activeSegmentIds = filteredSegments
       .filter(segment => segment.is_active)
@@ -432,6 +598,10 @@ const handleSearch = () => {
     }
 
     await updateSegmentStatuses(activeSegmentIds, inactiveSegmentIds);
+  };
+
+  const handleCancelToggleAll = () => {
+    setShowToggleAllConfirm(false);
   };
 
   const handleSelectSegmentsForStatus = () => {
@@ -507,6 +677,7 @@ const handleSearch = () => {
         shiftId: filters.shiftId,
         predefinedFilterId: filters.predefinedFilterId,
         duration: filters.duration,
+        showFlaggedOnly: filters.showFlaggedOnly || false,
         page: currentPage
       }));
 
@@ -723,6 +894,7 @@ const handleDaypartChange = (selectedDaypart) => {
         shiftId: filters.shiftId,
         predefinedFilterId: filters.predefinedFilterId,
         duration: filters.duration,
+        showFlaggedOnly: filters.showFlaggedOnly || false,
         page: currentPage
       }));
     } catch (error) {
@@ -791,14 +963,6 @@ if (loading && segments.length === 0) {
             <SegmentShimmer key={i} />
           ))}
         </main>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-md p-4">
-        <p className="text-sm text-red-600">{error}</p>
       </div>
     );
   }
@@ -967,6 +1131,13 @@ if (loading && segments.length === 0) {
           type={statusMessageType}
         />
       )}
+      {errorToast && (
+        <Toast 
+          message={errorToast} 
+          onClose={() => setErrorToast(null)}
+          type="error"
+        />
+      )}
       <Header 
         channelInfo={channelInfo} 
         channelName={channelName}
@@ -1012,22 +1183,35 @@ if (loading && segments.length === 0) {
               <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Status</h3>
               <div className="space-y-2">
                 {[
-                  { value: 'all', label: `All Status (${totalSegmentsCount})` },
-                  { value: 'active', label: `Active (${activeCount})` },
-                  { value: 'inactive', label: `Inactive (${inactiveCount})` }
-                ].map((option) => (
-                  <label key={option.value} className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="status"
-                      value={option.value}
-                      checked={(filters.status || 'all') === option.value}
-                      onChange={(e) => dispatch(setFilter({ status: e.target.value }))}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                    />
-                    <span className="ml-2">{option.label}</span>
-                  </label>
-                ))}
+                  { value: 'all', label: `All Status (${totalSegmentsCount})`, count: totalSegmentsCount },
+                  { value: 'active', label: `Active (${activeCount})`, count: activeCount },
+                  { value: 'inactive', label: `Inactive (${inactiveCount})`, count: inactiveCount }
+                ].map((option) => {
+                  const isDisabled = option.value !== 'all' && option.count === 0;
+                  return (
+                    <label 
+                      key={option.value} 
+                      className={`flex items-center text-sm ${
+                        isDisabled 
+                          ? 'text-gray-400 cursor-not-allowed opacity-60' 
+                          : 'text-gray-700 hover:text-gray-900 cursor-pointer'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="status"
+                        value={option.value}
+                        checked={(filters.status || 'all') === option.value}
+                        onChange={(e) => !isDisabled && dispatch(setFilter({ status: e.target.value }))}
+                        disabled={isDisabled}
+                        className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 ${
+                          isDisabled ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      />
+                      <span className="ml-2">{option.label}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
 
@@ -1036,24 +1220,37 @@ if (loading && segments.length === 0) {
               <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Recognition</h3>
               <div className="space-y-2">
                 {[
-                  { value: 'all', label: `All Recognition (${totalSegmentsCount})` },
-                  { value: 'recognized', label: `Recognized (${recognizedCount})` },
-                  { value: 'unrecognized', label: `Unrecognized (${unrecognizedCount})` },
-                  { value: 'unrecognized_with_content', label: `With Content (${unrecognizedWithContentCount})` },
-                  { value: 'unrecognized_without_content', label: `No Content (${unrecognizedWithoutContentCount})` }
-                ].map((option) => (
-                  <label key={option.value} className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="recognition"
-                      value={option.value}
-                      checked={(filters.recognition || 'all') === option.value}
-                      onChange={(e) => dispatch(setFilter({ recognition: e.target.value }))}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                    />
-                    <span className="ml-2">{option.label}</span>
-                  </label>
-                ))}
+                  { value: 'all', label: `All Recognition (${totalSegmentsCount})`, count: totalSegmentsCount },
+                  { value: 'recognized', label: `Recognized (${recognizedCount})`, count: recognizedCount },
+                  { value: 'unrecognized', label: `Unrecognized (${unrecognizedCount})`, count: unrecognizedCount },
+                  { value: 'unrecognized_with_content', label: `With Content (${unrecognizedWithContentCount})`, count: unrecognizedWithContentCount },
+                  { value: 'unrecognized_without_content', label: `No Content (${unrecognizedWithoutContentCount})`, count: unrecognizedWithoutContentCount }
+                ].map((option) => {
+                  const isDisabled = option.value !== 'all' && option.count === 0;
+                  return (
+                    <label 
+                      key={option.value} 
+                      className={`flex items-center text-sm ${
+                        isDisabled 
+                          ? 'text-gray-400 cursor-not-allowed opacity-60' 
+                          : 'text-gray-700 hover:text-gray-900 cursor-pointer'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="recognition"
+                        value={option.value}
+                        checked={(filters.recognition || 'all') === option.value}
+                        onChange={(e) => !isDisabled && dispatch(setFilter({ recognition: e.target.value }))}
+                        disabled={isDisabled}
+                        className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 ${
+                          isDisabled ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      />
+                      <span className="ml-2">{option.label}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
 
@@ -1110,14 +1307,23 @@ if (loading && segments.length === 0) {
                 const currentPageData = pagination.available_pages?.find(page => page.page === currentPage);
                 const pagesWithData = pagination.available_pages?.filter(page => page.has_data) || [];
                 const currentPageIndex = pagesWithData.findIndex(page => page.page === currentPage) + 1;
+                const isShowFlaggedOnly = filters.showFlaggedOnly || false;
                 
                 return (
                   <div className="flex items-center space-x-4">
-                    <span className="font-medium">Time slot {currentPageIndex} of {pagesWithData.length}</span>
-                    <span>•</span>
+                    {!isShowFlaggedOnly && (
+                      <>
+                        <span className="font-medium">Time slot {currentPageIndex} of {pagesWithData.length}</span>
+                        <span>•</span>
+                      </>
+                    )}
                     <span>Showing {filteredSegments.length} segments</span>
-                    <span>•</span>
-                    <span>{currentPageData?.segment_count || 0} segments in this time slot</span>
+                    {!isShowFlaggedOnly && (
+                      <>
+                        <span>•</span>
+                        <span>{currentPageData?.segment_count || 0} segments in this time slot</span>
+                      </>
+                    )}
                   </div>
                 );
               })()}
@@ -1132,7 +1338,7 @@ if (loading && segments.length === 0) {
           )}
 
           {/* Segments Grid */}
-          <div className="space-y-4">
+          <div className={`space-y-4 ${currentPlayingId ? 'pb-56' : ''}`}>
             {filteredSegments.map((segment) => (
               <SegmentCard
                 key={segment.id}
@@ -1219,6 +1425,35 @@ if (loading && segments.length === 0) {
           transcription={selectedSegment.transcription?.transcript} 
           onClose={() => setShowTranscriptionModal(false)}
         />
+      )}
+
+      {/* Toggle All Segments Confirmation Modal */}
+      {showToggleAllConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={handleCancelToggleAll}>
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md relative z-[101] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Toggle All Segments</h3>
+              <p className="text-sm text-gray-600">
+                This will toggle the status of all {filteredSegments.length} segment{filteredSegments.length !== 1 ? 's' : ''} in the current view. 
+                Active segments will become inactive and inactive segments will become active.
+              </p>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button 
+                onClick={handleCancelToggleAll} 
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmToggleAll} 
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+              >
+                Yes, Toggle All
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

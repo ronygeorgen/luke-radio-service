@@ -1,17 +1,18 @@
 // pages/admin/UserManagement.jsx
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Users, RefreshCw, Mail, User, Shield, Key, CheckCircle, XCircle, Plus, Edit, Send, Radio, Search } from 'lucide-react';
-import { fetchUsers, assignChannelToUser, clearAssignError, resetAssignState } from '../../store/slices/userManagementSlice';
+import { Users, RefreshCw, Mail, User, Shield, Key, CheckCircle, XCircle, Plus, Edit, Send, Radio, Search, Trash2 } from 'lucide-react';
+import { fetchUsers, assignChannelToUser, deleteUser, clearAssignError, resetAssignState, clearDeleteState } from '../../store/slices/userManagementSlice';
 import { fetchChannels } from '../../store/slices/channelSlice';
 import { resendMagicLinkAdmin } from '../../store/slices/authSlice';
 import AssignChannelModal from './AssignChannelModal';
 import CreateUserModal from './CreateUserModal';
 import UpdateUserModal from './UpdateUserModal';
+import Toast from '../../components/UserSide/Toast';
 
 const UserManagement = () => {
   const dispatch = useDispatch();
-  const { users, loading, error, assignLoading, assignError, assignSuccess } = useSelector(state => state.userManagement);
+  const { users, loading, error, assignLoading, assignError, assignSuccess, deleteLoading, deleteError, deleteSuccess } = useSelector(state => state.userManagement);
   const { channels } = useSelector(state => state.channels);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -21,6 +22,8 @@ const UserManagement = () => {
   const [resendSuccess, setResendSuccess] = useState({});
   const [resendLoading, setResendLoading] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [toastMessage, setToastMessage] = useState(null);
+  const [toastType, setToastType] = useState('success');
 
   useEffect(() => {
     dispatch(fetchUsers());
@@ -36,6 +39,21 @@ const UserManagement = () => {
       }, 2000);
     }
   }, [assignSuccess, dispatch]);
+
+  useEffect(() => {
+    if (deleteSuccess) {
+      setToastMessage(deleteSuccess);
+      setToastType('success');
+      dispatch(clearDeleteState());
+      // Refresh users list
+      dispatch(fetchUsers());
+    }
+    if (deleteError) {
+      setToastMessage(deleteError);
+      setToastType('error');
+      dispatch(clearDeleteState());
+    }
+  }, [deleteSuccess, deleteError, dispatch]);
 
   const handleCloseUserModal = () => {
     setIsUserModalOpen(false);
@@ -105,6 +123,15 @@ const UserManagement = () => {
           return newState;
         });
       }, 3000);
+    }
+  };
+
+  const handleDeleteUser = async (e, user) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (window.confirm(`Are you sure you want to delete user "${user.email}"? This action cannot be undone.`)) {
+      await dispatch(deleteUser(user.id));
     }
   };
 
@@ -287,6 +314,19 @@ const UserManagement = () => {
                           )}
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteUser(e, user)}
+                        disabled={deleteLoading}
+                        className="px-2 py-2 rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors flex items-center justify-center"
+                        title="Delete User"
+                      >
+                        {deleteLoading ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -317,6 +357,14 @@ const UserManagement = () => {
         error={assignError}
         success={assignSuccess}
       />
+
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          onClose={() => setToastMessage(null)}
+          type={toastType}
+        />
+      )}
     </div>
   );
 };

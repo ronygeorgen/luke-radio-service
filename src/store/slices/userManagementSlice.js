@@ -29,6 +29,21 @@ export const assignChannelToUser = createAsyncThunk(
   }
 );
 
+export const deleteUser = createAsyncThunk(
+  'userManagement/deleteUser',
+  async (user_id, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.delete(`/accounts/admin/delete-user/${user_id}/`);
+      return response.data;
+    } catch (err) {
+      if (err.response && err.response.data) {
+        return rejectWithValue(err.response.data);
+      }
+      return rejectWithValue(err.message || 'Something went wrong');
+    }
+  }
+);
+
 const userManagementSlice = createSlice({
   name: 'userManagement',
   initialState: {
@@ -37,7 +52,10 @@ const userManagementSlice = createSlice({
     error: null,
     assignLoading: false,
     assignError: null,
-    assignSuccess: false
+    assignSuccess: false,
+    deleteLoading: false,
+    deleteError: null,
+    deleteSuccess: null
   },
   reducers: {
     clearError: (state) => {
@@ -51,6 +69,11 @@ const userManagementSlice = createSlice({
       state.assignLoading = false;
       state.assignError = null;
       state.assignSuccess = false;
+    },
+    clearDeleteState: (state) => {
+      state.deleteLoading = false;
+      state.deleteError = null;
+      state.deleteSuccess = null;
     }
   },
   extraReducers: (builder) => {
@@ -89,9 +112,26 @@ const userManagementSlice = createSlice({
         state.assignLoading = false;
         state.assignError = action.payload || action.error.message;
         state.assignSuccess = false;
+      })
+      // Delete user
+      .addCase(deleteUser.pending, (state) => {
+        state.deleteLoading = true;
+        state.deleteError = null;
+        state.deleteSuccess = null;
+      })
+      .addCase(deleteUser.fulfilled, (state, action) => {
+        state.deleteLoading = false;
+        state.deleteSuccess = action.payload.message || 'User deleted successfully';
+        // Remove the user from the list
+        state.users = state.users.filter(user => user.id !== action.meta.arg);
+      })
+      .addCase(deleteUser.rejected, (state, action) => {
+        state.deleteLoading = false;
+        state.deleteError = action.payload?.message || action.payload || action.error.message;
+        state.deleteSuccess = null;
       });
   },
 });
 
-export const { clearError, clearAssignError, resetAssignState } = userManagementSlice.actions;
+export const { clearError, clearAssignError, resetAssignState, clearDeleteState } = userManagementSlice.actions;
 export default userManagementSlice.reducer;

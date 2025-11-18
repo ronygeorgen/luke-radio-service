@@ -44,6 +44,7 @@ const FilterPanel = ({
   const [currentShiftId, setCurrentShiftId] = useState(filters.shiftId || '');
   const [currentPredefinedFilterId, setCurrentPredefinedFilterId] = useState(filters.predefinedFilterId || '');
   const [localDuration, setLocalDuration] = useState(filters.duration || '');
+  const [showFlaggedOnly, setShowFlaggedOnly] = useState(filters.showFlaggedOnly || false);
   const [isExpanded, setIsExpanded] = useState(false); // For expanded version
   const filterRef = useRef(null);
   const calendarRef = useRef(null);
@@ -72,6 +73,10 @@ const FilterPanel = ({
     setCurrentShiftId(normalizedId);
     // When selecting a shift, clear any selected predefined filter locally
     setCurrentPredefinedFilterId('');
+    // Reset showFlaggedOnly when shift is deselected
+    if (!normalizedId) {
+      setShowFlaggedOnly(false);
+    }
 
     const selectedShift = normalizedId
       ? shifts.find((shift) => String(shift.id) === normalizedId)
@@ -94,7 +99,8 @@ const FilterPanel = ({
       // Use raw shift times without conversion
       startTime: selectedShift ? selectedShift.start_time : filters.startTime,
       endTime: selectedShift ? selectedShift.end_time : filters.endTime,
-      daypart: 'none'
+      daypart: 'none',
+      showFlaggedOnly: normalizedId ? showFlaggedOnly : false
     };
 
     dispatch(setFilter(newFilters));
@@ -114,6 +120,7 @@ const FilterPanel = ({
         shiftId: newFilters.shiftId,
         predefinedFilterId: null,
         duration: filters.duration,
+        showFlaggedOnly: normalizedId ? showFlaggedOnly : false,
         page: 1
       }));
     }
@@ -124,6 +131,8 @@ const FilterPanel = ({
     setCurrentPredefinedFilterId(normalizedId);
     // When selecting a predefined filter, clear any selected shift locally
     setCurrentShiftId('');
+    // Reset showFlaggedOnly when predefined filter is selected
+    setShowFlaggedOnly(false);
 
     const newFilters = {
       predefinedFilterId: normalizedId || null,
@@ -134,7 +143,8 @@ const FilterPanel = ({
       endDate: filters.endDate,
       startTime: filters.startTime,
       endTime: filters.endTime,
-      daypart: 'none'
+      daypart: 'none',
+      showFlaggedOnly: false
     };
     dispatch(setFilter(newFilters));
 
@@ -153,6 +163,7 @@ const FilterPanel = ({
         shiftId: null,
         predefinedFilterId: newFilters.predefinedFilterId,
         duration: filters.duration,
+        showFlaggedOnly: false,
         page: 1
       }));
     }
@@ -251,7 +262,8 @@ const FilterPanel = ({
     setLocalStartTime(filters.startTime?.substring(0, 5) || '');
     setLocalEndTime(filters.endTime?.substring(0, 5) || '');
     setLocalDuration(filters.duration || '');
-  }, [filters.startTime, filters.endTime, filters.duration]);
+    setShowFlaggedOnly(filters.showFlaggedOnly || false);
+  }, [filters.startTime, filters.endTime, filters.duration, filters.showFlaggedOnly]);
 
   // Only sync local shift state with Redux state on initial load, not on every change
   useEffect(() => {
@@ -481,6 +493,38 @@ const FilterPanel = ({
     return getLocalDateString(new Date());
   };
 
+  // Handle show flagged only checkbox change
+  const handleShowFlaggedOnlyChange = (checked) => {
+    setShowFlaggedOnly(checked);
+    
+    const newFilters = {
+      ...filters,
+      showFlaggedOnly: checked
+    };
+    
+    dispatch(setFilter(newFilters));
+    
+    // Trigger API fetch immediately when checkbox is toggled
+    if (fetchAudioSegments && currentShiftId) {
+      reduxDispatch(fetchAudioSegments({
+        channelId,
+        date: newFilters.date,
+        startDate: newFilters.startDate,
+        endDate: newFilters.endDate,
+        startTime: newFilters.startTime,
+        endTime: newFilters.endTime,
+        daypart: newFilters.daypart,
+        searchText: newFilters.searchText,
+        searchIn: newFilters.searchIn,
+        shiftId: newFilters.shiftId,
+        predefinedFilterId: null,
+        duration: newFilters.duration,
+        showFlaggedOnly: checked,
+        page: 1
+      }));
+    }
+  };
+
   // Wrapper function to handle Apply button click with duration
   const handleApplyWithDuration = () => {
     // Get duration value and convert to number (handle empty string, null, undefined)
@@ -505,7 +549,8 @@ const FilterPanel = ({
       startTime: localStartTime ? localStartTime + ':00' : '',
       endTime: localEndTime ? localEndTime + ':00' : '',
       daypart: 'none',
-      duration: durationValue
+      duration: durationValue,
+      showFlaggedOnly: currentShiftId ? showFlaggedOnly : false
     };
     
     // Update Redux filters with time and duration
@@ -540,6 +585,11 @@ const FilterPanel = ({
       // Only add duration if it has a valid value
       if (durationValue !== null && durationValue !== undefined) {
         apiParams.duration = durationValue;
+      }
+      
+      // Only add showFlaggedOnly if shift is selected
+      if (completeFilters.shiftId && showFlaggedOnly) {
+        apiParams.showFlaggedOnly = true;
       }
       
       console.log('🔍 Final API params:', apiParams);
@@ -664,6 +714,21 @@ const FilterPanel = ({
                   ))
                 )}
               </select>
+              {/* Show Flagged Only checkbox - only visible when shift is selected */}
+              {currentShiftId && (
+                <div className="flex items-center space-x-2 mt-2">
+                  <input
+                    type="checkbox"
+                    id="showFlaggedOnly"
+                    checked={showFlaggedOnly}
+                    onChange={(e) => handleShowFlaggedOnlyChange(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="showFlaggedOnly" className="text-xs text-gray-700 cursor-pointer">
+                    Show Flagged Only
+                  </label>
+                </div>
+              )}
             </div>
 
             {/* Predefined Filters Dropdown */}
@@ -809,6 +874,21 @@ if (isInHeader) {
                     ))
                   )}
                 </select>
+                {/* Show Flagged Only checkbox - only visible when shift is selected */}
+                {currentShiftId && (
+                  <div className="flex items-center space-x-2 mt-2">
+                    <input
+                      type="checkbox"
+                      id="showFlaggedOnlyHeader"
+                      checked={showFlaggedOnly}
+                      onChange={(e) => handleShowFlaggedOnlyChange(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <label htmlFor="showFlaggedOnlyHeader" className="text-xs text-gray-700 cursor-pointer">
+                      Show Flagged Only
+                    </label>
+                  </div>
+                )}
               </div>
 
               {/* Predefined Filters Dropdown */}
@@ -983,7 +1063,21 @@ if (isInHeader) {
                     <ChevronDown className="h-4 w-4" />
                   </div>
                 </div>
-                
+                {/* Show Flagged Only checkbox - only visible when shift is selected */}
+                {currentShiftId && (
+                  <div className="flex items-center space-x-2 mt-3">
+                    <input
+                      type="checkbox"
+                      id="showFlaggedOnlyExpanded"
+                      checked={showFlaggedOnly}
+                      onChange={(e) => handleShowFlaggedOnlyChange(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <label htmlFor="showFlaggedOnlyExpanded" className="text-sm text-gray-700 cursor-pointer">
+                      Show Flagged Only
+                    </label>
+                  </div>
+                )}
               </div>
 
               {/* Predefined Filters Dropdown */}

@@ -35,7 +35,8 @@ export const fetchAudioSegments = createAsyncThunk(
     page = 1,
     shiftId = null,
     predefinedFilterId = null,
-    duration = null
+    duration = null,
+    showFlaggedOnly = false
   }, { rejectWithValue }) => {
     try {
       let startDatetime = null;
@@ -112,6 +113,10 @@ export const fetchAudioSegments = createAsyncThunk(
         params.predefined_filter_id = predefinedFilterId;
       } else if (shiftId) {
         params.shift_id = shiftId;
+        // Add show_flagged_only parameter when shift is selected
+        if (showFlaggedOnly) {
+          params.show_flagged_only = true;
+        }
       }
       
       console.log('API Request - Final params:', params);
@@ -136,7 +141,21 @@ export const fetchAudioSegments = createAsyncThunk(
       console.log('API Response:', response.data);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || err.message);
+      // Extract error message from response
+      let errorMessage = 'Failed to fetch audio segments';
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -277,6 +296,7 @@ const audioSegmentsSlice = createSlice({
       shiftId: null, 
       predefinedFilterId: null,
       duration: null, // Duration filter in seconds
+      showFlaggedOnly: false, // Show flagged only when shift is selected
     },
     transcriptionLoading: {}, // Track loading state per segment
     transcriptionErrors: {}, // Track errors per segment
@@ -378,7 +398,9 @@ const audioSegmentsSlice = createSlice({
       })
       .addCase(fetchAudioSegments.rejected, (state, action) => {
         state.loading = false;
+        // Store error message, but don't clear segments to prevent white screen
         state.error = action.payload || 'Failed to fetch audio segments';
+        // Don't clear segments on error - keep existing data visible
       })
       // Transcription cases
       .addCase(transcribeAudioSegment.pending, (state, action) => {
