@@ -100,32 +100,6 @@ const TimePagination = ({
     return availableHoursForDate.has(hour);
   };
 
-  // Check if hour is in the past (for current date)
-  const isHourPast = (hour) => {
-    if (!currentDateTime) return false;
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentDate = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
-    
-    if (selectedDate === currentDate) {
-      return hour < currentHour;
-    }
-    return false;
-  };
-
-  // Check if hour is in the future (for current date)
-  const isHourFuture = (hour) => {
-    if (!currentDateTime) return false;
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentDate = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
-    
-    if (selectedDate === currentDate) {
-      return hour > currentHour;
-    }
-    return false;
-  };
-
   return (
     <div className="flex flex-col items-center space-y-3 py-4 w-full">
       {/* Date Row */}
@@ -155,9 +129,8 @@ const TimePagination = ({
         {Array.from({ length: 24 }, (_, i) => i).map((hour) => {
           const isSelected = selectedHour === hour;
           const isAvailable = isHourAvailable(hour);
-          const isPast = isHourPast(hour);
-          const isFuture = isHourFuture(hour);
-          const isUnavailable = !isAvailable || isPast || isFuture;
+          // Only disable if no data is available - allow navigation to any hour with data
+          const isUnavailable = !isAvailable;
 
           return (
             <button
