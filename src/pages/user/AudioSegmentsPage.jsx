@@ -61,6 +61,8 @@ const AudioSegmentsPage = () => {
   const [statusMessageType, setStatusMessageType] = useState('success');
   const [errorToast, setErrorToast] = useState(null);
   const [showToggleAllConfirm, setShowToggleAllConfirm] = useState(false);
+  const [showConversionConfirm, setShowConversionConfirm] = useState(false);
+  const [pendingConversion, setPendingConversion] = useState(null); // 'activeToInactive' or 'inactiveToActive'
   
   const handleTrimClick = (segment) => {
     dispatch(openTrimmer(segment));
@@ -621,9 +623,7 @@ const handleSearch = () => {
     await updateSegmentStatuses(activeSegmentIds, inactiveSegmentIds);
   };
 
-  const handleConvertActiveToInactive = async () => {
-    setShowToggleAllConfirm(false);
-
+  const handleConvertActiveToInactive = () => {
     const activeSegmentIds = filteredSegments
       .filter(segment => segment.is_active)
       .map(segment => segment.id);
@@ -631,16 +631,17 @@ const handleSearch = () => {
     if (activeSegmentIds.length === 0) {
       setStatusMessage('No active segments available to convert.');
       setStatusMessageType('success');
+      setShowToggleAllConfirm(false);
       return;
     }
 
-    // Only convert active to inactive
-    await updateSegmentStatuses(activeSegmentIds, []);
+    // Show confirmation modal
+    setPendingConversion('activeToInactive');
+    setShowToggleAllConfirm(false);
+    setShowConversionConfirm(true);
   };
 
-  const handleConvertInactiveToActive = async () => {
-    setShowToggleAllConfirm(false);
-
+  const handleConvertInactiveToActive = () => {
     const inactiveSegmentIds = filteredSegments
       .filter(segment => !segment.is_active)
       .map(segment => segment.id);
@@ -648,11 +649,43 @@ const handleSearch = () => {
     if (inactiveSegmentIds.length === 0) {
       setStatusMessage('No inactive segments available to convert.');
       setStatusMessageType('success');
+      setShowToggleAllConfirm(false);
       return;
     }
 
-    // Only convert inactive to active
-    await updateSegmentStatuses([], inactiveSegmentIds);
+    // Show confirmation modal
+    setPendingConversion('inactiveToActive');
+    setShowToggleAllConfirm(false);
+    setShowConversionConfirm(true);
+  };
+
+  const handleConfirmConversion = async () => {
+    setShowConversionConfirm(false);
+
+    if (pendingConversion === 'activeToInactive') {
+      const activeSegmentIds = filteredSegments
+        .filter(segment => segment.is_active)
+        .map(segment => segment.id);
+
+      if (activeSegmentIds.length > 0) {
+        await updateSegmentStatuses(activeSegmentIds, []);
+      }
+    } else if (pendingConversion === 'inactiveToActive') {
+      const inactiveSegmentIds = filteredSegments
+        .filter(segment => !segment.is_active)
+        .map(segment => segment.id);
+
+      if (inactiveSegmentIds.length > 0) {
+        await updateSegmentStatuses([], inactiveSegmentIds);
+      }
+    }
+
+    setPendingConversion(null);
+  };
+
+  const handleCancelConversion = () => {
+    setShowConversionConfirm(false);
+    setPendingConversion(null);
   };
 
   const handleCancelToggleAll = () => {
@@ -1575,6 +1608,85 @@ if (loading && segments.length === 0) {
                   </>
                 );
               }
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Conversion Confirmation Modal */}
+      {showConversionConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={handleCancelConversion}>
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md relative z-[101] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            {(() => {
+              const activeSegmentIds = filteredSegments
+                .filter(segment => segment.is_active)
+                .map(segment => segment.id);
+              const inactiveSegmentIds = filteredSegments
+                .filter(segment => !segment.is_active)
+                .map(segment => segment.id);
+
+              if (pendingConversion === 'activeToInactive') {
+                return (
+                  <>
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Conversion</h3>
+                      <p className="text-sm text-gray-600">
+                        Are you sure you want to convert <strong>{activeSegmentIds.length}</strong> active segment{activeSegmentIds.length !== 1 ? 's' : ''} to inactive?
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        This action will change the status of all active segments in the current view to inactive.
+                      </p>
+                    </div>
+                    <div className="flex justify-end space-x-3">
+                      <button 
+                        onClick={handleCancelConversion}
+                        disabled={isStatusUpdating}
+                        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={handleConfirmConversion}
+                        disabled={isStatusUpdating}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isStatusUpdating ? 'Converting...' : 'Yes, Convert'}
+                      </button>
+                    </div>
+                  </>
+                );
+              } else if (pendingConversion === 'inactiveToActive') {
+                return (
+                  <>
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Conversion</h3>
+                      <p className="text-sm text-gray-600">
+                        Are you sure you want to convert <strong>{inactiveSegmentIds.length}</strong> inactive segment{inactiveSegmentIds.length !== 1 ? 's' : ''} to active?
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        This action will change the status of all inactive segments in the current view to active.
+                      </p>
+                    </div>
+                    <div className="flex justify-end space-x-3">
+                      <button 
+                        onClick={handleCancelConversion}
+                        disabled={isStatusUpdating}
+                        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={handleConfirmConversion}
+                        disabled={isStatusUpdating}
+                        className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isStatusUpdating ? 'Converting...' : 'Yes, Convert'}
+                      </button>
+                    </div>
+                  </>
+                );
+              }
+              return null;
             })()}
           </div>
         </div>
