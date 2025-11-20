@@ -576,8 +576,29 @@ const handleSearch = () => {
       return;
     }
 
-    // Show confirmation modal
-    setShowToggleAllConfirm(true);
+    // Check if status filter is 'all' - show modal with two options
+    const currentStatus = filters.status || 'all';
+    if (currentStatus === 'all') {
+      // Show modal with two options for "all status" filter
+      setShowToggleAllConfirm(true);
+    } else {
+      // For other status filters, use the old behavior (toggle all)
+      const activeSegmentIds = filteredSegments
+        .filter(segment => segment.is_active)
+        .map(segment => segment.id);
+
+      const inactiveSegmentIds = filteredSegments
+        .filter(segment => !segment.is_active)
+        .map(segment => segment.id);
+
+      if (activeSegmentIds.length === 0 && inactiveSegmentIds.length === 0) {
+        setStatusMessage('No segments available to update.');
+        setStatusMessageType('success');
+        return;
+      }
+
+      updateSegmentStatuses(activeSegmentIds, inactiveSegmentIds);
+    }
   };
 
   const handleConfirmToggleAll = async () => {
@@ -598,6 +619,40 @@ const handleSearch = () => {
     }
 
     await updateSegmentStatuses(activeSegmentIds, inactiveSegmentIds);
+  };
+
+  const handleConvertActiveToInactive = async () => {
+    setShowToggleAllConfirm(false);
+
+    const activeSegmentIds = filteredSegments
+      .filter(segment => segment.is_active)
+      .map(segment => segment.id);
+
+    if (activeSegmentIds.length === 0) {
+      setStatusMessage('No active segments available to convert.');
+      setStatusMessageType('success');
+      return;
+    }
+
+    // Only convert active to inactive
+    await updateSegmentStatuses(activeSegmentIds, []);
+  };
+
+  const handleConvertInactiveToActive = async () => {
+    setShowToggleAllConfirm(false);
+
+    const inactiveSegmentIds = filteredSegments
+      .filter(segment => !segment.is_active)
+      .map(segment => segment.id);
+
+    if (inactiveSegmentIds.length === 0) {
+      setStatusMessage('No inactive segments available to convert.');
+      setStatusMessageType('success');
+      return;
+    }
+
+    // Only convert inactive to active
+    await updateSegmentStatuses([], inactiveSegmentIds);
   };
 
   const handleCancelToggleAll = () => {
@@ -1438,27 +1493,89 @@ if (loading && segments.length === 0) {
       {showToggleAllConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]" onClick={handleCancelToggleAll}>
           <div className="bg-white rounded-lg p-6 w-96 max-w-md relative z-[101] shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Toggle All Segments</h3>
-              <p className="text-sm text-gray-600">
-                This will toggle the status of all {filteredSegments.length} segment{filteredSegments.length !== 1 ? 's' : ''} in the current view. 
-                Active segments will become inactive and inactive segments will become active.
-              </p>
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button 
-                onClick={handleCancelToggleAll} 
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleConfirmToggleAll} 
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-              >
-                Yes, Toggle All
-              </button>
-            </div>
+            {(() => {
+              const currentStatus = filters.status || 'all';
+              const activeSegmentIds = filteredSegments
+                .filter(segment => segment.is_active)
+                .map(segment => segment.id);
+              const inactiveSegmentIds = filteredSegments
+                .filter(segment => !segment.is_active)
+                .map(segment => segment.id);
+
+              // Show two options when status filter is "all"
+              if (currentStatus === 'all') {
+                return (
+                  <>
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Convert All Segments Status</h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Choose an option to convert segments in the current view:
+                      </p>
+                    </div>
+                    <div className="space-y-3 mb-4">
+                      <button 
+                        onClick={handleConvertActiveToInactive}
+                        disabled={activeSegmentIds.length === 0 || isStatusUpdating}
+                        className="w-full px-4 py-3 border-2 border-blue-500 rounded-md text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 text-left"
+                      >
+                        <div className="font-medium">Convert All Active to Inactive</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {activeSegmentIds.length} active segment{activeSegmentIds.length !== 1 ? 's' : ''} will become inactive
+                        </div>
+                      </button>
+                      <button 
+                        onClick={handleConvertInactiveToActive}
+                        disabled={inactiveSegmentIds.length === 0 || isStatusUpdating}
+                        className="w-full px-4 py-3 border-2 border-green-500 rounded-md text-green-700 hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 text-left"
+                      >
+                        <div className="font-medium">Convert All Inactive to Active</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {inactiveSegmentIds.length} inactive segment{inactiveSegmentIds.length !== 1 ? 's' : ''} will become active
+                        </div>
+                      </button>
+                    </div>
+                    <div className="flex justify-end">
+                      <button 
+                        onClick={handleCancelToggleAll}
+                        disabled={isStatusUpdating}
+                        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                );
+              } else {
+                // Show original toggle all confirmation for other status filters
+                return (
+                  <>
+                    <div className="mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Toggle All Segments</h3>
+                      <p className="text-sm text-gray-600">
+                        This will toggle the status of all {filteredSegments.length} segment{filteredSegments.length !== 1 ? 's' : ''} in the current view. 
+                        Active segments will become inactive and inactive segments will become active.
+                      </p>
+                    </div>
+                    <div className="flex justify-end space-x-3">
+                      <button 
+                        onClick={handleCancelToggleAll}
+                        disabled={isStatusUpdating}
+                        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={handleConfirmToggleAll}
+                        disabled={isStatusUpdating}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isStatusUpdating ? 'Updating...' : 'Yes, Toggle All'}
+                      </button>
+                    </div>
+                  </>
+                );
+              }
+            })()}
           </div>
         </div>
       )}
