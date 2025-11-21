@@ -250,7 +250,11 @@ const TimePagination = ({
           {/* Hour Buttons Container */}
           <div 
             ref={hourScrollRef}
-            className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-thin"
+            className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-thin [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-400"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#d1d5db transparent'
+            }}
           >
             {Array.from({ length: 24 }, (_, i) => i).map((hour) => {
               const isSelected = selectedHour === hour;
@@ -263,7 +267,7 @@ const TimePagination = ({
                   onClick={() => !isUnavailable && handleHourClick(hour)}
                   disabled={isUnavailable}
                   className={`
-                    flex-shrink-0 w-12 h-8 flex items-center justify-center
+                    flex-shrink-0 w-16 h-10 flex items-center justify-center
                     rounded-lg font-medium text-sm transition-all duration-200
                     ${isSelected
                       ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md scale-105'
@@ -274,7 +278,7 @@ const TimePagination = ({
                   `}
                 >
                   <div className="flex items-center gap-1">
-                    <Clock className={`w-3 h-3 ${isSelected ? 'text-white' : isUnavailable ? 'text-gray-400' : 'text-gray-500'}`} />
+                    <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : isUnavailable ? 'text-gray-400' : 'text-gray-500'}`} />
                     <span>{hour.toString().padStart(2, '0')}</span>
                   </div>
                 </button>

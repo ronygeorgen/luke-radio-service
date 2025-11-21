@@ -48,6 +48,8 @@ const FilterPanel = ({
   const [isExpanded, setIsExpanded] = useState(false); // For expanded version
   const filterRef = useRef(null);
   const calendarRef = useRef(null);
+  // Store original time values before shift selection
+  const originalTimesRef = useRef({ startTime: null, endTime: null });
 
   const { shifts, shiftsLoading } = useSelector(state => state.audioSegments);
   const { predefinedFilters, loading: predefinedLoading } = useSelector(state => state.shiftManagement);
@@ -69,6 +71,10 @@ const FilterPanel = ({
   const handleShiftChange = (shiftId) => {
     console.log('🔄 Shift changed to:', shiftId);
     const normalizedId = shiftId ? String(shiftId) : '';
+    const wasShiftSelected = currentShiftId && currentShiftId !== '';
+    const isSelectingShift = normalizedId && normalizedId !== '';
+    const isDeselectingShift = wasShiftSelected && !normalizedId;
+    
     setLocalShiftId(normalizedId);
     setCurrentShiftId(normalizedId);
     // When selecting a shift, clear any selected predefined filter locally
@@ -82,12 +88,46 @@ const FilterPanel = ({
       ? shifts.find((shift) => String(shift.id) === normalizedId)
       : null;
 
+    // Store original times before selecting a shift
+    if (isSelectingShift && !wasShiftSelected) {
+      originalTimesRef.current = {
+        startTime: filters.startTime || '',
+        endTime: filters.endTime || ''
+      };
+      console.log('💾 Stored original times:', originalTimesRef.current);
+    }
+
     // Use raw times without conversion
     if (selectedShift) {
       const newLocalStart = (selectedShift.start_time || '').substring(0, 5);
       const newLocalEnd = (selectedShift.end_time || '').substring(0, 5);
       setLocalStartTime(newLocalStart);
       setLocalEndTime(newLocalEnd);
+    } else if (isDeselectingShift) {
+      // Restore original times when deselecting shift
+      const restoredStartTime = originalTimesRef.current.startTime || '';
+      const restoredEndTime = originalTimesRef.current.endTime || '';
+      setLocalStartTime(restoredStartTime ? restoredStartTime.substring(0, 5) : '');
+      setLocalEndTime(restoredEndTime ? restoredEndTime.substring(0, 5) : '');
+      console.log('🔄 Restored original times:', { restoredStartTime, restoredEndTime });
+    }
+
+    // Determine the times to use
+    let finalStartTime = '';
+    let finalEndTime = '';
+    
+    if (selectedShift) {
+      // Use shift times when selecting a shift
+      finalStartTime = selectedShift.start_time || '';
+      finalEndTime = selectedShift.end_time || '';
+    } else if (isDeselectingShift) {
+      // Restore original times when deselecting shift
+      finalStartTime = originalTimesRef.current.startTime || '';
+      finalEndTime = originalTimesRef.current.endTime || '';
+    } else {
+      // Keep current times (shouldn't happen in normal flow, but fallback)
+      finalStartTime = filters.startTime || '';
+      finalEndTime = filters.endTime || '';
     }
 
     const newFilters = {
@@ -96,9 +136,8 @@ const FilterPanel = ({
       date: filters.date,
       startDate: filters.startDate,
       endDate: filters.endDate,
-      // Use raw shift times without conversion
-      startTime: selectedShift ? selectedShift.start_time : filters.startTime,
-      endTime: selectedShift ? selectedShift.end_time : filters.endTime,
+      startTime: finalStartTime,
+      endTime: finalEndTime,
       daypart: 'none',
       showFlaggedOnly: normalizedId ? showFlaggedOnly : false
     };
@@ -121,6 +160,9 @@ const FilterPanel = ({
         predefinedFilterId: null,
         duration: filters.duration,
         showFlaggedOnly: normalizedId ? showFlaggedOnly : false,
+        status: filters.status,
+        recognition_status: filters.recognition_status,
+        has_content: filters.has_content,
         page: 1
       }));
     }
@@ -164,6 +206,9 @@ const FilterPanel = ({
         predefinedFilterId: newFilters.predefinedFilterId,
         duration: filters.duration,
         showFlaggedOnly: false,
+        status: filters.status,
+        recognition_status: filters.recognition_status,
+        has_content: filters.has_content,
         page: 1
       }));
     }
@@ -263,7 +308,15 @@ const FilterPanel = ({
     setLocalEndTime(filters.endTime?.substring(0, 5) || '');
     setLocalDuration(filters.duration || '');
     setShowFlaggedOnly(filters.showFlaggedOnly || false);
-  }, [filters.startTime, filters.endTime, filters.duration, filters.showFlaggedOnly]);
+    
+    // Initialize original times ref if not already set and no shift is selected
+    if (!filters.shiftId && !originalTimesRef.current.startTime && !originalTimesRef.current.endTime) {
+      originalTimesRef.current = {
+        startTime: filters.startTime || '',
+        endTime: filters.endTime || ''
+      };
+    }
+  }, [filters.startTime, filters.endTime, filters.duration, filters.showFlaggedOnly, filters.shiftId]);
 
   // Only sync local shift state with Redux state on initial load, not on every change
   useEffect(() => {
@@ -345,6 +398,9 @@ const FilterPanel = ({
           shiftId: filters.shiftId,
           predefinedFilterId: filters.predefinedFilterId,
           duration: filters.duration,
+          status: filters.status,
+          recognition_status: filters.recognition_status,
+          has_content: filters.has_content,
           page: 1
         }));
       }
@@ -520,6 +576,9 @@ const FilterPanel = ({
         predefinedFilterId: null,
         duration: newFilters.duration,
         showFlaggedOnly: checked,
+        status: filters.status,
+        recognition_status: filters.recognition_status,
+        has_content: filters.has_content,
         page: 1
       }));
     }
@@ -579,6 +638,9 @@ const FilterPanel = ({
         searchIn: completeFilters.searchIn,
         shiftId: completeFilters.shiftId,
         predefinedFilterId: completeFilters.predefinedFilterId,
+        status: filters.status,
+        recognition_status: filters.recognition_status,
+        has_content: filters.has_content,
         page: 1
       };
       

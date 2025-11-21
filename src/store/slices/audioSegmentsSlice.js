@@ -36,7 +36,10 @@ export const fetchAudioSegments = createAsyncThunk(
     shiftId = null,
     predefinedFilterId = null,
     duration = null,
-    showFlaggedOnly = false
+    showFlaggedOnly = false,
+    status = null,
+    recognition_status = null,
+    has_content = null
   }, { rejectWithValue }) => {
     try {
       let startDatetime = null;
@@ -133,6 +136,32 @@ export const fetchAudioSegments = createAsyncThunk(
         console.log('✅ Duration parameter added to API request:', duration);
       } else {
         console.log('ℹ️ No duration parameter (value was:', duration, ', type:', typeof duration, ')');
+      }
+      
+      // Add status parameter if provided
+      // status can be 'active', 'inactive', or null
+      if (status !== null && status !== undefined) {
+        if (status === 'active') {
+          params.status = true;
+        } else if (status === 'inactive') {
+          params.status = false;
+        }
+      }
+      
+      // Add recognition_status parameter if provided
+      if (recognition_status !== null && recognition_status !== undefined) {
+        params.recognition_status = recognition_status;
+      }
+      
+      // Add has_content parameter if provided
+      // has_content can be true, false, or null
+      if (has_content !== null && has_content !== undefined) {
+        // Convert to boolean: handle both boolean and string values
+        if (has_content === true || has_content === 'true') {
+          params.has_content = true;
+        } else if (has_content === false || has_content === 'false') {
+          params.has_content = false;
+        }
       }
       
       const response = await axiosInstance.get('/audio_segments', {
@@ -283,8 +312,9 @@ const audioSegmentsSlice = createSlice({
     currentPlayingId: null,
     isPlaying: false,
     filters: {
-      status: 'active',
-      recognition: 'unrecognized',
+      status: null, // 'active', 'inactive', or null for 'all'
+      recognition_status: null, // 'recognized', 'unrecognized', or null for 'all'
+      has_content: null, // true, false, or null for 'all'
       date: new Date().toISOString().split('T')[0],
       startDate: null, // NEW: for date range
       endDate: null,   // NEW: for date range

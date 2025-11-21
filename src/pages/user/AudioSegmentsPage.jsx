@@ -101,7 +101,10 @@ const AudioSegmentsPage = () => {
   } = useSelector((state) => state.audioSegments);
 
   const currentPage = pagination?.current_page || 1;
-  const totalPages = pagination?.total_pages || 0;  
+  const totalPages = pagination?.total_pages || 0;
+  
+  // Track if we've already auto-switched pages to avoid infinite loops
+  const hasAutoSwitchedPage = useRef(false);
   
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
@@ -119,167 +122,8 @@ const AudioSegmentsPage = () => {
     { value: 'weekend', label: 'Weekend (Saturday & Sunday)', startTime: '00:00:00', endTime: '23:59:59' }
   ];
 
-  // Filter segments (client-side filtering for status and recognition)
-  const filteredSegments = segments.filter(segment => {
-    // Status filter
-    if (filters.status !== 'all') {
-      if (filters.status === 'active' && !segment.is_active) return false;
-      if (filters.status === 'inactive' && segment.is_active) return false;
-    }
-    
-    // Recognition filter
-    if (filters.recognition !== 'all') {
-      const hasContent = segment.analysis?.summary || segment.transcription?.transcript;
-      
-      switch (filters.recognition) {
-        case 'recognized':
-          if (!segment.is_recognized) return false;
-          break;
-        case 'unrecognized':
-          if (segment.is_recognized) return false;
-          break;
-        case 'unrecognized_with_content':
-          if (segment.is_recognized || !hasContent) return false;
-          break;
-        case 'unrecognized_without_content':
-          if (segment.is_recognized || hasContent) return false;
-          break;
-        default:
-          break;
-      }
-    }
-    
-    return true;
-  });
-
-  // Calculate counts for status & recognition filters
-  // These counts should reflect segments that match the OTHER filter (if any)
-  const getStatusCounts = () => {
-    // If recognition filter is active, count only segments matching that recognition
-    let baseSegments = segments;
-    if (filters.recognition !== 'all') {
-      const hasContent = (s) => s.analysis?.summary || s.transcription?.transcript;
-      baseSegments = segments.filter(s => {
-        switch (filters.recognition) {
-          case 'recognized':
-            return s.is_recognized;
-          case 'unrecognized':
-            return !s.is_recognized;
-          case 'unrecognized_with_content':
-            return !s.is_recognized && hasContent(s);
-          case 'unrecognized_without_content':
-            return !s.is_recognized && !hasContent(s);
-          default:
-            return true;
-        }
-      });
-    }
-    
-    return {
-      total: baseSegments.length,
-      active: baseSegments.filter(s => s.is_active).length,
-      inactive: baseSegments.filter(s => !s.is_active).length
-    };
-  };
-
-  const getRecognitionCounts = () => {
-    // If status filter is active, count only segments matching that status
-    let baseSegments = segments;
-    if (filters.status !== 'all') {
-      baseSegments = segments.filter(s => {
-        if (filters.status === 'active') return s.is_active;
-        if (filters.status === 'inactive') return !s.is_active;
-        return true;
-      });
-    }
-    
-    const hasContent = (s) => s.analysis?.summary || s.transcription?.transcript;
-    return {
-      total: baseSegments.length,
-      recognized: baseSegments.filter(s => s.is_recognized).length,
-      unrecognized: baseSegments.filter(s => !s.is_recognized).length,
-      unrecognizedWithContent: baseSegments.filter(s => !s.is_recognized && hasContent(s)).length,
-      unrecognizedWithoutContent: baseSegments.filter(s => !s.is_recognized && !hasContent(s)).length
-    };
-  };
-
-  const statusCounts = getStatusCounts();
-  const recognitionCounts = getRecognitionCounts();
-  
-  const totalSegmentsCount = segments.length;
-  const activeCount = statusCounts.active;
-  const inactiveCount = statusCounts.inactive;
-  const recognizedCount = recognitionCounts.recognized;
-  const unrecognizedCount = recognitionCounts.unrecognized;
-  const unrecognizedWithContentCount = recognitionCounts.unrecognizedWithContent;
-  const unrecognizedWithoutContentCount = recognitionCounts.unrecognizedWithoutContent;
-
-  // Auto-switch status filter if current selection has 0 segments
-  useEffect(() => {
-    if (segments.length > 0) {
-      const currentStatus = filters.status || 'all';
-      if (currentStatus === 'active' && activeCount === 0) {
-        // Switch to inactive if it has segments, otherwise 'all'
-        const newStatus = inactiveCount > 0 ? 'inactive' : 'all';
-        dispatch(setFilter({ status: newStatus }));
-      } else if (currentStatus === 'inactive' && inactiveCount === 0) {
-        // Switch to active if it has segments, otherwise 'all'
-        const newStatus = activeCount > 0 ? 'active' : 'all';
-        dispatch(setFilter({ status: newStatus }));
-      }
-    }
-  }, [segments.length, activeCount, inactiveCount, filters.status, dispatch]);
-
-  // Auto-switch recognition filter if current selection has 0 segments
-  useEffect(() => {
-    if (segments.length > 0) {
-      const currentRecognition = filters.recognition || 'all';
-      let shouldSwitch = false;
-      let newRecognition = 'all';
-
-      if (currentRecognition === 'recognized' && recognizedCount === 0) {
-        shouldSwitch = true;
-        if (unrecognizedCount > 0) {
-          newRecognition = 'unrecognized';
-        } else if (unrecognizedWithContentCount > 0) {
-          newRecognition = 'unrecognized_with_content';
-        } else if (unrecognizedWithoutContentCount > 0) {
-          newRecognition = 'unrecognized_without_content';
-        }
-      } else if (currentRecognition === 'unrecognized' && unrecognizedCount === 0) {
-        shouldSwitch = true;
-        if (recognizedCount > 0) {
-          newRecognition = 'recognized';
-        } else if (unrecognizedWithContentCount > 0) {
-          newRecognition = 'unrecognized_with_content';
-        } else if (unrecognizedWithoutContentCount > 0) {
-          newRecognition = 'unrecognized_without_content';
-        }
-      } else if (currentRecognition === 'unrecognized_with_content' && unrecognizedWithContentCount === 0) {
-        shouldSwitch = true;
-        if (recognizedCount > 0) {
-          newRecognition = 'recognized';
-        } else if (unrecognizedCount > 0) {
-          newRecognition = 'unrecognized';
-        } else if (unrecognizedWithoutContentCount > 0) {
-          newRecognition = 'unrecognized_without_content';
-        }
-      } else if (currentRecognition === 'unrecognized_without_content' && unrecognizedWithoutContentCount === 0) {
-        shouldSwitch = true;
-        if (recognizedCount > 0) {
-          newRecognition = 'recognized';
-        } else if (unrecognizedCount > 0) {
-          newRecognition = 'unrecognized';
-        } else if (unrecognizedWithContentCount > 0) {
-          newRecognition = 'unrecognized_with_content';
-        }
-      }
-
-      if (shouldSwitch) {
-        dispatch(setFilter({ recognition: newRecognition }));
-      }
-    }
-  }, [segments.length, recognizedCount, unrecognizedCount, unrecognizedWithContentCount, unrecognizedWithoutContentCount, filters.recognition, dispatch]);
+  // No frontend filtering - segments come filtered from API
+  const filteredSegments = segments;
 
   const formatShortDate = (date) => {
     const options = { month: 'short', day: 'numeric' };
@@ -338,6 +182,9 @@ const AudioSegmentsPage = () => {
       predefinedFilterId: null,
       duration: null,
       showFlaggedOnly: false,
+      status: filters.status,
+      recognition_status: filters.recognition_status,
+      has_content: filters.has_content,
       page: 1
     }));
   }
@@ -372,6 +219,9 @@ const AudioSegmentsPage = () => {
   const handleFilterChange = (newFilters = null) => {
     const filtersToUse = newFilters || filters;
     
+    // Reset auto-switch flag when filters change
+    hasAutoSwitchedPage.current = false;
+    
     if ((filtersToUse.startDate && filtersToUse.endDate) || filtersToUse.date) {
       console.log('Making API call with filters:', filtersToUse);
       
@@ -389,6 +239,9 @@ const AudioSegmentsPage = () => {
         predefinedFilterId: filtersToUse.predefinedFilterId,
         duration: filtersToUse.duration,
         showFlaggedOnly: filtersToUse.showFlaggedOnly || false,
+        status: filtersToUse.status,
+        recognition_status: filtersToUse.recognition_status,
+        has_content: filtersToUse.has_content,
         page: 1
       }));
     }
@@ -430,13 +283,69 @@ useEffect(() => {
         predefinedFilterId: filters.predefinedFilterId,
         duration: filters.duration,
         showFlaggedOnly: filters.showFlaggedOnly || false,
+        status: filters.status,
+        recognition_status: filters.recognition_status,
+        has_content: filters.has_content,
         page: 1
       }));
     }
   }, [filters.searchText, filters.searchIn, channelId]);
 
+  // Auto-switch to a page with data if current page has no segments
+  useEffect(() => {
+    // Only check after initial load and when not loading
+    if (!hasInitialFiltersSet.current || loading) {
+      return;
+    }
+
+    // If current page has no segments
+    if (segments.length === 0 && pagination?.available_pages) {
+      // Find pages with data
+      const pagesWithData = pagination.available_pages.filter(page => page.has_data);
+      
+      // If there are pages with data and current page is not one of them
+      if (pagesWithData.length > 0) {
+        const currentPageHasData = pagesWithData.some(page => page.page === currentPage);
+        
+        if (!currentPageHasData && !hasAutoSwitchedPage.current) {
+          // Switch to the first page with data
+          const firstPageWithData = pagesWithData[0].page;
+          console.log(`🔄 Auto-switching from page ${currentPage} (no data) to page ${firstPageWithData} (has data)`);
+          
+          hasAutoSwitchedPage.current = true;
+          
+          dispatch(fetchAudioSegments({ 
+            channelId, 
+            date: filters.date,
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            startTime: filters.startTime,
+            endTime: filters.endTime,
+            daypart: filters.daypart,
+            searchText: filters.searchText,
+            searchIn: filters.searchIn,
+            shiftId: filters.shiftId,
+            predefinedFilterId: filters.predefinedFilterId,
+            duration: filters.duration,
+            showFlaggedOnly: filters.showFlaggedOnly || false,
+            status: filters.status,
+            recognition_status: filters.recognition_status,
+            has_content: filters.has_content,
+            page: firstPageWithData
+          }));
+        }
+      }
+    } else if (segments.length > 0) {
+      // Reset the flag when we have segments
+      hasAutoSwitchedPage.current = false;
+    }
+  }, [segments.length, pagination, currentPage, loading, channelId, filters, dispatch]);
+
   const handlePageChange = (pageNumber) => {
   console.log('Page change requested to:', pageNumber);
+  
+  // Reset auto-switch flag when user manually changes page
+  hasAutoSwitchedPage.current = false;
   
   // Use the unified fetchAudioSegments with page parameter
   dispatch(fetchAudioSegments({ 
@@ -453,6 +362,9 @@ useEffect(() => {
     predefinedFilterId: filters.predefinedFilterId,
     duration: filters.duration,
     showFlaggedOnly: filters.showFlaggedOnly || false,
+    status: filters.status,
+    recognition_status: filters.recognition_status,
+    has_content: filters.has_content,
     page: pageNumber  // Pass the page number directly
   }));
 };
@@ -485,6 +397,9 @@ useEffect(() => {
         predefinedFilterId: filters.predefinedFilterId,
         duration: filters.duration,
         showFlaggedOnly: filters.showFlaggedOnly || false,
+        status: filters.status,
+        recognition_status: filters.recognition_status,
+        has_content: filters.has_content,
         page: 1
       }));
       
@@ -518,6 +433,9 @@ useEffect(() => {
           predefinedFilterId: filters.predefinedFilterId,
           duration: filters.duration,
           showFlaggedOnly: false,
+          status: filters.status,
+          recognition_status: filters.recognition_status,
+          has_content: filters.has_content,
           page: currentPage
         }));
       } else {
@@ -778,6 +696,9 @@ const handleSearch = () => {
         predefinedFilterId: filters.predefinedFilterId,
         duration: filters.duration,
         showFlaggedOnly: filters.showFlaggedOnly || false,
+        status: filters.status,
+        recognition_status: filters.recognition_status,
+        has_content: filters.has_content,
         page: currentPage
       }));
 
@@ -889,8 +810,9 @@ const handleDaypartChange = (selectedDaypart) => {
       startTime: defaultStartTime, 
       endTime: defaultEndTime, 
       daypart: 'none', 
-      status: 'active', 
-      recognition: 'unrecognized',
+      status: null, 
+      recognition_status: null,
+      has_content: null,
       searchText: '',
       searchIn: 'transcription',
       shiftId: null,
@@ -995,6 +917,9 @@ const handleDaypartChange = (selectedDaypart) => {
         predefinedFilterId: filters.predefinedFilterId,
         duration: filters.duration,
         showFlaggedOnly: filters.showFlaggedOnly || false,
+        status: filters.status,
+        recognition_status: filters.recognition_status,
+        has_content: filters.has_content,
         page: currentPage
       }));
     } catch (error) {
@@ -1078,7 +1003,7 @@ if (loading && segments.length === 0) {
     <div className="min-h-screen bg-gray-50">
       <div
         className="fixed right-8 z-50"
-        style={{ top: 'calc(4rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem)' }}
+        style={{ top: 'calc(4rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem + 2rem)' }}
       >
         <div className="relative flex flex-col items-end space-y-3">
           {isFabExpanded && (
@@ -1290,30 +1215,27 @@ if (loading && segments.length === 0) {
               <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Status</h3>
               <div className="space-y-2">
                 {[
-                  { value: 'all', label: `All Status (${totalSegmentsCount})`, count: totalSegmentsCount },
-                  { value: 'active', label: `Active (${activeCount})`, count: activeCount },
-                  { value: 'inactive', label: `Inactive (${inactiveCount})`, count: inactiveCount }
+                  { value: null, label: 'All Status' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' }
                 ].map((option) => {
-                  const isDisabled = option.value !== 'all' && option.count === 0;
                   return (
                     <label 
-                      key={option.value} 
-                      className={`flex items-center text-sm ${
-                        isDisabled 
-                          ? 'text-gray-400 cursor-not-allowed opacity-60' 
-                          : 'text-gray-700 hover:text-gray-900 cursor-pointer'
-                      }`}
+                      key={option.value || 'all'} 
+                      className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer"
                     >
                       <input
                         type="radio"
                         name="status"
-                        value={option.value}
-                        checked={(filters.status || 'all') === option.value}
-                        onChange={(e) => !isDisabled && dispatch(setFilter({ status: e.target.value }))}
-                        disabled={isDisabled}
-                        className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 ${
-                          isDisabled ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
+                        value={option.value || 'all'}
+                        checked={filters.status === option.value}
+                        onChange={(e) => {
+                          const newStatus = e.target.value === 'all' ? null : e.target.value;
+                          const newFilters = { ...filters, status: newStatus };
+                          dispatch(setFilter({ status: newStatus }));
+                          handleFilterChange(newFilters);
+                        }}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                       />
                       <span className="ml-2">{option.label}</span>
                     </label>
@@ -1327,32 +1249,61 @@ if (loading && segments.length === 0) {
               <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Recognition</h3>
               <div className="space-y-2">
                 {[
-                  { value: 'all', label: `All Recognition (${totalSegmentsCount})`, count: totalSegmentsCount },
-                  { value: 'recognized', label: `Recognized (${recognizedCount})`, count: recognizedCount },
-                  { value: 'unrecognized', label: `Unrecognized (${unrecognizedCount})`, count: unrecognizedCount },
-                  { value: 'unrecognized_with_content', label: `With Content (${unrecognizedWithContentCount})`, count: unrecognizedWithContentCount },
-                  { value: 'unrecognized_without_content', label: `No Content (${unrecognizedWithoutContentCount})`, count: unrecognizedWithoutContentCount }
+                  { value: null, label: 'All Recognition' },
+                  { value: 'recognized', label: 'Recognized' },
+                  { value: 'unrecognized', label: 'Unrecognized' }
                 ].map((option) => {
-                  const isDisabled = option.value !== 'all' && option.count === 0;
                   return (
                     <label 
-                      key={option.value} 
-                      className={`flex items-center text-sm ${
-                        isDisabled 
-                          ? 'text-gray-400 cursor-not-allowed opacity-60' 
-                          : 'text-gray-700 hover:text-gray-900 cursor-pointer'
-                      }`}
+                      key={option.value || 'all'} 
+                      className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer"
                     >
                       <input
                         type="radio"
                         name="recognition"
-                        value={option.value}
-                        checked={(filters.recognition || 'all') === option.value}
-                        onChange={(e) => !isDisabled && dispatch(setFilter({ recognition: e.target.value }))}
-                        disabled={isDisabled}
-                        className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 ${
-                          isDisabled ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
+                        value={option.value || 'all'}
+                        checked={filters.recognition_status === option.value}
+                        onChange={(e) => {
+                          const newRecognitionStatus = e.target.value === 'all' ? null : e.target.value;
+                          const newFilters = { ...filters, recognition_status: newRecognitionStatus };
+                          dispatch(setFilter({ recognition_status: newRecognitionStatus }));
+                          handleFilterChange(newFilters);
+                        }}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                      <span className="ml-2">{option.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Content Filter - Amazon Style */}
+            <div className="border-b border-gray-200 pb-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Content</h3>
+              <div className="space-y-2">
+                {[
+                  { value: null, label: 'All Content' },
+                  { value: true, label: 'With Content' },
+                  { value: false, label: 'No Content' }
+                ].map((option) => {
+                  return (
+                    <label 
+                      key={option.value === null ? 'all' : option.value.toString()} 
+                      className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer"
+                    >
+                      <input
+                        type="radio"
+                        name="content"
+                        value={option.value === null ? 'all' : option.value.toString()}
+                        checked={filters.has_content === option.value}
+                        onChange={(e) => {
+                          const newHasContent = e.target.value === 'all' ? null : e.target.value === 'true';
+                          const newFilters = { ...filters, has_content: newHasContent };
+                          dispatch(setFilter({ has_content: newHasContent }));
+                          handleFilterChange(newFilters);
+                        }}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                       />
                       <span className="ml-2">{option.label}</span>
                     </label>
@@ -1425,12 +1376,6 @@ if (loading && segments.length === 0) {
                       </>
                     )}
                     <span>Showing {filteredSegments.length} segments</span>
-                    {!isShowFlaggedOnly && (
-                      <>
-                        <span>•</span>
-                        <span>{currentPageData?.segment_count || 0} segments in this time slot</span>
-                      </>
-                    )}
                   </div>
                 );
               })()}
