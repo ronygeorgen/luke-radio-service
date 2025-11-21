@@ -318,16 +318,20 @@ const FilterPanel = ({
     }
   }, [filters.startTime, filters.endTime, filters.duration, filters.showFlaggedOnly, filters.shiftId]);
 
-  // Only sync local shift state with Redux state on initial load, not on every change
+  // Sync local shift state with Redux state when filters change (including reset)
   useEffect(() => {
-    if (!currentShiftId && filters.shiftId) {
-      setCurrentShiftId(filters.shiftId);
+    // Update when shiftId changes in Redux (including when reset to null)
+    if (filters.shiftId !== currentShiftId) {
+      setCurrentShiftId(filters.shiftId || '');
+      setLocalShiftId(filters.shiftId || '');
     }
   }, [filters.shiftId, currentShiftId]);
 
+  // Sync local predefined filter state with Redux state when filters change (including reset)
   useEffect(() => {
-    if (!currentPredefinedFilterId && filters.predefinedFilterId) {
-      setCurrentPredefinedFilterId(filters.predefinedFilterId);
+    // Update when predefinedFilterId changes in Redux (including when reset to null)
+    if (filters.predefinedFilterId !== currentPredefinedFilterId) {
+      setCurrentPredefinedFilterId(filters.predefinedFilterId || '');
     }
   }, [filters.predefinedFilterId, currentPredefinedFilterId]);
 
