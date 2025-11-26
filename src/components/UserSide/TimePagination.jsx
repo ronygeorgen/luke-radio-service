@@ -182,7 +182,7 @@ const TimePagination = ({
           {canScrollLeft && (
             <button
               onClick={() => scrollDateRow('left')}
-              className="flex-shrink-0 w-8 h-10 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
               aria-label="Scroll dates left"
             >
               <ChevronLeft className="w-4 h-4 text-gray-600" />
@@ -203,16 +203,31 @@ const TimePagination = ({
                   key={date.dateKey}
                   onClick={() => handleDateClick(date.dateKey)}
                   className={`
-                    flex-shrink-0 w-20 h-10 flex items-center justify-center
-                    rounded-lg font-medium text-sm transition-all duration-200
+                    flex-shrink-0 w-16 h-8 flex items-center justify-center
+                    rounded-lg font-medium text-xs transition-all duration-200
                     ${isSelected
                       ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md scale-105'
-                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm'
+                      : 'text-white shadow-sm'
                     }
                   `}
+                  style={!isSelected ? {
+                    backgroundColor: '#E1007B',
+                    borderColor: '#C1006A',
+                    borderWidth: '1px'
+                  } : {}}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.backgroundColor = '#C1006A';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.backgroundColor = '#E1007B';
+                    }
+                  }}
                 >
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-gray-500'}`} />
+                  <div className="flex items-center gap-1">
+                    <Calendar className={`w-3 h-3 ${isSelected ? 'text-white' : 'text-white'}`} />
                     <span>{dateLabel}</span>
                   </div>
                 </button>
@@ -224,7 +239,7 @@ const TimePagination = ({
           {canScrollRight && (
             <button
               onClick={() => scrollDateRow('right')}
-              className="flex-shrink-0 w-8 h-10 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
               aria-label="Scroll dates right"
             >
               <ChevronRight className="w-4 h-4 text-gray-600" />
@@ -250,11 +265,7 @@ const TimePagination = ({
           {/* Hour Buttons Container */}
           <div 
             ref={hourScrollRef}
-            className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-thin [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-400"
-            style={{
-              scrollbarWidth: 'thin',
-              scrollbarColor: '#d1d5db transparent'
-            }}
+            className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar"
           >
             {Array.from({ length: 24 }, (_, i) => i).map((hour) => {
               const isSelected = selectedHour === hour;
@@ -267,18 +278,18 @@ const TimePagination = ({
                   onClick={() => !isUnavailable && handleHourClick(hour)}
                   disabled={isUnavailable}
                   className={`
-                    flex-shrink-0 w-16 h-10 flex items-center justify-center
-                    rounded-lg font-medium text-sm transition-all duration-200
+                    flex-shrink-0 w-10 h-7 flex items-center justify-center
+                    rounded-lg font-medium text-xs transition-all duration-200
                     ${isSelected
                       ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md scale-105'
                       : isUnavailable
                       ? 'bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed opacity-50'
-                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 shadow-sm'
+                      : 'bg-blue-600 border border-blue-700 text-white hover:bg-blue-700 shadow-sm'
                     }
                   `}
                 >
-                  <div className="flex items-center gap-1">
-                    <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : isUnavailable ? 'text-gray-400' : 'text-gray-500'}`} />
+                  <div className="flex items-center gap-0.5">
+                    <Clock className={`w-2.5 h-2.5 ${isSelected ? 'text-white' : isUnavailable ? 'text-gray-400' : 'text-white'}`} />
                     <span>{hour.toString().padStart(2, '0')}</span>
                   </div>
                 </button>
