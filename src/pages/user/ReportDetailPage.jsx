@@ -26,6 +26,8 @@ import {
   Clock,
   Filter,
   Radio,
+  Flag,
+  Ban,
 } from 'lucide-react';
 import { 
   fetchReportSegments,
@@ -46,6 +48,7 @@ import TranscriptionModal from './TranscriptionModal';
 import AudioPlayer from './AudioPlayer';
 import ReportAudioPlayer from './ReportAudioPlayer';
 import SimpleChannelSelectionModal from './SimpleChannelSelectionModal';
+import FlagIcon from '../../components/UserSide/FlagIcon';
 
 const ReportDetailPage = () => {
   const { id } = useParams();
@@ -415,6 +418,14 @@ const formatDateTime = (backendTime) => {
                             <Plus className="w-4 h-4 mr-3 text-gray-500" />
                             Onboard Channel
                           </button>
+                          <button onClick={() => { navigate("/admin/custom-flags"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                            <Flag className="w-4 h-4 mr-3 text-gray-500" />
+                            Custom Flags
+                          </button>
+                          <button onClick={() => { navigate("/admin/content-type-deactivation"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                            <Ban className="w-4 h-4 mr-3 text-gray-500 flex-shrink-0" />
+                            <span className="whitespace-nowrap">Content Type Deactivation</span>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -513,6 +524,12 @@ const formatDateTime = (backendTime) => {
                           {getSentimentLabel(segment.analysis.sentiment)}
                         </span>
                       )}
+                      {segment.flag?.sentiment?.flagged && (
+                        <FlagIcon 
+                          message={segment.flag.sentiment.message} 
+                          className="ml-2"
+                        />
+                      )}
                     </div>
                   </div>
                   
@@ -545,7 +562,15 @@ const formatDateTime = (backendTime) => {
 
                   {segment.transcription?.transcript && segment.transcription.transcript !== "Empty" && (
                     <div className="cursor-pointer" onClick={() => handleTranscriptionClick(segment)}>
-                      <h4 className="font-bold text-gray-900 text-sm">Transcription</h4>
+                      <h4 className="font-bold text-gray-900 text-sm flex items-center">
+                        Transcription
+                        {segment.flag?.transcription_keywords?.flagged && (
+                          <FlagIcon 
+                            message={segment.flag.transcription_keywords.message} 
+                            className="ml-2"
+                          />
+                        )}
+                      </h4>
                       <div className="text-gray-700 text-sm line-clamp-3">
                         {segment.transcription.transcript.split('\n').slice(0, 3).map((line, i) => (
                           <p key={i}>{line}</p>
@@ -565,7 +590,15 @@ const formatDateTime = (backendTime) => {
                     <>
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-sm font-medium text-gray-500">General Topics</label>
+                          <label className="block text-sm font-medium text-gray-500 flex items-center">
+                            General Topics
+                            {segment.flag?.general_topics?.flagged && (
+                              <FlagIcon 
+                                message={segment.flag.general_topics.message} 
+                                className="ml-2"
+                              />
+                            )}
+                          </label>
                           <div className="mt-1 bg-gray-50 p-2 rounded">
                             {segment.analysis.general_topics && segment.analysis.general_topics !== "Empty" ? (
                               segment.analysis.general_topics.split('\n').map((topic, index) => (
@@ -590,7 +623,15 @@ const formatDateTime = (backendTime) => {
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-500">IAB Topics</label>
+                        <label className="block text-sm font-medium text-gray-500 flex items-center">
+                          IAB Topics
+                          {segment.flag?.iab_topics?.flagged && (
+                            <FlagIcon 
+                              message={segment.flag.iab_topics.message} 
+                              className="ml-2"
+                            />
+                          )}
+                        </label>
                         <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
                           {segment.analysis?.iab_topics && segment.analysis.iab_topics !== "Empty" 
                             ? segment.analysis.iab_topics 

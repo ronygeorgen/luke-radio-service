@@ -5,7 +5,7 @@ import { fetchUserChannels, selectUserChannels, selectUserChannelsLoading, selec
 import UserChannelCard from "./UserChannelCard";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../../store/slices/authSlice";
-import { Calendar, BarChart3, FileText, Menu, Settings, Radio, Search, Layers, UserCog, Music, Plus, LifeBuoy, Clock, Filter } from "lucide-react";
+import { Calendar, BarChart3, FileText, Menu, Settings, Radio, Search, Layers, UserCog, Music, Plus, LifeBuoy, Clock, Filter, Flag, Ban } from "lucide-react";
 import SimpleChannelSelectionModal from "./SimpleChannelSelectionModal";
 import Shimmer from "../../components/DashboardUserSide/Shimmer";
 
@@ -261,6 +261,14 @@ const UserChannelsPage = () => {
                         <button onClick={() => handleNavigation('/admin/channels')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                           <Plus className="w-4 h-4 mr-3 text-gray-500" />
                           Onboard Channel
+                        </button>
+                        <button onClick={() => handleNavigation('/admin/custom-flags')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                          <Flag className="w-4 h-4 mr-3 text-gray-500" />
+                          Custom Flags
+                        </button>
+                        <button onClick={() => handleNavigation('/admin/content-type-deactivation')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                          <Ban className="w-4 h-4 mr-3 text-gray-500 flex-shrink-0" />
+                          <span className="whitespace-nowrap">Content Type Deactivation</span>
                         </button>
                       </div>
                     )}

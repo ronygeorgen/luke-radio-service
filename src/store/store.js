@@ -13,6 +13,8 @@ import userManagementReducer from './slices/userManagementSlice';
 import audioTrimmerReducer from './slices/audioTrimmerSlice'
 import audioManagementReducer from './slices/audioManagementSlice';
 import shiftManagementReducer from './slices/shiftManagementSlice';
+import customFlagReducer from './slices/customFlagSlice';
+import contentTypeDeactivationReducer from './slices/contentTypeDeactivationSlice';
 
 export const store = configureStore({
   reducer: {
@@ -28,7 +30,9 @@ export const store = configureStore({
     userManagement: userManagementReducer,
     audioTrimmer: audioTrimmerReducer,
     audioManagement: audioManagementReducer,
-    shiftManagement: shiftManagementReducer
+    shiftManagement: shiftManagementReducer,
+    customFlags: customFlagReducer,
+    contentTypeDeactivation: contentTypeDeactivationReducer
   },
 });
 

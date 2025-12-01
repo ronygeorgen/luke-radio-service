@@ -23,6 +23,8 @@ import UserManagement from './pages/admin/UserManagement';
 import AudioManagement from './pages/admin/AudioManagement';
 import ShiftManagement from './components/DashboardUserSide/ShiftManagement';
 import PredefinedFilters from './components/DashboardUserSide/PredefinedFilters';
+import CustomFlagsPage from './pages/admin/CustomFlagsPage';
+import ContentTypeDeactivationPage from './pages/admin/ContentTypeDeactivationPage';
 
 function App() {
   return (
@@ -55,6 +57,8 @@ function App() {
               <Route path="users" element={<UserManagement />} />
               <Route path="audio" element={<AudioManagement />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="custom-flags" element={<CustomFlagsPage />} />
+              <Route path="content-type-deactivation" element={<ContentTypeDeactivationPage />} />
             </Route>
 
             {/* Protected User Routes */}

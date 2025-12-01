@@ -30,6 +30,8 @@ import {
   Clock,
   Filter,
   Radio,
+  Flag,
+  Ban,
 } from 'lucide-react';
 import { logout } from '../../store/slices/authSlice';
 
@@ -250,6 +252,14 @@ const ReportsPage = () => {
                         <button onClick={() => { navigate("/admin/channels"); setMenuOpenId(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                           <Plus className="w-4 h-4 mr-3 text-gray-500" />
                           Onboard Channel
+                        </button>
+                        <button onClick={() => { navigate("/admin/custom-flags"); setMenuOpenId(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                          <Flag className="w-4 h-4 mr-3 text-gray-500" />
+                          Custom Flags
+                        </button>
+                        <button onClick={() => { navigate("/admin/content-type-deactivation"); setMenuOpenId(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                          <Ban className="w-4 h-4 mr-3 text-gray-500 flex-shrink-0" />
+                          <span className="whitespace-nowrap">Content Type Deactivation</span>
                         </button>
                       </div>
                     )}

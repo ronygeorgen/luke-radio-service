@@ -1,6 +1,6 @@
 // Updated AdminLayout.js
 import { Outlet, useLocation } from 'react-router-dom';
-import { Menu, Settings, Layers, Users, Plus, UserCog, Music, BarChart3, FileText, Search, LifeBuoy, Clock, Filter, Radio } from 'lucide-react';
+import { Menu, Settings, Layers, Users, Plus, UserCog, Music, BarChart3, FileText, Search, LifeBuoy, Clock, Filter, Radio, Flag, Ban } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
@@ -21,6 +21,8 @@ const AdminLayout = () => {
         if (path.includes('/admin/channels')) return 'Channel Management';
         if (path.includes('/admin/audio')) return 'Audio Management';
         if (path.includes('/admin/settings')) return 'General Settings';
+        if (path.includes('/admin/custom-flags')) return 'Custom Flags';
+        if (path.includes('/admin/content-type-deactivation')) return 'Content Type Deactivation';
         return 'Admin Panel';
     };
 
@@ -189,6 +191,14 @@ const AdminLayout = () => {
                             <button onClick={() => { navigate("/admin/channels"); setIsDropdownOpen(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                             <Plus className="w-4 h-4 mr-3 text-gray-500" />
                             Onboard Channel
+                            </button>
+                            <button onClick={() => { navigate("/admin/custom-flags"); setIsDropdownOpen(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                            <Flag className="w-4 h-4 mr-3 text-gray-500" />
+                            Custom Flags
+                            </button>
+                            <button onClick={() => { navigate("/admin/content-type-deactivation"); setIsDropdownOpen(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                            <Ban className="w-4 h-4 mr-3 text-gray-500 flex-shrink-0" />
+                            <span className="whitespace-nowrap">Content Type Deactivation</span>
                             </button>
                         </div>
                         )}

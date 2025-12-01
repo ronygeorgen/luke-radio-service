@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Info, Server, User, GitMerge, Play, Pause, Scissors, FilePlus } from 'lucide-react';
 import { SelectReportModal, CreateReportModal } from '../../pages/user/ReportModals';
 import dayjs from "dayjs";
+import FlagIcon from './FlagIcon';
 
 const FullSegment = ({ 
   segment, 
@@ -250,6 +251,12 @@ function formatDateTime(dateTimeString) {
                     segment.analysis.sentiment >= 40 ? 'Neutral' : 'Negative'}
                 </span>
               )}
+              {segment.flag?.sentiment?.flagged && (
+                <FlagIcon 
+                  message={segment.flag.sentiment.message} 
+                  className="ml-2"
+                />
+              )}
             </div>
           </div>
           
@@ -312,7 +319,15 @@ function formatDateTime(dateTimeString) {
 
           {segment.transcription?.transcript && segment.transcription.transcript !== "Empty" && (
             <div className="cursor-pointer" onClick={() => handleTranscriptionClick(segment)}>
-              <h4 className="font-bold text-gray-900 text-sm">Transcription</h4>
+              <h4 className="font-bold text-gray-900 text-sm flex items-center">
+                Transcription
+                {segment.flag?.transcription_keywords?.flagged && (
+                  <FlagIcon 
+                    message={segment.flag.transcription_keywords.message} 
+                    className="ml-2"
+                  />
+                )}
+              </h4>
               <div className="text-gray-700 text-sm line-clamp-3">
                 {segment.transcription.transcript.split('\n').slice(0, 3).map((line, i) => (
                   <p key={i}>{line}</p>
@@ -351,7 +366,15 @@ function formatDateTime(dateTimeString) {
             <>
               <div className="mt-4 space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-500">General Topics</label>
+                  <label className="block text-sm font-medium text-gray-500 flex items-center">
+                    General Topics
+                    {segment.flag?.general_topics?.flagged && (
+                      <FlagIcon 
+                        message={segment.flag.general_topics.message} 
+                        className="ml-2"
+                      />
+                    )}
+                  </label>
                   <div className="mt-1 bg-gray-50 p-2 rounded">
                     <div className="text-sm text-gray-700">
                       {generalTopics || 'N/A'}
@@ -383,7 +406,15 @@ function formatDateTime(dateTimeString) {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-500">IAB Topics</label>
+                <label className="block text-sm font-medium text-gray-500 flex items-center">
+                  IAB Topics
+                  {segment.flag?.iab_topics?.flagged && (
+                    <FlagIcon 
+                      message={segment.flag.iab_topics.message} 
+                      className="ml-2"
+                    />
+                  )}
+                </label>
                 <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
                   {segment.analysis?.iab_topics}
                 </span>

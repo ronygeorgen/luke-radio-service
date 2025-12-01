@@ -3,6 +3,7 @@ import React from "react";
 import { Play, Pause, Info, Server, User, GitMerge } from "lucide-react";
 import TranscribeButton from "./TranscribeButton";
 import dayjs from "dayjs";
+import FlagIcon from "./FlagIcon";
 
 const CompactSegment = ({ 
   segment, 
@@ -133,6 +134,38 @@ function formatDateTime(dateTimeString) {
         </span>
       )}
     </span>
+    {/* Show flag indicator if any custom flags are flagged */}
+    {(segment.flag?.transcription_keywords?.flagged || 
+      segment.flag?.sentiment?.flagged || 
+      segment.flag?.iab_topics?.flagged || 
+      segment.flag?.general_topics?.flagged) && (
+      <div className="flex items-center space-x-1">
+        {segment.flag?.transcription_keywords?.flagged && (
+          <FlagIcon 
+            message={segment.flag.transcription_keywords.message} 
+            className=""
+          />
+        )}
+        {segment.flag?.sentiment?.flagged && (
+          <FlagIcon 
+            message={segment.flag.sentiment.message} 
+            className=""
+          />
+        )}
+        {segment.flag?.iab_topics?.flagged && (
+          <FlagIcon 
+            message={segment.flag.iab_topics.message} 
+            className=""
+          />
+        )}
+        {segment.flag?.general_topics?.flagged && (
+          <FlagIcon 
+            message={segment.flag.general_topics.message} 
+            className=""
+          />
+        )}
+      </div>
+    )}
     {isMusicSegment && (
       <span className="text-xs px-2 py-1 rounded bg-purple-100 text-purple-800">
         Music
