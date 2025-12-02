@@ -1,7 +1,7 @@
 // pages/admin/CustomFlagsPage.jsx
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Flag, Plus, RefreshCw, Edit3, Trash2, Search, CheckCircle, XCircle } from 'lucide-react';
+import { Flag, Plus, RefreshCw, Edit3, Trash2, Search, CheckCircle, XCircle, X } from 'lucide-react';
 import { 
   fetchCustomFlags, 
   createCustomFlag, 
@@ -11,19 +11,53 @@ import {
 } from '../../store/slices/customFlagSlice';
 import { fetchChannels } from '../../store/slices/channelSlice';
 import CustomFlagModal from './CustomFlagModal';
+import Toast from '../../components/UserSide/Toast';
 
 const CustomFlagsPage = () => {
   const dispatch = useDispatch();
-  const { flags, loading, error, createLoading, updateLoading, deleteLoading } = useSelector(state => state.customFlags);
+  const { flags, loading, error, createLoading, updateLoading, deleteLoading, createError, updateError } = useSelector(state => state.customFlags);
   const { channels } = useSelector(state => state.channels);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFlag, setEditingFlag] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [listModalOpen, setListModalOpen] = useState(false);
+  const [selectedList, setSelectedList] = useState(null);
+  const [selectedListTitle, setSelectedListTitle] = useState('');
+  const [toastMessage, setToastMessage] = useState(null);
+  const [toastType, setToastType] = useState('error');
 
   useEffect(() => {
     dispatch(fetchCustomFlags());
     dispatch(fetchChannels());
   }, [dispatch]);
+
+  // Show toast when create or update error occurs
+  useEffect(() => {
+    if (createError || updateError) {
+      const error = createError || updateError;
+      let errorMessage = '';
+      
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (typeof error === 'object') {
+        // Parse field-specific errors
+        const errorMessages = [];
+        Object.keys(error).forEach(key => {
+          if (Array.isArray(error[key])) {
+            errorMessages.push(...error[key]);
+          } else if (typeof error[key] === 'string') {
+            errorMessages.push(error[key]);
+          }
+        });
+        errorMessage = errorMessages.length > 0 ? errorMessages.join(', ') : 'An error occurred';
+      } else {
+        errorMessage = 'An error occurred';
+      }
+      
+      setToastMessage(errorMessage);
+      setToastType('error');
+    }
+  }, [createError, updateError]);
 
   const handleRefresh = () => {
     dispatch(fetchCustomFlags());
@@ -44,6 +78,7 @@ const CustomFlagsPage = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingFlag(null);
+    dispatch(clearError());
   };
 
   const handleSubmit = (flagData) => {
@@ -53,6 +88,7 @@ const CustomFlagsPage = () => {
         .then(() => {
           setIsModalOpen(false);
           setEditingFlag(null);
+          dispatch(clearError());
           dispatch(fetchCustomFlags());
         })
         .catch((error) => {
@@ -63,6 +99,7 @@ const CustomFlagsPage = () => {
         .unwrap()
         .then(() => {
           setIsModalOpen(false);
+          dispatch(clearError());
           dispatch(fetchCustomFlags());
         })
         .catch((error) => {
@@ -72,7 +109,8 @@ const CustomFlagsPage = () => {
   };
 
   const handleDeleteFlag = (flag) => {
-    if (window.confirm(`Are you sure you want to delete the flag "${flag.name}"? This action cannot be undone.`)) {
+    const channelName = getChannelName(flag.channel);
+    if (window.confirm(`Are you sure you want to delete the custom flag for channel "${channelName}"? This action cannot be undone.`)) {
       dispatch(deleteCustomFlag(flag.id))
         .unwrap()
         .then(() => {
@@ -89,14 +127,18 @@ const CustomFlagsPage = () => {
     return channel ? channel.name : `Channel ${channelId}`;
   };
 
-  // Filter flags based on search query
+  const handleViewList = (list, title) => {
+    setSelectedList(list);
+    setSelectedListTitle(title);
+    setListModalOpen(true);
+  };
+
+  // Filter flags based on search query (by channel now, since name is removed)
   const filteredFlags = flags.filter(flag => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
-    const nameMatch = flag.name?.toLowerCase().includes(query);
     const channelName = getChannelName(flag.channel);
-    const channelMatch = channelName.toLowerCase().includes(query);
-    return nameMatch || channelMatch;
+    return channelName.toLowerCase().includes(query);
   });
 
   if (loading && flags.length === 0) {
@@ -117,7 +159,7 @@ const CustomFlagsPage = () => {
             </div>
             <input
               type="text"
-              placeholder="Search by name or channel..."
+              placeholder="Search by channel..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -169,7 +211,6 @@ const CustomFlagsPage = () => {
           <table className="sw-table">
             <thead className="sw-thead">
               <tr>
-                <th className="sw-th">Name</th>
                 <th className="sw-th">Channel</th>
                 <th className="sw-th">Transcription Keywords</th>
                 <th className="sw-th">Summary Keywords</th>
@@ -184,77 +225,123 @@ const CustomFlagsPage = () => {
               {filteredFlags.map((flag) => (
                 <tr key={flag.id} className="sw-tr">
                   <td className="sw-td">
-                    <div className="text-sm font-medium text-gray-900">{flag.name}</div>
+                    <div className="text-sm font-medium text-gray-900">{getChannelName(flag.channel)}</div>
                   </td>
                   <td className="sw-td">
-                    <div className="text-sm text-gray-900">{getChannelName(flag.channel)}</div>
+                    {flag.transcription_keywords && flag.transcription_keywords.length > 0 ? (
+                      <button
+                        onClick={() => handleViewList(flag.transcription_keywords, 'Transcription Keywords')}
+                        className="w-full text-left flex flex-wrap gap-1 items-center hover:opacity-80 transition-opacity cursor-pointer"
+                      >
+                        {Array.isArray(flag.transcription_keywords[0]) 
+                          ? (() => {
+                              const firstList = flag.transcription_keywords[0];
+                              const itemsToShow = firstList.slice(0, 2);
+                              const hasMore = firstList.length > 2 || flag.transcription_keywords.length > 1;
+                              return (
+                                <>
+                                  {itemsToShow.map((item, idx) => (
+                                    <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                                      {item}
+                                    </span>
+                                  ))}
+                                  {hasMore && (
+                                    <span className="px-2 py-1 text-blue-600 text-xs font-medium">
+                                      ...
+                                    </span>
+                                  )}
+                                </>
+                              );
+                            })()
+                          : (() => {
+                              // If first item is a string, treat it as comma-separated and show first 2 items
+                              const firstItem = String(flag.transcription_keywords[0]);
+                              const firstItemParts = firstItem.split(',').map(s => s.trim()).filter(s => s);
+                              const itemsToShow = firstItemParts.slice(0, 2);
+                              const hasMore = firstItemParts.length > 2 || flag.transcription_keywords.length > 1;
+                              return (
+                                <>
+                                  {itemsToShow.map((kw, idx) => (
+                                    <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                                      {kw}
+                                    </span>
+                                  ))}
+                                  {hasMore && (
+                                    <span className="px-2 py-1 text-blue-600 text-xs font-medium">
+                                      ...
+                                    </span>
+                                  )}
+                                </>
+                              );
+                            })()
+                        }
+                      </button>
+                    ) : (
+                      <span className="text-gray-400">None</span>
+                    )}
                   </td>
                   <td className="sw-td">
-                    <div className="text-sm text-gray-600">
-                      {flag.transcription_keywords && flag.transcription_keywords.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {Array.isArray(flag.transcription_keywords[0]) 
-                            ? flag.transcription_keywords.map((group, idx) => (
-                                <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                                  {Array.isArray(group) ? group.join(', ') : group}
-                                </span>
-                              ))
-                            : flag.transcription_keywords.map((kw, idx) => (
-                                <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                                  {kw}
-                                </span>
-                              ))
-                          }
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">None</span>
-                      )}
-                    </div>
+                    {flag.summary_keywords && flag.summary_keywords.length > 0 ? (
+                      <button
+                        onClick={() => handleViewList(flag.summary_keywords, 'Summary Keywords')}
+                        className="w-full text-left flex flex-wrap gap-1 items-center hover:opacity-80 transition-opacity cursor-pointer"
+                      >
+                        {flag.summary_keywords.slice(0, 2).map((kw, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                            {kw}
+                          </span>
+                        ))}
+                        {flag.summary_keywords.length > 2 && (
+                          <span className="px-2 py-1 text-green-600 text-xs font-medium">
+                            ...
+                          </span>
+                        )}
+                      </button>
+                    ) : (
+                      <span className="text-gray-400">None</span>
+                    )}
                   </td>
                   <td className="sw-td">
-                    <div className="text-sm text-gray-600">
-                      {flag.summary_keywords && flag.summary_keywords.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {flag.summary_keywords.map((kw, idx) => (
-                            <span key={idx} className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
-                              {kw}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">None</span>
-                      )}
-                    </div>
+                    {flag.iab_topics && flag.iab_topics.length > 0 ? (
+                      <button
+                        onClick={() => handleViewList(flag.iab_topics, 'IAB Topics')}
+                        className="w-full text-left flex flex-wrap gap-1 items-center hover:opacity-80 transition-opacity cursor-pointer"
+                      >
+                        {flag.iab_topics.slice(0, 2).map((topic, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">
+                            {topic}
+                          </span>
+                        ))}
+                        {flag.iab_topics.length > 2 && (
+                          <span className="px-2 py-1 text-purple-600 text-xs font-medium">
+                            ...
+                          </span>
+                        )}
+                      </button>
+                    ) : (
+                      <span className="text-gray-400">None</span>
+                    )}
                   </td>
                   <td className="sw-td">
-                    <div className="text-sm text-gray-600">
-                      {flag.iab_topics && flag.iab_topics.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {flag.iab_topics.map((topic, idx) => (
-                            <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs">
-                              {topic}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">None</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="sw-td">
-                    <div className="text-sm text-gray-600">
-                      {flag.general_topics && flag.general_topics.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {flag.general_topics.map((topic, idx) => (
-                            <span key={idx} className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs">
-                              {topic}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">None</span>
-                      )}
-                    </div>
+                    {flag.general_topics && flag.general_topics.length > 0 ? (
+                      <button
+                        onClick={() => handleViewList(flag.general_topics, 'General Topics')}
+                        className="w-full text-left flex flex-wrap gap-1 items-center hover:opacity-80 transition-opacity cursor-pointer"
+                      >
+                        {flag.general_topics.slice(0, 2).map((topic, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs">
+                            {topic}
+                          </span>
+                        ))}
+                        {flag.general_topics.length > 2 && (
+                          <span className="px-2 py-1 text-indigo-600 text-xs font-medium">
+                            ...
+                          </span>
+                        )}
+                      </button>
+                    ) : (
+                      <span className="text-gray-400">None</span>
+                    )}
                   </td>
                   <td className="sw-td">
                     <div className="text-sm text-gray-600">
@@ -313,11 +400,64 @@ const CustomFlagsPage = () => {
         flag={editingFlag}
         onSubmit={handleSubmit}
         loading={createLoading || updateLoading}
-        error={error}
+        error={editingFlag ? updateError : createError}
       />
+
+      {/* List View Modal */}
+      {listModalOpen && selectedList && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setListModalOpen(false);
+            setSelectedList(null);
+            setSelectedListTitle('');
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-900">{selectedListTitle}</h3>
+              <button
+                onClick={() => {
+                  setListModalOpen(false);
+                  setSelectedList(null);
+                  setSelectedListTitle('');
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="space-y-2">
+                {selectedList.map((item, index) => {
+                  const displayText = Array.isArray(item) ? item.join(', ') : String(item);
+                  return (
+                    <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm text-gray-700">{displayText}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          onClose={() => {
+            setToastMessage(null);
+            dispatch(clearError());
+          }}
+          type={toastType}
+        />
+      )}
     </div>
   );
 };
 
 export default CustomFlagsPage;
-

@@ -15,7 +15,11 @@ export const createCustomFlag = createAsyncThunk(
   'customFlags/createCustomFlag',
   async (flagData, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.post('/custom-flag/', flagData);
+      const payload = {
+        ...flagData,
+        name: 'name' // Hardcoded until backend is updated
+      };
+      const response = await axiosInstance.post('/custom-flag/', payload);
       return response.data;
     } catch (err) {
       if (err.response && err.response.data) {
@@ -30,7 +34,11 @@ export const updateCustomFlag = createAsyncThunk(
   'customFlags/updateCustomFlag',
   async ({ id, flagData }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.put(`/custom-flag/${id}/`, flagData);
+      const payload = {
+        ...flagData,
+        name: 'name' // Hardcoded until backend is updated
+      };
+      const response = await axiosInstance.put(`/custom-flag/${id}/`, payload);
       return response.data;
     } catch (err) {
       if (err.response && err.response.data) {
