@@ -98,9 +98,9 @@ function formatDateTime(dateTimeString) {
       />
     )}
     <div>
-      {/* Segment ID as top heading */}
-      <h1 className="text-md font-bold text-blue-700 mb-1">
-        Segment ID: {segment.id}
+      {/* Id as top heading */}
+      <h1 className="text-xs font-bold text-blue-700 mb-1">
+        Id: {segment.id}
       </h1>
 
       {/* Existing title */}

@@ -49,12 +49,13 @@ import AudioPlayer from './AudioPlayer';
 import ReportAudioPlayer from './ReportAudioPlayer';
 import SimpleChannelSelectionModal from './SimpleChannelSelectionModal';
 import FlagIcon from '../../components/UserSide/FlagIcon';
+import SegmentShimmer from '../../components/UserSide/SegmentShimmer';
 
 const ReportDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { folders, currentReport, segments, insights, insightsLoading, insightsBySegment } = useSelector((state) => state.reports);
+  const { folders, currentReport, segments, insights, insightsLoading, insightsBySegment, loading } = useSelector((state) => state.reports);
   const { currentPlayingId, isPlaying } = useSelector((state) => state.audioSegments);
   const { user } = useSelector((state) => state.auth);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -458,13 +459,19 @@ const formatDateTime = (backendTime) => {
           </div>
         </div>
         <div className="space-y-6">
-          {segments.map((segment) => (
+          {loading ? (
+            // Show skeleton loaders while loading
+            Array.from({ length: 3 }).map((_, index) => (
+              <SegmentShimmer key={index} />
+            ))
+          ) : (
+            segments.map((segment) => (
             <div key={segment.saved_segment_id} className="bg-white rounded-xl shadow-md overflow-hidden p-6">
               {/* Segment Header */}
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h6 className="text-sm font-bold text-blue-700 mb-1">
-                    Segment ID: {segment.audio_segment_id}
+                  <h6 className="text-xs font-bold text-blue-700 mb-1">
+                    Id: {segment.audio_segment_id}
                   </h6>
                   <h2 className="text-lg font-bold text-gray-900 flex items-center">
                     {segment.title && segment.title.trim() ? (
@@ -748,7 +755,8 @@ const formatDateTime = (backendTime) => {
                 )}
               </div>
             </div>
-          ))}
+          ))
+          )}
         </div>
 
         {/* Modals */}

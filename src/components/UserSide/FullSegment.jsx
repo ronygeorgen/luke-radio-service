@@ -133,8 +133,8 @@ function formatDateTime(dateTimeString) {
             />
           )}
           <div>
-            <h1 className="text-sm font-bold text-blue-700 mb-1">
-              Segment ID: {segment.id}
+            <h1 className="text-xs font-bold text-blue-700 mb-1">
+              Id: {segment.id}
             </h1>
             <h2 className="text-lg font-bold text-gray-900 flex items-center">
               {segment.title ? (

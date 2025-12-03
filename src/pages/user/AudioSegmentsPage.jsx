@@ -1382,16 +1382,15 @@ if (loading && segments.length === 0) {
             </div>
           )}
 
-          {loading && segments.length > 0 && (
-            <div className="mb-6">
-              <SegmentShimmer />
-              <SegmentShimmer />
-            </div>
-          )}
-
           {/* Segments Grid */}
           <div className={`space-y-4 ${currentPlayingId ? 'pb-56' : ''}`}>
-            {filteredSegments.map((segment) => (
+            {loading ? (
+              // Show shimmer loaders for all expected segments when loading
+              Array.from({ length: 10 }).map((_, i) => (
+                <SegmentShimmer key={`shimmer-${i}`} />
+              ))
+            ) : (
+              filteredSegments.map((segment) => (
               <SegmentCard
                 key={segment.id}
                 segment={segment}
@@ -1409,7 +1408,8 @@ if (loading && segments.length === 0) {
                 isStatusSelected={statusSelectedSegmentIds.has(segment.id)}
                 onStatusSelect={() => handleStatusSegmentSelect(segment.id)}
               />
-            ))}
+            ))
+            )}
           </div>
 
           {!loading && segments.length === 0 && (
