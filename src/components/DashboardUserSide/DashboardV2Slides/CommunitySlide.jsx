@@ -5,7 +5,8 @@ const CommunitySlide = () => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Small delay to ensure animations trigger properly
+    // Reset and trigger animations with delay
+    setIsVisible(false);
     const timer = setTimeout(() => {
       setIsVisible(true);
     }, 100);
@@ -45,7 +46,14 @@ const CommunitySlide = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel - By Content # */}
-          <div className="bg-white rounded-2xl p-6 shadow-xl">
+          <div 
+            className="bg-white rounded-2xl p-6 shadow-xl"
+            style={{
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? 'translateX(0) translateY(0)' : 'translateX(-50px) translateY(20px)',
+              transition: 'opacity 0.8s ease-out 200ms, transform 0.8s ease-out 200ms',
+            }}
+          >
             <div className="flex items-center space-x-2 mb-6">
               <RefreshCw className="w-5 h-5 text-gray-600" />
               <h3 className="text-lg font-bold text-gray-900">By Content #</h3>
@@ -85,7 +93,14 @@ const CommunitySlide = () => {
           </div>
 
           {/* Middle Panel - By Content Time */}
-          <div className="bg-gray-100 rounded-2xl p-6 shadow-xl">
+          <div 
+            className="bg-gray-100 rounded-2xl p-6 shadow-xl"
+            style={{
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? 'translateX(0) translateY(0)' : 'translateY(30px)',
+              transition: 'opacity 0.8s ease-out 400ms, transform 0.8s ease-out 400ms',
+            }}
+          >
             <div className="flex items-center space-x-2 mb-6">
               <User className="w-5 h-5 text-gray-600" />
               <h3 className="text-lg font-bold text-gray-900">By Content Time</h3>
@@ -165,7 +180,14 @@ const CommunitySlide = () => {
           </div>
 
           {/* Right Panel - Total Time */}
-          <div className="bg-gray-100 rounded-2xl p-6 shadow-xl">
+          <div 
+            className="bg-gray-100 rounded-2xl p-6 shadow-xl"
+            style={{
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? 'translateX(0) translateY(0)' : 'translateX(50px) translateY(20px)',
+              transition: 'opacity 0.8s ease-out 600ms, transform 0.8s ease-out 600ms',
+            }}
+          >
             <h3 className="text-lg font-bold text-pink-600 mb-6">Total Time</h3>
             <div className="relative pl-2">
               {/* Chart area - graph starts from 0 level */}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, BarChart3, TrendingUp, Users, Heart, Sparkles, Target, Activity, Menu, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -98,14 +98,33 @@ const slides = [
 const SLIDE_TRANSITION_MS = 220;
 
 function DashboardV2() {
-  const [currentSlide, setCurrentSlide] = useState(0);
+  // Load saved slide from localStorage or default to 0
+  const getInitialSlide = () => {
+    const savedSlide = localStorage.getItem('dashboardV2CurrentSlide');
+    if (savedSlide !== null) {
+      const slideIndex = parseInt(savedSlide, 10);
+      // Validate the saved index is still valid
+      if (!isNaN(slideIndex) && slideIndex >= 0 && slideIndex < slides.length) {
+        return slideIndex;
+      }
+    }
+    return 0;
+  };
+
+  const [currentSlide, setCurrentSlide] = useState(getInitialSlide);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNavMenuVisible, setIsNavMenuVisible] = useState(true);
   const dropdownRef = useRef(null);
+  const isNavigatingRef = useRef(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+
+  // Save current slide to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('dashboardV2CurrentSlide', currentSlide.toString());
+  }, [currentSlide]);
 
   useEffect(() => {
     setIsAnimating(true);
@@ -133,38 +152,93 @@ function DashboardV2() {
     setIsDropdownOpen(false);
   };
 
-  const handleNext = () => {
-    if (currentSlide < slides.length - 1) {
-      setIsAnimating(true);
-      setTimeout(() => {
-        setCurrentSlide((prev) => prev + 1);
-        setIsAnimating(false);
-      }, SLIDE_TRANSITION_MS);
+  const handleNext = useCallback(() => {
+    // Prevent rapid clicks and ensure we're not at the end
+    if (isNavigatingRef.current || currentSlide >= slides.length - 1) {
+      return;
     }
-  };
+    
+    isNavigatingRef.current = true;
+    setIsAnimating(true);
+    setTimeout(() => {
+      setCurrentSlide((prev) => {
+        const nextSlide = prev + 1;
+        // Double-check boundary before setting
+        return nextSlide < slides.length ? nextSlide : prev;
+      });
+      setIsAnimating(false);
+      isNavigatingRef.current = false;
+    }, SLIDE_TRANSITION_MS);
+  }, [currentSlide]);
 
-  const handlePrev = () => {
-    if (currentSlide > 0) {
-      setIsAnimating(true);
-      setTimeout(() => {
-        setCurrentSlide((prev) => prev - 1);
-        setIsAnimating(false);
-      }, SLIDE_TRANSITION_MS);
+  const handlePrev = useCallback(() => {
+    // Prevent rapid clicks and ensure we're not at the beginning
+    if (isNavigatingRef.current || currentSlide <= 0) {
+      return;
     }
-  };
+    
+    isNavigatingRef.current = true;
+    setIsAnimating(true);
+    setTimeout(() => {
+      setCurrentSlide((prev) => {
+        const prevSlide = prev - 1;
+        // Double-check boundary before setting
+        return prevSlide >= 0 ? prevSlide : prev;
+      });
+      setIsAnimating(false);
+      isNavigatingRef.current = false;
+    }, SLIDE_TRANSITION_MS);
+  }, [currentSlide]);
+
+  // Keyboard navigation - must be after handlePrev and handleNext are defined
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Only handle arrow keys if not typing in an input/textarea
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        handlePrev();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        handleNext();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handlePrev, handleNext]);
 
   const handleSlideSelect = (index) => {
-    if (index !== currentSlide) {
-      setIsAnimating(true);
-      setTimeout(() => {
-        setCurrentSlide(index);
-        setIsAnimating(false);
-      }, SLIDE_TRANSITION_MS);
+    // Validate index and prevent rapid clicks
+    if (isNavigatingRef.current || index === currentSlide || index < 0 || index >= slides.length) {
+      return;
     }
+    
+    isNavigatingRef.current = true;
+    setIsAnimating(true);
+    setTimeout(() => {
+      // Final validation before setting
+      const validIndex = Math.max(0, Math.min(index, slides.length - 1));
+      setCurrentSlide(validIndex);
+      setIsAnimating(false);
+      isNavigatingRef.current = false;
+    }, SLIDE_TRANSITION_MS);
   };
 
-  const CurrentSlideComponent = slides[currentSlide].component;
-  const currentSlideConfig = slides[currentSlide];
+  // Ensure currentSlide is always valid
+  const validSlideIndex = Math.max(0, Math.min(currentSlide, slides.length - 1));
+  const CurrentSlideComponent = slides[validSlideIndex].component;
+  const currentSlideConfig = slides[validSlideIndex];
+  
+  // Sync currentSlide if it was out of bounds (safety check)
+  useEffect(() => {
+    if (currentSlide < 0 || currentSlide >= slides.length) {
+      setCurrentSlide(validSlideIndex);
+    }
+  }, [currentSlide, validSlideIndex, slides.length]);
 
   const channelName = localStorage.getItem('channelName');
 

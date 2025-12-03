@@ -274,18 +274,6 @@ const ImpactIndexSlide = () => {
             </div>
           </div>
         </div>
-
-        {/* Pagination dots */}
-        <div className="flex justify-center space-x-2 mt-8">
-          {[0, 1, 2, 3].map((dot) => (
-            <div
-              key={dot}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                dot === 0 ? 'bg-white w-8' : 'bg-white/30'
-              }`}
-            />
-          ))}
-        </div>
       </div>
     </div>
   );

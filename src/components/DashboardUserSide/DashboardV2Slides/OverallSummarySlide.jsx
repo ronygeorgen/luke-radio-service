@@ -3,12 +3,44 @@ import { Lightbulb, Target, Users, TrendingUp, Hand } from 'lucide-react';
 
 const OverallSummarySlide = () => {
   const [isVisible, setIsVisible] = useState(false);
+  const [averageSentimentProgress, setAverageSentimentProgress] = useState(0);
+  const [targetSentimentProgress, setTargetSentimentProgress] = useState(0);
+  const [lowSentimentProgress, setLowSentimentProgress] = useState(0);
+  const [highSentimentProgress, setHighSentimentProgress] = useState(0);
 
   useEffect(() => {
     // Reset and trigger animations with delay
     setIsVisible(false);
+    setAverageSentimentProgress(0);
+    setTargetSentimentProgress(0);
+    setLowSentimentProgress(0);
+    setHighSentimentProgress(0);
+    
     const timer = setTimeout(() => {
       setIsVisible(true);
+      
+      // Animate progress bars from 0 to target values
+      const animateProgress = (setter, target, duration = 1500) => {
+        const startTime = Date.now();
+        const animate = () => {
+          const elapsed = Date.now() - startTime;
+          const progress = Math.min((elapsed / duration) * 100, 100);
+          setter((target / 100) * progress);
+          
+          if (progress < 100) {
+            requestAnimationFrame(animate);
+          } else {
+            setter(target);
+          }
+        };
+        requestAnimationFrame(animate);
+      };
+      
+      // Start animations with slight delays
+      setTimeout(() => animateProgress(setAverageSentimentProgress, dummyData.averageSentiment), 300);
+      setTimeout(() => animateProgress(setTargetSentimentProgress, dummyData.targetSentiment), 500);
+      setTimeout(() => animateProgress(setLowSentimentProgress, dummyData.lowSentiment), 700);
+      setTimeout(() => animateProgress(setHighSentimentProgress, dummyData.highSentiment), 900);
     }, 100);
     return () => clearTimeout(timer);
   }, []);
@@ -68,15 +100,16 @@ const OverallSummarySlide = () => {
                     stroke="#14b8a6"
                     strokeWidth="12"
                     fill="none"
-                    strokeDasharray={`${(dummyData.averageSentiment / 100) * 502.4} 502.4`}
-                    strokeDashoffset={isVisible ? 0 : (dummyData.averageSentiment / 100) * 502.4}
+                    strokeDasharray={`${(averageSentimentProgress / 100) * 502.4} 502.4`}
+                    strokeDashoffset={0}
                     strokeLinecap="round"
-                    className="transition-all duration-1500 ease-out"
-                    style={{ opacity: isVisible ? 1 : 0 }}
+                    style={{ 
+                      opacity: isVisible ? 1 : 0,
+                    }}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-4xl font-bold text-white">{dummyData.averageSentiment}%</span>
+                  <span className="text-4xl font-bold text-white">{Math.round(averageSentimentProgress)}%</span>
                 </div>
               </div>
             </div>
@@ -103,15 +136,16 @@ const OverallSummarySlide = () => {
                     stroke="#14b8a6"
                     strokeWidth="12"
                     fill="none"
-                    strokeDasharray={`${(dummyData.targetSentiment / 100) * 502.4} 502.4`}
-                    strokeDashoffset={isVisible ? 0 : (dummyData.targetSentiment / 100) * 502.4}
+                    strokeDasharray={`${(targetSentimentProgress / 100) * 502.4} 502.4`}
+                    strokeDashoffset={0}
                     strokeLinecap="round"
-                    className="transition-all duration-1500 ease-out"
-                    style={{ opacity: isVisible ? 1 : 0, transitionDelay: '200ms' }}
+                    style={{ 
+                      opacity: isVisible ? 1 : 0,
+                    }}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-4xl font-bold text-white">{dummyData.targetSentiment}%</span>
+                  <span className="text-4xl font-bold text-white">{Math.round(targetSentimentProgress)}%</span>
                 </div>
               </div>
             </div>
@@ -233,15 +267,16 @@ const OverallSummarySlide = () => {
                       stroke="#3b82f6"
                       strokeWidth="8"
                       fill="none"
-                      strokeDasharray={`${(dummyData.lowSentiment / 100) * 351.86} 351.86`}
-                      strokeDashoffset={isVisible ? 0 : (dummyData.lowSentiment / 100) * 351.86}
+                      strokeDasharray={`${(lowSentimentProgress / 100) * 351.86} 351.86`}
+                      strokeDashoffset={0}
                       strokeLinecap="round"
-                      className="transition-all duration-1200 ease-out"
-                      style={{ opacity: isVisible ? 1 : 0 }}
+                      style={{ 
+                        opacity: isVisible ? 1 : 0,
+                      }}
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-white">{dummyData.lowSentiment}%</span>
+                    <span className="text-2xl font-bold text-white">{Math.round(lowSentimentProgress)}%</span>
                   </div>
                 </div>
               </div>
@@ -265,15 +300,16 @@ const OverallSummarySlide = () => {
                       stroke="#3b82f6"
                       strokeWidth="8"
                       fill="none"
-                      strokeDasharray={`${(dummyData.highSentiment / 100) * 351.86} 351.86`}
-                      strokeDashoffset={isVisible ? 0 : (dummyData.highSentiment / 100) * 351.86}
+                      strokeDasharray={`${(highSentimentProgress / 100) * 351.86} 351.86`}
+                      strokeDashoffset={0}
                       strokeLinecap="round"
-                      className="transition-all duration-1200 ease-out"
-                      style={{ opacity: isVisible ? 1 : 0, transitionDelay: '200ms' }}
+                      style={{ 
+                        opacity: isVisible ? 1 : 0,
+                      }}
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-white">{dummyData.highSentiment}%</span>
+                    <span className="text-2xl font-bold text-white">{Math.round(highSentimentProgress)}%</span>
                   </div>
                 </div>
               </div>
@@ -302,6 +338,7 @@ const OverallSummarySlide = () => {
                   style={{ 
                     width: isVisible ? `${dummyData.totalTalkBreaks.progress}%` : '0%',
                     opacity: isVisible ? 1 : 0,
+                    transitionDelay: '800ms',
                   }}
                 />
               </div>
@@ -321,6 +358,7 @@ const OverallSummarySlide = () => {
                   style={{ 
                     width: isVisible ? `${dummyData.uniqueTopics.progress}%` : '0%',
                     opacity: isVisible ? 1 : 0,
+                    transitionDelay: '1000ms',
                   }}
                 />
               </div>
@@ -340,6 +378,7 @@ const OverallSummarySlide = () => {
                   style={{ 
                     width: isVisible ? `${dummyData.activeShifts.progress}%` : '0%',
                     opacity: isVisible ? 1 : 0,
+                    transitionDelay: '1200ms',
                   }}
                 />
               </div>
