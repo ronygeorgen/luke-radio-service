@@ -40,6 +40,7 @@ export const fetchSettings = createAsyncThunk(
         id: bucket.id,
         name: bucket.title,
         value: bucket.description,
+        category: bucket.category || '',
         prompt: bucket.prompt,
         createdAt: bucket.created_at || new Date().toISOString()
       }))
@@ -114,6 +115,7 @@ export const addBucket = createAsyncThunk(
     const newBucket = {
       title: bucketData.name,
       description: bucketData.value,
+      category: bucketData.category || '',
       prompt: bucketData.prompt || ''
     };
 
@@ -127,6 +129,7 @@ export const addBucket = createAsyncThunk(
           bucket_id: bucket.id,
           title: bucket.name,
           description: bucket.value,
+          category: bucket.category || '',
           prompt: bucket.prompt
         })),
         newBucket
@@ -142,6 +145,7 @@ export const addBucket = createAsyncThunk(
       id: newBucketId,
       name: bucketData.name,
       value: bucketData.value,
+      category: bucketData.category || '',
       prompt: bucketData.prompt || '',
       createdAt: new Date().toISOString()
     };
@@ -150,7 +154,7 @@ export const addBucket = createAsyncThunk(
 
 export const updateBucket = createAsyncThunk(
   'settings/updateBucket',
-  async ({ id, name, value, prompt }, { getState }) => {
+  async ({ id, name, value, category, prompt }, { getState }) => {
     const { settings, settingsId, buckets } = getState().settings;
     
     await axiosInstance.put('/settings', {
@@ -162,11 +166,12 @@ export const updateBucket = createAsyncThunk(
         bucket_id: bucket.id,
         title: bucket.id === id ? name : bucket.name,
         description: bucket.id === id ? value : bucket.value,
+        category: bucket.id === id ? (category || bucket.category || '') : (bucket.category || ''),
         prompt: bucket.id === id ? (prompt || bucket.prompt) : bucket.prompt
       }))
     });
 
-    return { id, name, value, prompt };
+    return { id, name, value, category: category || '', prompt };
   }
 );
 
@@ -186,6 +191,7 @@ export const deleteBucket = createAsyncThunk(
           id: bucket.id,
           title: bucket.name,
           description: bucket.value,
+          category: bucket.category || '',
           prompt: bucket.prompt
         }))
     });

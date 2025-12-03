@@ -8,12 +8,17 @@ const BucketManager = () => {
   const { buckets } = useSelector(state => state.settings);
   const [isAddingBucket, setIsAddingBucket] = useState(false);
   const [editingBucket, setEditingBucket] = useState(null);
-  const [newBucket, setNewBucket] = useState({ name: '', value: '' });
+  const [newBucket, setNewBucket] = useState({ name: '', value: '', category: '' });
   const [editValues, setEditValues] = useState({});
 
   const handleAddBucket = async () => {
       if (!newBucket.name.trim() || !newBucket.value.trim()) {
         alert('Please fill in both bucket name and value');
+        return;
+      }
+
+      if (!newBucket.category) {
+        alert('Please select a category');
         return;
       }
 
@@ -25,9 +30,10 @@ const BucketManager = () => {
       await dispatch(addBucket({
         name: newBucket.name,
         value: newBucket.value,
+        category: newBucket.category,
         prompt: newBucket.prompt || ''
       }));
-      setNewBucket({ name: '', value: '', prompt: '' });
+      setNewBucket({ name: '', value: '', category: '', prompt: '' });
       setIsAddingBucket(false);
     };
 
@@ -36,6 +42,7 @@ const BucketManager = () => {
     setEditValues({
       name: bucket.name,
       value: bucket.value,
+      category: bucket.category || '',
       prompt: bucket.prompt || ''
     });
   };
@@ -46,10 +53,16 @@ const BucketManager = () => {
         return;
       }
 
+      if (!editValues.category) {
+        alert('Please select a category');
+        return;
+      }
+
       await dispatch(updateBucket({
         id: bucketId,
         name: editValues.name,
         value: editValues.value,
+        category: editValues.category,
         prompt: editValues.prompt
       }));
       setEditingBucket(null);
@@ -113,6 +126,21 @@ const BucketManager = () => {
                 placeholder="Enter bucket value/description"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-blue-800 mb-1">
+                Category <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={newBucket.category}
+                onChange={(e) => setNewBucket(prev => ({ ...prev, category: e.target.value }))}
+                className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              >
+                <option value="">Select a category</option>
+                <option value="spiritual">Spiritual</option>
+                <option value="community">Community</option>
+                <option value="personal">Personal</option>
+              </select>
+            </div>
             {/* <div>
               <label className="block text-sm font-medium text-blue-800 mb-1">
                 Bucket Prompt (Optional)
@@ -129,7 +157,7 @@ const BucketManager = () => {
               <button
                 onClick={() => {
                   setIsAddingBucket(false);
-                  setNewBucket({ name: '', value: '', prompt: '' });
+                  setNewBucket({ name: '', value: '', category: '', prompt: '' });
                 }}
                 className="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
               >
@@ -175,6 +203,21 @@ const BucketManager = () => {
                     rows={4}
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={editValues.category || ''}
+                    onChange={(e) => setEditValues(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  >
+                    <option value="">Select a category</option>
+                    <option value="spiritual">Spiritual</option>
+                    <option value="community">Community</option>
+                    <option value="personal">Personal</option>
+                  </select>
+                </div>
                 {/* <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Bucket Prompt (Optional)
@@ -205,7 +248,14 @@ const BucketManager = () => {
             ) : (
               <div>
                 <div className="flex justify-between items-start mb-3">
-                  <h4 className="text-sm font-medium text-gray-900">{bucket.name}</h4>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-900">{bucket.name}</h4>
+                    {bucket.category && (
+                      <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800 capitalize">
+                        {bucket.category}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex space-x-1">
                     <button
                       onClick={() => handleEditBucket(bucket)}
