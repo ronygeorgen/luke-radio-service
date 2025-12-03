@@ -205,6 +205,10 @@ const ReportsPage = () => {
                         <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
                         Dashboard
                       </button>
+                      <button onClick={() => { navigate("/dashboard-v2"); setMenuOpenId(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                        <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
+                        Dashboard V2
+                      </button>
                       <button onClick={() => { navigate("/reports"); setMenuOpenId(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                         <FileText className="w-4 h-4 mr-3 text-gray-500" />
                         Reports

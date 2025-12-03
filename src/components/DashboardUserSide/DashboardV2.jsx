@@ -1,0 +1,455 @@
+import { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, BarChart3, TrendingUp, Users, Heart, Sparkles, Target, Activity, Menu, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { logout } from '../../store/slices/authSlice';
+import OverallSummarySlide from './DashboardV2Slides/OverallSummarySlide';
+import ImpactIndexSlide from './DashboardV2Slides/ImpactIndexSlide';
+import PersonalSlide from './DashboardV2Slides/PersonalSlide';
+import CommunitySlide from './DashboardV2Slides/CommunitySlide';
+import SpiritualSlide from './DashboardV2Slides/SpiritualSlide';
+import TopTopicsSlide from './DashboardV2Slides/TopTopicsSlide';
+import EntityComparisonSlide from './DashboardV2Slides/EntityComparisonSlide';
+import WordCloudSlide from './DashboardV2Slides/WordCloudSlide';
+
+const slides = [
+  { 
+    id: 'overall', 
+    title: 'Overall Summary', 
+    icon: BarChart3, 
+    component: OverallSummarySlide,
+    headerBg: 'from-gray-700 to-gray-800',
+    containerBg: 'from-gray-600 via-gray-700 to-gray-800',
+    headerText: 'text-white',
+    headerBorder: 'border-gray-600'
+  },
+  { 
+    id: 'impact', 
+    title: 'Impact Index', 
+    icon: Target, 
+    component: ImpactIndexSlide,
+    headerBg: 'from-blue-900 to-blue-800',
+    containerBg: 'from-blue-900 via-blue-800 to-blue-900',
+    headerText: 'text-white',
+    headerBorder: 'border-blue-700'
+  },
+  { 
+    id: 'personal', 
+    title: 'Personal', 
+    icon: Heart, 
+    component: PersonalSlide,
+    headerBg: 'from-blue-100 to-blue-200',
+    containerBg: 'from-blue-50 to-blue-100',
+    headerText: 'text-gray-900',
+    headerBorder: 'border-blue-300'
+  },
+  { 
+    id: 'community', 
+    title: 'Community', 
+    icon: Users, 
+    component: CommunitySlide,
+    headerBg: 'from-teal-100 to-teal-200',
+    containerBg: 'from-teal-50 to-teal-100',
+    headerText: 'text-gray-900',
+    headerBorder: 'border-teal-300'
+  },
+  { 
+    id: 'spiritual', 
+    title: 'Spiritual', 
+    icon: Sparkles, 
+    component: SpiritualSlide,
+    headerBg: 'from-blue-100 to-blue-200',
+    containerBg: 'from-blue-50 to-blue-100',
+    headerText: 'text-gray-900',
+    headerBorder: 'border-blue-300'
+  },
+  { 
+    id: 'topics', 
+    title: 'Top Topics', 
+    icon: TrendingUp, 
+    component: TopTopicsSlide,
+    headerBg: 'from-teal-100 to-teal-200',
+    containerBg: 'from-teal-50 to-teal-100',
+    headerText: 'text-gray-900',
+    headerBorder: 'border-teal-300'
+  },
+  { 
+    id: 'entities', 
+    title: 'Entity Comparison', 
+    icon: Activity, 
+    component: EntityComparisonSlide,
+    headerBg: 'from-blue-100 to-blue-200',
+    containerBg: 'from-blue-50 to-blue-100',
+    headerText: 'text-gray-900',
+    headerBorder: 'border-blue-300'
+  },
+  { 
+    id: 'wordcloud', 
+    title: 'Word Cloud', 
+    icon: Sparkles, 
+    component: WordCloudSlide,
+    headerBg: 'from-gray-900 to-black',
+    containerBg: 'from-black to-gray-900',
+    headerText: 'text-white',
+    headerBorder: 'border-gray-800'
+  },
+];
+
+const SLIDE_TRANSITION_MS = 220;
+
+function DashboardV2() {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isNavMenuVisible, setIsNavMenuVisible] = useState(true);
+  const dropdownRef = useRef(null);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    setIsAnimating(true);
+    const timer = setTimeout(() => setIsAnimating(false), SLIDE_TRANSITION_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    dispatch(logout());
+    setIsDropdownOpen(false);
+  };
+
+  const handleNavigation = (path) => {
+    navigate(path);
+    setIsDropdownOpen(false);
+  };
+
+  const handleNext = () => {
+    if (currentSlide < slides.length - 1) {
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCurrentSlide((prev) => prev + 1);
+        setIsAnimating(false);
+      }, SLIDE_TRANSITION_MS);
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentSlide > 0) {
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCurrentSlide((prev) => prev - 1);
+        setIsAnimating(false);
+      }, SLIDE_TRANSITION_MS);
+    }
+  };
+
+  const handleSlideSelect = (index) => {
+    if (index !== currentSlide) {
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCurrentSlide(index);
+        setIsAnimating(false);
+      }, SLIDE_TRANSITION_MS);
+    }
+  };
+
+  const CurrentSlideComponent = slides[currentSlide].component;
+  const currentSlideConfig = slides[currentSlide];
+
+  const channelName = localStorage.getItem('channelName');
+
+  return (
+    <div className={`min-h-screen bg-gradient-to-br ${currentSlideConfig.containerBg} transition-all duration-300`}>
+      {/* Navigation Header - Matching Other Headers */}
+      <header className={`bg-gradient-to-r ${currentSlideConfig.headerBg} shadow-sm border-b ${currentSlideConfig.headerBorder} fixed top-0 left-0 right-0 z-40 h-16 transition-all duration-300`}>
+        <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
+          <div className="flex items-center justify-between h-full space-x-4">
+            {/* Page Info */}
+            <div className="flex-1 min-w-0">
+              <h1 className={`text-lg font-bold ${currentSlideConfig.headerText} truncate transition-colors duration-300`}>
+                Dashboard V2
+              </h1>
+              {channelName && (
+                <div className={`flex items-center space-x-4 text-sm ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-300' : 'text-gray-600'} transition-colors duration-300`}>
+                  <span className="flex items-center">
+                    <svg className={`w-4 h-4 mr-1 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    {channelName}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Right Section - Slide Indicators and Navigation */}
+            <div className="flex items-center space-x-4">
+              {/* Slide Indicators */}
+              <div className="flex items-center space-x-2">
+                {slides.map((slide, index) => (
+                  <button
+                    key={slide.id}
+                    onClick={() => handleSlideSelect(index)}
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                      index === currentSlide
+                        ? 'bg-blue-500 w-8'
+                        : 'bg-gray-300 hover:bg-gray-400'
+                    }`}
+                    aria-label={slide.title}
+                  />
+                ))}
+              </div>
+              <div className={`text-sm ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-300' : 'text-gray-600'} transition-colors duration-300`}>
+                {currentSlide + 1} / {slides.length}
+              </div>
+
+              {/* Navigation Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className={`flex items-center px-3 py-2.5 text-sm ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 bg-gray-700/50 border-gray-600 hover:bg-gray-600 hover:border-gray-500' : 'text-gray-700 bg-white/80 border-gray-300 hover:bg-white hover:border-gray-400'} border rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md`}
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {isDropdownOpen && (
+                  <div className={`absolute right-0 mt-2 w-[28rem] bg-gradient-to-br ${currentSlideConfig.headerBg} ${currentSlideConfig.headerBorder} rounded-xl shadow-2xl border py-3 z-50 backdrop-blur-sm transition-all duration-300`}>
+                    <div className={`grid ${user?.isAdmin ? 'grid-cols-2' : 'grid-cols-1'} gap-2 px-2`}>
+                      <div>
+                        <div className={`px-2 pb-1 text-xs font-semibold ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'} uppercase`}>Channels</div>
+                        <button
+                          onClick={() => handleNavigation('/user-channels')}
+                          className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}
+                        >
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                          </svg>
+                          My Channels
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsDropdownOpen(false);
+                            const channelId = localStorage.getItem('channelId');
+                            const channelName = localStorage.getItem('channelName');
+                            if (channelId && channelName) {
+                              const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+                              navigate(`/channels/${channelId}/segments?date=${today}&hour=0&name=${encodeURIComponent(channelName)}`);
+                            } else {
+                              navigate('/user-channels');
+                            }
+                          }}
+                          className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}
+                        >
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          Search
+                        </button>
+                        <button onClick={() => handleNavigation('/dashboard')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <BarChart3 className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} />
+                          Dashboard
+                        </button>
+                        <button onClick={() => handleNavigation('/dashboard-v2')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <BarChart3 className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} />
+                          Dashboard V2
+                        </button>
+                        <button onClick={() => handleNavigation('/reports')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Reports
+                        </button>
+                        <button onClick={() => { window.open('https://forms.clickup.com/9003066468/f/8c9zt34-21136/O2BX6CH5IROJJDHYMW', '_blank', 'noopener,noreferrer'); setIsDropdownOpen(false); }} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                          Support Ticket
+                        </button>
+                      </div>
+                      {user?.isAdmin && (
+                        <div>
+                          <div className={`px-2 pb-1 text-xs font-semibold ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'} uppercase`}>Settings</div>
+                          <button onClick={() => handleNavigation('/dashboard/settings')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Topic Settings
+                          </button>
+                          <button onClick={() => handleNavigation('/dashboard/shift-management')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Shift Management
+                        </button>
+                        <button onClick={() => handleNavigation('/dashboard/predefined-filters')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                          </svg>
+                          Predefined Filters
+                        </button>
+                        <button onClick={() => handleNavigation('/admin/audio')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                          </svg>
+                          Audio Management
+                        </button>
+                        <button onClick={() => handleNavigation('/admin/settings')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                          </svg>
+                          General Settings
+                        </button>
+                        <button onClick={() => handleNavigation('/admin/users')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                          User Management
+                        </button>
+                        <button onClick={() => handleNavigation('/admin/users')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          Create New User
+                        </button>
+                        <button onClick={() => handleNavigation('/admin/channels')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                          </svg>
+                          Channel Settings
+                        </button>
+                        <button onClick={() => handleNavigation('/admin/channels')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          Onboard Channel
+                        </button>
+                        <button onClick={() => handleNavigation('/admin/custom-flags')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                          <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                          </svg>
+                          Custom Flags
+                        </button>
+                        <button onClick={() => handleNavigation('/admin/content-type-deactivation')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
+                            <svg className="w-4 h-4 mr-3 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                            <span className="whitespace-nowrap">Content Type Deactivation</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className={`border-t ${currentSlideConfig.headerText === 'text-white' ? 'border-gray-600' : 'border-gray-200'} my-2`}></div>
+                    <button onClick={handleLogout} className={`mx-2 mb-1 flex items-center w-[calc(100%-1rem)] px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-red-400 hover:bg-red-900/30' : 'text-red-600 hover:bg-red-50'} rounded-lg transition-colors duration-200`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 002 2h5a2 2 0 002-2V7a2 2 0 00-2-2h-5a2 2 0 00-2 2v1" />
+                      </svg>
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="pt-16 relative overflow-hidden">
+        <div
+          className={`transition-all duration-150 ease-out ${
+            isAnimating ? 'opacity-80 translate-y-1' : 'opacity-100 translate-y-0'
+          }`}
+        >
+          <CurrentSlideComponent key={currentSlide} />
+        </div>
+      </div>
+
+      {/* Navigation Arrows */}
+      <button
+        onClick={handlePrev}
+        disabled={currentSlide === 0}
+        className={`fixed left-4 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full shadow-lg border transition-all duration-200 ${
+          currentSlideConfig.headerText === 'text-white' 
+            ? `bg-gray-700 border-gray-600 ${currentSlide === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-600 hover:shadow-xl'}`
+            : `bg-white/80 border-gray-300 ${currentSlide === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white hover:shadow-xl'}`
+        }`}
+        aria-label="Previous slide"
+      >
+        <ChevronLeft className={`w-6 h-6 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-300' : 'text-gray-700'} transition-colors duration-300`} />
+      </button>
+
+      <button
+        onClick={handleNext}
+        disabled={currentSlide === slides.length - 1}
+        className={`fixed right-4 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full shadow-lg border transition-all duration-200 ${
+          currentSlideConfig.headerText === 'text-white' 
+            ? `bg-gray-700 border-gray-600 ${currentSlide === slides.length - 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-600 hover:shadow-xl'}`
+            : `bg-white/80 border-gray-300 ${currentSlide === slides.length - 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white hover:shadow-xl'}`
+        }`}
+        aria-label="Next slide"
+      >
+        <ChevronRight className={`w-6 h-6 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-300' : 'text-gray-700'} transition-colors duration-300`} />
+      </button>
+
+      {/* Slide Navigation Menu (Bottom Right - Hideable) */}
+      {isNavMenuVisible && (
+        <div className={`fixed bottom-4 right-4 z-20 bg-gradient-to-br ${currentSlideConfig.headerBg} ${currentSlideConfig.headerBorder} rounded-lg shadow-lg border px-4 py-2 transition-all duration-300`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className={`text-xs font-semibold ${currentSlideConfig.headerText} transition-colors duration-300`}>Slide Navigation</span>
+            <button
+              onClick={() => setIsNavMenuVisible(false)}
+              className={`ml-2 p-1 ${currentSlideConfig.headerText === 'text-white' ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100'} rounded transition-colors`}
+              aria-label="Close navigation menu"
+            >
+              <X className={`w-4 h-4 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-300' : 'text-gray-600'}`} />
+            </button>
+          </div>
+          <div className="flex flex-col space-y-1 max-h-96 overflow-y-auto">
+            {slides.map((slide, index) => {
+              const Icon = slide.icon;
+              return (
+                <button
+                  key={slide.id}
+                  onClick={() => handleSlideSelect(index)}
+                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-md transition-all duration-200 text-left ${
+                    index === currentSlide
+                      ? 'bg-blue-500 text-white'
+                      : `${currentSlideConfig.headerText} ${currentSlideConfig.headerText === 'text-white' ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100'}`
+                  }`}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-sm font-medium">{slide.title}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Show Navigation Button (when hidden) */}
+      {!isNavMenuVisible && (
+        <button
+          onClick={() => setIsNavMenuVisible(true)}
+          className={`fixed bottom-4 right-4 z-20 p-3 ${currentSlideConfig.headerText === 'text-white' ? 'bg-gray-700 hover:bg-gray-600' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-full shadow-lg transition-all duration-300`}
+          aria-label="Show navigation menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default DashboardV2;
+

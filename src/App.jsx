@@ -9,6 +9,7 @@ import SettingsPage from './pages/admin/SettingsPage';
 import UserChannelsPage from './pages/user/UserChannelsPage';
 import UserAudioSegmentsPage from './pages/user/AudioSegmentsPage';
 import Dashboard from './components/DashboardUserSide/Dashboard';
+import DashboardV2 from './components/DashboardUserSide/DashboardV2';
 import DashboardSettingsPage from './components/DashboardUserSide/DashboardSettingsPage';
 import ReportsPage from './pages/user/ReportsPage';
 import ReportDetailPage from './pages/user/ReportDetailPage';
@@ -89,6 +90,11 @@ function App() {
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard-v2" element={
+              <ProtectedRoute>
+                <DashboardV2 />
               </ProtectedRoute>
             } />
             <Route path="/dashboard/settings" element={
