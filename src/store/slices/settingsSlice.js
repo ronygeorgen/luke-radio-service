@@ -265,11 +265,14 @@ const settingsSlice = createSlice({
       })
       .addCase(updateBucket.fulfilled, (state, action) => {
         state.loading = false;
-        const { id, name, value, prompt } = action.payload;
+        const { id, name, value, category, prompt } = action.payload;
         const bucket = state.buckets.find(bucket => bucket.id === id);
         if (bucket) {
           bucket.name = name;
           bucket.value = value;
+          if (category !== undefined) {
+            bucket.category = category;
+          }
           if (prompt !== undefined) {
             bucket.prompt = prompt;
           }
