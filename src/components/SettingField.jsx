@@ -2,18 +2,32 @@ import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { Save } from 'lucide-react';
 import { updateSetting } from '../store/slices/settingsSlice';
+import Toast from './UserSide/Toast';
 
 const SettingField = ({ label, settingKey, value, isTextarea = false }) => {
   const dispatch = useDispatch();
   const [localValue, setLocalValue] = useState(value);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [errorToast, setErrorToast] = useState(null);
 
   const handleSave = async () => {
     setIsSaving(true);
-    await dispatch(updateSetting({ key: settingKey, value: localValue }));
-    setIsSaving(false);
-    setIsEditing(false);
+    setErrorToast(null);
+    try {
+      const result = await dispatch(updateSetting({ key: settingKey, value: localValue }));
+      if (updateSetting.rejected.match(result)) {
+        const errorMessage = result.payload || result.error?.message || 'Failed to update setting';
+        setErrorToast(errorMessage);
+      } else {
+        setIsEditing(false);
+      }
+    } catch (error) {
+      const errorMessage = error?.message || 'Failed to update setting';
+      setErrorToast(errorMessage);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -22,7 +36,15 @@ const SettingField = ({ label, settingKey, value, isTextarea = false }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+    <>
+      {errorToast && (
+        <Toast
+          message={errorToast}
+          type="error"
+          onClose={() => setErrorToast(null)}
+        />
+      )}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <div className="flex justify-between items-start mb-3">
         <h3 className="text-sm font-medium text-gray-900">{label}</h3>
         {!isEditing && (
@@ -83,6 +105,7 @@ const SettingField = ({ label, settingKey, value, isTextarea = false }) => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

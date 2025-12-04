@@ -50,7 +50,7 @@ export const fetchSettings = createAsyncThunk(
 
 export const updateSetting = createAsyncThunk(
   'settings/updateSetting',
-  async ({ key, value }, { getState }) => {
+  async ({ key, value }, { getState, rejectWithValue }) => {
     const { settings, settingsId, buckets } = getState().settings;
     
     // Map frontend keys to API keys
@@ -90,20 +90,66 @@ export const updateSetting = createAsyncThunk(
       updatedSettings.content_type_prompt = value;
     }
 
-    const response = await axiosInstance.put('/settings', {
-      settings: {
-        ...updatedSettings,
-        id: settingsId   
-      },
-      buckets: buckets.map(bucket => ({
-        bucket_id: bucket.id,
-        title: bucket.name,
-        description: bucket.value,
-        prompt: bucket.prompt
-      }))
-    });
+    try {
+      const response = await axiosInstance.put('/settings', {
+        settings: {
+          ...updatedSettings,
+          id: settingsId   
+        },
+        buckets: buckets.map(bucket => ({
+          bucket_id: bucket.id,
+          title: bucket.name,
+          description: bucket.value,
+          category: bucket.category || '',
+          prompt: bucket.prompt
+        }))
+      });
 
-    return { key, value };
+      return { key, value };
+    } catch (error) {
+      // Parse API error response
+      let errorMessage = 'Failed to update setting';
+      
+      if (error.response?.data?.error) {
+        const apiError = error.response.data.error;
+        
+        // Handle bucket validation errors
+        if (apiError.buckets && Array.isArray(apiError.buckets)) {
+          const bucketErrors = apiError.buckets
+            .map((bucketError, index) => {
+              // Check for category field error
+              if (bucketError.category && Array.isArray(bucketError.category)) {
+                return `Bucket ${index + 1}: Category field is required`;
+              }
+              // Handle other field errors dynamically
+              const fieldErrors = Object.entries(bucketError)
+                .filter(([key, value]) => Array.isArray(value) && value.length > 0)
+                .map(([fieldName, errors]) => {
+                  const fieldLabel = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+                  return `${fieldLabel} field: ${errors.join(', ')}`;
+                });
+              
+              if (fieldErrors.length > 0) {
+                return `Bucket ${index + 1}: ${fieldErrors.join('; ')}`;
+              }
+              return null;
+            })
+            .filter(Boolean);
+          
+          if (bucketErrors.length > 0) {
+            errorMessage = `Validation Error: ${bucketErrors.join('; ')}`;
+          }
+        } else if (typeof apiError === 'string') {
+          errorMessage = apiError;
+        } else if (apiError.message) {
+          errorMessage = apiError.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      return rejectWithValue(errorMessage);
+    }
   }
 );
 
@@ -243,7 +289,7 @@ const settingsSlice = createSlice({
       })
       .addCase(updateSetting.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload || action.error?.message || 'Failed to update setting';
       })
       // Add bucket
       .addCase(addBucket.pending, (state) => {
