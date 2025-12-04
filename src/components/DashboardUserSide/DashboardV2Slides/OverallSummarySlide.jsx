@@ -365,7 +365,7 @@ const OverallSummarySlide = () => {
               <p className="text-gray-400 text-xs mt-2 text-right">{dummyData.uniqueTopics.progress}%</p>
             </div>
 
-            <div className="rounded-2xl p-6 shadow-xl backdrop-blur-sm border border-gray-300/20" style={{ background: 'linear-gradient(135deg, rgba(31, 41, 55, 0.7) 0%, rgba(17, 24, 39, 0.7) 100%)' }}>
+            {/* <div className="rounded-2xl p-6 shadow-xl backdrop-blur-sm border border-gray-300/20" style={{ background: 'linear-gradient(135deg, rgba(31, 41, 55, 0.7) 0%, rgba(17, 24, 39, 0.7) 100%)' }}>
               <div className="flex items-center space-x-2 mb-4">
                 <TrendingUp className="w-5 h-5 text-yellow-400" />
                 <h3 className="text-white font-semibold">Active Shifts</h3>
@@ -383,7 +383,7 @@ const OverallSummarySlide = () => {
                 />
               </div>
               <p className="text-gray-400 text-xs mt-2 text-right">{dummyData.activeShifts.progress}%</p>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
