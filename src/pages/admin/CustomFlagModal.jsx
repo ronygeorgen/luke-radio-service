@@ -45,15 +45,26 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
       dispatch(fetchChannels());
       
       if (flag) {
+        // Normalize list fields - ensure they're arrays of arrays for display
+        const normalizeListField = (field) => {
+          if (!Array.isArray(field)) return [];
+          return field.map(item => {
+            // If already an array, return as is
+            if (Array.isArray(item)) return item;
+            // If string, wrap in array
+            return [item];
+          });
+        };
+
         setFormData({
           channel: flag.channel || '',
-          transcription_keywords: flag.transcription_keywords || [],
-          summary_keywords: flag.summary_keywords || [],
+          transcription_keywords: normalizeListField(flag.transcription_keywords || []),
+          summary_keywords: normalizeListField(flag.summary_keywords || []),
           sentiment_min: flag.sentiment_min !== null && flag.sentiment_min !== undefined ? flag.sentiment_min : '',
           sentiment_max: flag.sentiment_max !== null && flag.sentiment_max !== undefined ? flag.sentiment_max : '',
-          iab_topics: flag.iab_topics || [],
-          bucket_prompt: flag.bucket_prompt || [],
-          general_topics: flag.general_topics || [],
+          iab_topics: normalizeListField(flag.iab_topics || []),
+          bucket_prompt: normalizeListField(flag.bucket_prompt || []),
+          general_topics: normalizeListField(flag.general_topics || []),
           is_active: flag.is_active !== undefined ? flag.is_active : true,
         });
       } else {
@@ -175,9 +186,13 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
 
   const handleAddTranscriptionKeyword = () => {
     if (keywordInput.trim()) {
+      // Split by comma and create array of arrays format
+      const keywords = keywordInput.split(',').map(k => k.trim()).filter(k => k);
+      const keywordArray = keywords.length > 0 ? keywords : [keywordInput.trim()];
+      
       setFormData(prev => ({
         ...prev,
-        transcription_keywords: [...prev.transcription_keywords, keywordInput.trim()]
+        transcription_keywords: [...prev.transcription_keywords, keywordArray]
       }));
       setKeywordInput('');
       setTranscriptionSuggestions([]);
@@ -229,7 +244,10 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
 
   const handleAddItemToEditingList = (value) => {
     if (value.trim()) {
-      setEditingListItems(prev => [...prev, value.trim()]);
+      // Split by comma and create array format
+      const keywords = value.split(',').map(k => k.trim()).filter(k => k);
+      const keywordArray = keywords.length > 0 ? keywords : [value.trim()];
+      setEditingListItems(prev => [...prev, keywordArray]);
     }
   };
 
@@ -253,7 +271,9 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
     if (editingItemValue.trim()) {
       setEditingListItems(prev => {
         const newItems = [...prev];
-        newItems[index] = editingItemValue.trim();
+        // Split by comma and create array format
+        const keywords = editingItemValue.split(',').map(k => k.trim()).filter(k => k);
+        newItems[index] = keywords.length > 0 ? keywords : [editingItemValue.trim()];
         return newItems;
       });
       setEditingItemIndex(null);
@@ -268,9 +288,13 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
 
   const handleAddSummaryKeyword = () => {
     if (summaryKeywordInput.trim()) {
+      // Split by comma and create array of arrays format
+      const keywords = summaryKeywordInput.split(',').map(k => k.trim()).filter(k => k);
+      const keywordArray = keywords.length > 0 ? keywords : [summaryKeywordInput.trim()];
+      
       setFormData(prev => ({
         ...prev,
-        summary_keywords: [...prev.summary_keywords, summaryKeywordInput.trim()]
+        summary_keywords: [...prev.summary_keywords, keywordArray]
       }));
       setSummaryKeywordInput('');
       setSummarySuggestions([]);
@@ -286,9 +310,13 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
 
   const handleAddIabTopic = () => {
     if (iabTopicInput.trim()) {
+      // Split by comma and create array of arrays format
+      const keywords = iabTopicInput.split(',').map(k => k.trim()).filter(k => k);
+      const keywordArray = keywords.length > 0 ? keywords : [iabTopicInput.trim()];
+      
       setFormData(prev => ({
         ...prev,
-        iab_topics: [...prev.iab_topics, iabTopicInput.trim()]
+        iab_topics: [...prev.iab_topics, keywordArray]
       }));
       setIabTopicInput('');
       setIabSuggestions([]);
@@ -304,9 +332,13 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
 
   const handleAddBucketPrompt = () => {
     if (bucketPromptInput.trim()) {
+      // Split by comma and create array of arrays format
+      const keywords = bucketPromptInput.split(',').map(k => k.trim()).filter(k => k);
+      const keywordArray = keywords.length > 0 ? keywords : [bucketPromptInput.trim()];
+      
       setFormData(prev => ({
         ...prev,
-        bucket_prompt: [...prev.bucket_prompt, bucketPromptInput.trim()]
+        bucket_prompt: [...prev.bucket_prompt, keywordArray]
       }));
       setBucketPromptInput('');
       setBucketSuggestions([]);
@@ -322,9 +354,13 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
 
   const handleAddGeneralTopic = () => {
     if (generalTopicInput.trim()) {
+      // Split by comma and create array of arrays format
+      const keywords = generalTopicInput.split(',').map(k => k.trim()).filter(k => k);
+      const keywordArray = keywords.length > 0 ? keywords : [generalTopicInput.trim()];
+      
       setFormData(prev => ({
         ...prev,
-        general_topics: [...prev.general_topics, generalTopicInput.trim()]
+        general_topics: [...prev.general_topics, keywordArray]
       }));
       setGeneralTopicInput('');
       setGeneralSuggestions([]);
@@ -338,6 +374,22 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
     }));
   };
 
+  // Transform list fields to ensure they're arrays of arrays
+  const transformListField = (field) => {
+    if (!Array.isArray(field)) return [];
+    return field.map(item => {
+      // If already an array, return as is
+      if (Array.isArray(item)) return item;
+      // If string, check if it contains commas and split, otherwise wrap in array
+      if (typeof item === 'string') {
+        const parts = item.split(',').map(p => p.trim()).filter(p => p);
+        return parts.length > 0 ? parts : [item];
+      }
+      // For other types, wrap in array
+      return [item];
+    });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const submitData = {
@@ -345,6 +397,12 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
       channel: parseInt(formData.channel),
       sentiment_min: formData.sentiment_min !== '' ? parseFloat(formData.sentiment_min) : null,
       sentiment_max: formData.sentiment_max !== '' ? parseFloat(formData.sentiment_max) : null,
+      // Transform list fields to array of arrays format
+      transcription_keywords: transformListField(formData.transcription_keywords),
+      summary_keywords: transformListField(formData.summary_keywords),
+      iab_topics: transformListField(formData.iab_topics),
+      bucket_prompt: transformListField(formData.bucket_prompt),
+      general_topics: transformListField(formData.general_topics),
     };
     // Remove name from submitData if it exists
     delete submitData.name;
