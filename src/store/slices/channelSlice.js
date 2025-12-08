@@ -24,9 +24,20 @@ export const addChannel = createAsyncThunk(
   'channels/addChannel',
   async (channelData, { rejectWithValue }) => {
     try {
+      // Ensure channelId and projectId are valid integers
+      const channelId = channelData.channelId != null ? parseInt(channelData.channelId, 10) : null;
+      const projectId = channelData.projectId != null ? parseInt(channelData.projectId, 10) : null;
+      
+      if (isNaN(channelId) || channelId === null) {
+        return rejectWithValue('Channel ID must be a valid number');
+      }
+      if (isNaN(projectId) || projectId === null) {
+        return rejectWithValue('Project ID must be a valid number');
+      }
+      
       const response = await axiosInstance.post('/channels', {
-        channel_id: parseInt(channelData.channelId, 10),
-        project_id: parseInt(channelData.projectId, 10),
+        channel_id: channelId,
+        project_id: projectId,
         name: channelData.name || '',
         timezone: channelData.timezone
       });

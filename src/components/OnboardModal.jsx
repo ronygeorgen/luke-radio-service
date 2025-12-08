@@ -70,8 +70,8 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
     setIsSubmitting(true);
     try {
       const payload = {
-        channel_id: parseInt(channelId),
-        project_id: parseInt(projectId),
+        channelId: channelId ? parseInt(channelId, 10) : null,
+        projectId: projectId ? parseInt(projectId, 10) : null,
         name: name,
         timezone: timezone
       };
