@@ -7,7 +7,21 @@ export const fetchReportFolders = createAsyncThunk(
   'reports/fetchFolders',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get('/report_folders');
+      // Get channel_id from localStorage
+      const channelId = localStorage.getItem('channelId');
+      
+      // Raise error if channel_id is not present
+      if (!channelId) {
+        return rejectWithValue('Channel ID is required. Please select a channel first.');
+      }
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      params.append('channel_id', channelId);
+      
+      const url = `/report_folders?${params.toString()}`;
+      
+      const response = await axiosInstance.get(url);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch report folders');
