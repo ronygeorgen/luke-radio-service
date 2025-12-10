@@ -38,8 +38,10 @@ const UserChannelsPage = () => {
 
   // Navigation handler that checks for channel selection
   const handleNavigation = (path) => {
-    // Don't require channel for /admin/channels page
-    if (path.includes('/admin/channels')) {
+    // Don't require channel for /admin/channels, /admin/settings, or /admin/users pages
+    if (path.includes('/admin/channels') || 
+        path.includes('/admin/settings') || 
+        path.includes('/admin/users')) {
       navigate(path);
       setIsDropdownOpen(false);
       return;
@@ -60,7 +62,25 @@ const UserChannelsPage = () => {
 
   // Handle channel selection from modal
   const handleChannelSelect = (channel) => {
-    if (pendingNavigation) {
+    if (pendingNavigation === 'SEARCH') {
+      // Handle search navigation specifically
+      try {
+        if (channel?.id) {
+          localStorage.setItem("channelId", String(channel.id));
+        }
+        if (channel?.name) {
+          localStorage.setItem("channelName", channel.name);
+        }
+        const channelTimezone = channel?.timezone || "Australia/Melbourne";
+        localStorage.setItem("channelTimezone", channelTimezone);
+      } catch (e) {
+        // No-op: localStorage might be unavailable; navigation should still proceed
+      }
+      const today = new Date().toISOString().split("T")[0].replace(/-/g, "");
+      navigate(`/channels/${channel.id}/segments?date=${today}&hour=0&name=${encodeURIComponent(channel.name)}`);
+      setPendingNavigation(null);
+      setIsChannelSelectionOpen(false);
+    } else if (pendingNavigation) {
       let finalPath = pendingNavigation;
       
       // Replace :channelId with the actual internal ID
@@ -70,6 +90,7 @@ const UserChannelsPage = () => {
       
       navigate(finalPath);
       setPendingNavigation(null);
+      setIsChannelSelectionOpen(false);
     } else if (channel) {
       // Same behavior as UserChannelCard: set localStorage fields
       try {
@@ -88,6 +109,22 @@ const UserChannelsPage = () => {
       const today = new Date().toISOString().split("T")[0].replace(/-/g, "");
       navigate(`/channels/${channel.id}/segments?date=${today}&hour=0&name=${encodeURIComponent(channel.name)}`);
       setIsChannelSelectionOpen(false);
+    }
+  };
+  
+  // Handle search navigation
+  const handleSearchNavigation = () => {
+    setIsDropdownOpen(false);
+    const channelId = localStorage.getItem('channelId');
+    const channelName = localStorage.getItem('channelName');
+    
+    if (channelId && channelName) {
+      const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      navigate(`/channels/${channelId}/segments?date=${today}&hour=0&name=${encodeURIComponent(channelName)}`);
+    } else {
+      // Show channel selection modal
+      setPendingNavigation('SEARCH');
+      setIsChannelSelectionOpen(true);
     }
   };
 
@@ -209,10 +246,7 @@ const UserChannelsPage = () => {
                         My Channels
                       </button>
                       <button
-                        onClick={() => {
-                          setIsChannelSelectionOpen(true);
-                          setIsDropdownOpen(false);
-                        }}
+                        onClick={handleSearchNavigation}
                         className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
                       >
                         <Search className="w-4 h-4 mr-3 text-gray-500" />

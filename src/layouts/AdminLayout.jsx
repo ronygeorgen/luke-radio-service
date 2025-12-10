@@ -25,9 +25,11 @@ const AdminLayout = () => {
     const [isChannelSelectionOpen, setIsChannelSelectionOpen] = useState(false);
     const [pendingNavigation, setPendingNavigation] = useState(null);
     
-    // Fetch user channels when on /admin/channels page
+    // Fetch user channels when on /admin/channels, /admin/settings, or /admin/users pages
     useEffect(() => {
-        if (location.pathname.includes('/admin/channels')) {
+        if (location.pathname.includes('/admin/channels') || 
+            location.pathname.includes('/admin/settings') || 
+            location.pathname.includes('/admin/users')) {
             dispatch(fetchUserChannels());
         }
     }, [dispatch, location.pathname]);
@@ -61,14 +63,14 @@ const AdminLayout = () => {
             return;
         }
         
-        // Don't require channel for /admin/users page
+        // Don't require channel for /admin/users page - navigate directly
         if (path.includes('/admin/users')) {
             navigate(path);
             setIsDropdownOpen(false);
             return;
         }
         
-        // Don't require channel for /admin/settings page
+        // Don't require channel for /admin/settings page - navigate directly
         if (path.includes('/admin/settings')) {
             navigate(path);
             setIsDropdownOpen(false);
@@ -81,8 +83,10 @@ const AdminLayout = () => {
             // If channel ID exists, navigate directly
             navigate(path);
         } else {
-            // If currently on /admin/channels page, show modal
-            if (location.pathname.includes('/admin/channels')) {
+            // If currently on /admin/channels, /admin/settings, or /admin/users page, show modal
+            if (location.pathname.includes('/admin/channels') || 
+                location.pathname.includes('/admin/settings') || 
+                location.pathname.includes('/admin/users')) {
                 setPendingNavigation(path);
                 setIsChannelSelectionOpen(true);
             } else {
@@ -125,8 +129,10 @@ const AdminLayout = () => {
             const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
             navigate(`/channels/${channelId}/segments?date=${today}&hour=0&name=${encodeURIComponent(channelName)}`);
         } else {
-            // If currently on /admin/channels page, show modal
-            if (location.pathname.includes('/admin/channels')) {
+            // If currently on /admin/channels, /admin/settings, or /admin/users page, show modal
+            if (location.pathname.includes('/admin/channels') || 
+                location.pathname.includes('/admin/settings') || 
+                location.pathname.includes('/admin/users')) {
                 setPendingNavigation('SEARCH');
                 setIsChannelSelectionOpen(true);
             } else {
@@ -200,8 +206,10 @@ const AdminLayout = () => {
 
                 {/* Channel Switcher and Settings Dropdown */}
                 <div className="flex items-center space-x-2">
-                    {/* Hide channel switcher on /admin/channels page */}
-                    {!location.pathname.includes('/admin/channels') && (
+                    {/* Hide channel switcher on /admin/channels, /admin/settings, and /admin/users pages */}
+                    {!location.pathname.includes('/admin/channels') && 
+                     !location.pathname.includes('/admin/settings') && 
+                     !location.pathname.includes('/admin/users') && (
                         <ChannelSwitcher onChannelChange={(channel) => {
                             // Fetch data based on current route without reloading
                             const path = location.pathname;
@@ -335,8 +343,10 @@ const AdminLayout = () => {
                 <Outlet />
             </div>
 
-            {/* Channel Selection Modal - Show when on /admin/channels page and navigating to pages that require channel */}
-            {location.pathname.includes('/admin/channels') && (
+            {/* Channel Selection Modal - Show when on /admin/channels, /admin/settings, or /admin/users pages and navigating to pages that require channel */}
+            {(location.pathname.includes('/admin/channels') || 
+              location.pathname.includes('/admin/settings') || 
+              location.pathname.includes('/admin/users')) && (
                 <SimpleChannelSelectionModal
                     isOpen={isChannelSelectionOpen}
                     onClose={handleCloseChannelSelection}
