@@ -226,7 +226,7 @@ const Hero = ({ onToggleChange }) => {
                         </button>
                         <button onClick={() => { navigate('/admin/channels'); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                           <Layers className="w-4 h-4 mr-3 text-gray-500" />
-                          Channel Settings
+                          Channel Managment
                         </button>
                         <button onClick={() => { navigate('/admin/channels'); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                           <Plus className="w-4 h-4 mr-3 text-gray-500" />
