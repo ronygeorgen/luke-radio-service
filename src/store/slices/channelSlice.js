@@ -143,6 +143,7 @@ const channelSlice = createSlice({
           channelId: channel.channel_id,
           projectId: channel.project_id,
           name: channel.name,
+          timezone: channel.timezone || 'Australia/Melbourne',
           assignedAt: channel.assigned_at || null
         }));
       })

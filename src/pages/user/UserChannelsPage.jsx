@@ -72,6 +72,7 @@ const UserChannelsPage = () => {
         if (channel?.name) {
           localStorage.setItem("channelName", channel.name);
         }
+        // Use timezone from channel object (from API response), fallback to Melbourne if not available
         const channelTimezone = channel?.timezone || "Australia/Melbourne";
         localStorage.setItem("channelTimezone", channelTimezone);
       } catch (e) {

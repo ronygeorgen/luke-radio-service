@@ -14,6 +14,9 @@ const SimpleChannelSelectionModal = ({
     // Store the correct ID (internal id) in localStorage
     localStorage.setItem('channelId', channel.id);
     localStorage.setItem('channelName', channel.name);
+    // Store timezone from channel object, fallback to Melbourne if not available
+    const channelTimezone = channel?.timezone || 'Australia/Melbourne';
+    localStorage.setItem('channelTimezone', channelTimezone);
     
     // Call the callback with channel info
     onChannelSelect(channel);
