@@ -24,13 +24,16 @@ export const updateTopicStatus = createAsyncThunk(
   'dashboardSettings/updateTopicStatus',
   async ({ topicId, isActive, topicName, originalStatus }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.post('/general_topics', [
-        { 
-          id: topicId, 
-          topic_name: topicName, 
-          is_active: isActive 
-        }
-      ]);
+      const channelId = localStorage.getItem('channelId');
+      const topicData = { 
+        id: topicId, 
+        topic_name: topicName, 
+        is_active: isActive 
+      };
+      if (channelId) {
+        topicData.channel_id = parseInt(channelId, 10);
+      }
+      const response = await axiosInstance.post('/general_topics', [topicData]);
       return { data: response.data, topicId, isActive };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -42,12 +45,15 @@ export const createTopic = createAsyncThunk(
   'dashboardSettings/createTopic',
   async (topicName, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.post('/general_topics', [
-        { 
-          topic_name: topicName, 
-          is_active: false 
-        }
-      ]);
+      const channelId = localStorage.getItem('channelId');
+      const topicData = { 
+        topic_name: topicName, 
+        is_active: false 
+      };
+      if (channelId) {
+        topicData.channel_id = parseInt(channelId, 10);
+      }
+      const response = await axiosInstance.post('/general_topics', [topicData]);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);

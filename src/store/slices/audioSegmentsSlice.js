@@ -7,10 +7,15 @@ export const fetchShifts = createAsyncThunk(
   'audioSegments/fetchShifts',
   async (_, { rejectWithValue }) => {
     try {
+      const channelId = localStorage.getItem('channelId');
+      const params = {
+        is_active: true
+      };
+      if (channelId) {
+        params.channel = channelId;
+      }
       const response = await axiosInstance.get('/shift-analysis/shifts/', {
-        params: {
-          is_active: true
-        }
+        params
       });
       return response.data;
     } catch (err) {

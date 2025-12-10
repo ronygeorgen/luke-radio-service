@@ -7,7 +7,7 @@ export const shiftApi = {
       const channelId = localStorage.getItem('channelId');
       const requestParams = { ...params };
       if (channelId) {
-        requestParams.channel_id = channelId;
+        requestParams.channel = channelId;
       }
       const response = await axiosInstance.get('/shift-analysis/shifts/', { params: requestParams });
       return response.data;
