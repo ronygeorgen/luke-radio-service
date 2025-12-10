@@ -85,3 +85,83 @@ export const formatDateTimeForDisplay = (date, time) => {
   
   return date;
 };
+
+// Convert UTC datetime string to local timezone for display
+export const convertUTCToLocal = (utcDateTimeString) => {
+  if (!utcDateTimeString) return null;
+  
+  const tz = ((typeof localStorage !== 'undefined' && localStorage.getItem('channelTimezone')) || 'UTC').trim();
+  
+  try {
+    // Parse the UTC datetime string (assuming ISO format)
+    const utcDate = new Date(utcDateTimeString);
+    
+    if (isNaN(utcDate.getTime())) {
+      console.error('Invalid date:', utcDateTimeString);
+      return null;
+    }
+    
+    // Format in the local timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    
+    const parts = formatter.formatToParts(utcDate);
+    const year = parts.find(p => p.type === 'year').value;
+    const month = parts.find(p => p.type === 'month').value;
+    const day = parts.find(p => p.type === 'day').value;
+    const hour = parts.find(p => p.type === 'hour').value;
+    const minute = parts.find(p => p.type === 'minute').value;
+    const second = parts.find(p => p.type === 'second').value;
+    
+    return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+  } catch (error) {
+    console.error('Error converting UTC to local:', error);
+    return null;
+  }
+};
+
+// Convert UTC date string (DD/MM/YYYY) to local date string (YYYY-MM-DD)
+export const convertUTCDateStringToLocal = (utcDateString) => {
+  if (!utcDateString) return null;
+  
+  const tz = ((typeof localStorage !== 'undefined' && localStorage.getItem('channelTimezone')) || 'UTC').trim();
+  
+  try {
+    // Parse DD/MM/YYYY format
+    const [day, month, year] = utcDateString.split('/').map(Number);
+    
+    if (!day || !month || !year) {
+      console.error('Invalid date format:', utcDateString);
+      return null;
+    }
+    
+    // Create a date in UTC (assuming the date is at midnight UTC)
+    const utcDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+    
+    // Format in the local timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    
+    const parts = formatter.formatToParts(utcDate);
+    const localYear = parts.find(p => p.type === 'year').value;
+    const localMonth = parts.find(p => p.type === 'month').value;
+    const localDay = parts.find(p => p.type === 'day').value;
+    
+    return `${localYear}-${localMonth}-${localDay}`;
+  } catch (error) {
+    console.error('Error converting UTC date to local:', error);
+    return null;
+  }
+};

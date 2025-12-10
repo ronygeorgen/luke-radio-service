@@ -137,6 +137,41 @@ export const dashboardApi = {
       throw error;
     }
   },
+
+  getSummary: async (startDate, endDate, channelId, shiftId = null) => {
+    try {
+      const { convertLocalToUTC } = await import('../utils/dateTimeUtils');
+      
+      // Convert local dates to UTC datetime strings
+      const startDatetime = convertLocalToUTC(startDate, '00:00:00');
+      const endDatetime = convertLocalToUTC(endDate, '23:59:59');
+      
+      // Format as YYYY-MM-DDTHH:mm:ss (remove milliseconds and Z)
+      const formatForAPI = (isoString) => {
+        if (!isoString) return null;
+        // Remove milliseconds and Z, keep the format as YYYY-MM-DDTHH:mm:ss
+        return isoString.replace(/\.\d{3}Z$/, '').replace('Z', '');
+      };
+      
+      const params = {
+        start_datetime: formatForAPI(startDatetime),
+        end_datetime: formatForAPI(endDatetime),
+        channel_id: parseInt(channelId, 10)
+      };
+      
+      if (shiftId) {
+        params.shift_id = parseInt(shiftId, 10);
+      }
+      
+      const response = await axiosInstance.get('/v2/dashboard/summary/', {
+        params
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching summary:', error);
+      throw error;
+    }
+  },
 };
 
 
