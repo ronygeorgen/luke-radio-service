@@ -5,8 +5,13 @@ export const fetchTopics = createAsyncThunk(
   'dashboardSettings/fetchTopics',
   async (showAll = false, { rejectWithValue }) => {
     try {
+      const channelId = localStorage.getItem('channelId');
+      const params = { show_all_topics: showAll };
+      if (channelId) {
+        params.channel_id = channelId;
+      }
       const response = await axiosInstance.get('/general_topics', {
-        params: { show_all_topics: showAll }
+        params
       });
       return response.data;
     } catch (error) {

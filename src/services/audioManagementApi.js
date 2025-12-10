@@ -2,7 +2,14 @@ import { axiosInstance } from './api';
 
 export const audioManagementApi = {
   // Category APIs
-  getCategories: () => axiosInstance.get('/segmentor/unrecognized-categories/'),
+  getCategories: () => {
+    const channelId = localStorage.getItem('channelId');
+    const params = {};
+    if (channelId) {
+      params.channel_id = channelId;
+    }
+    return axiosInstance.get('/segmentor/unrecognized-categories/', { params });
+  },
   createCategory: (data) => axiosInstance.post('/segmentor/unrecognized-categories/', data),
   updateCategory: (id, data) => axiosInstance.patch(`/segmentor/unrecognized-categories/${id}/`, data),
   deleteCategory: (id) => axiosInstance.delete(`/segmentor/unrecognized-categories/${id}/`),

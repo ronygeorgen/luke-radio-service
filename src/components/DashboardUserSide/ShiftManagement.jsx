@@ -12,6 +12,7 @@ import { fetchChannels } from '../../store/slices/channelSlice';
 import { formatTimeForDisplay, formatTimeForAPI } from '../../utils/dateUtils';
 import ShimmerLoading from './ShimmerLoading';
 import CommonHeader from './CommonHeader';
+import ChannelSwitcher from '../ChannelSwitcher';
 
 const ShiftManagement = () => {
   const dispatch = useDispatch();
@@ -172,7 +173,9 @@ const ShiftManagement = () => {
       <CommonHeader 
         title="Shift Management"
         subtitle="Create and manage shift schedules"
-      />
+      >
+        <ChannelSwitcher onChannelChange={() => dispatch(fetchShifts({ is_active: true }))} />
+      </CommonHeader>
       {/* Create New Shift Button */}
       <div className="flex justify-end items-center mt-2 mb-4">
         <button

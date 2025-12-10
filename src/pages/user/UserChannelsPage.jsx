@@ -38,6 +38,13 @@ const UserChannelsPage = () => {
 
   // Navigation handler that checks for channel selection
   const handleNavigation = (path) => {
+    // Don't require channel for /admin/channels page
+    if (path.includes('/admin/channels')) {
+      navigate(path);
+      setIsDropdownOpen(false);
+      return;
+    }
+    
     const channelId = localStorage.getItem('channelId');
     
     if (channelId) {

@@ -9,7 +9,7 @@ import {
   deleteCustomFlag,
   clearError
 } from '../../store/slices/customFlagSlice';
-import { fetchChannels } from '../../store/slices/channelSlice';
+import { fetchChannels, fetchUserChannels, selectUserChannels } from '../../store/slices/channelSlice';
 import CustomFlagModal from './CustomFlagModal';
 import Toast from '../../components/UserSide/Toast';
 
@@ -17,6 +17,7 @@ const CustomFlagsPage = () => {
   const dispatch = useDispatch();
   const { flags, loading, error, createLoading, updateLoading, deleteLoading, createError, updateError } = useSelector(state => state.customFlags);
   const { channels } = useSelector(state => state.channels);
+  const userChannels = useSelector(selectUserChannels);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFlag, setEditingFlag] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,6 +30,7 @@ const CustomFlagsPage = () => {
   useEffect(() => {
     dispatch(fetchCustomFlags());
     dispatch(fetchChannels());
+    dispatch(fetchUserChannels());
   }, [dispatch]);
 
   // Show toast when create or update error occurs
@@ -123,7 +125,13 @@ const CustomFlagsPage = () => {
   };
 
   const getChannelName = (channelId) => {
-    const channel = channels.find(c => c.id === channelId);
+    // Convert both to strings for comparison since channel.id is stored as string
+    const channelIdStr = String(channelId);
+    // Check both channels (admin) and userChannels arrays
+    let channel = channels.find(c => String(c.id) === channelIdStr);
+    if (!channel) {
+      channel = userChannels.find(c => String(c.id) === channelIdStr);
+    }
     return channel ? channel.name : `Channel ${channelId}`;
   };
 

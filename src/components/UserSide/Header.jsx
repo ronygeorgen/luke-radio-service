@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Menu, Settings, ArrowLeft, FileText, BarChart3, Search, Layers, UserCog, Music, Plus, LifeBuoy,Clock, Filter, Radio, Flag, Ban } from "lucide-react";
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from "../../store/slices/authSlice";
+import ChannelSwitcher from '../ChannelSwitcher';
 
 const Header = ({
   channelInfo,
@@ -85,6 +86,10 @@ const Header = ({
 
           {/* Search Bar */}
           <div className="flex items-center space-x-2">
+            <ChannelSwitcher onChannelChange={(channel) => {
+              // Trigger a custom event that AudioSegmentsPage can listen to
+              window.dispatchEvent(new CustomEvent('channelChanged', { detail: channel }));
+            }} />
             <div className="flex flex-col">
               <select
                 value={localSearchIn}

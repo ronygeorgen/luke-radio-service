@@ -33,6 +33,21 @@ const CommonHeader = ({ title, subtitle, children }) => {
   }, []);
 
   const handleNavigation = (path) => {
+    // Don't require channel for /admin/channels page
+    if (path.includes('/admin/channels')) {
+      navigate(path);
+      setIsDropdownOpen(false);
+      return;
+    }
+    
+    const channelId = localStorage.getItem('channelId');
+    if (!channelId) {
+      // If no channel ID, navigate to user channels to select one
+      navigate('/user-channels');
+      setIsDropdownOpen(false);
+      return;
+    }
+    
     navigate(path);
     setIsDropdownOpen(false);
   };

@@ -100,6 +100,44 @@ const AudioSegmentsPage = () => {
     availablePages
   } = useSelector((state) => state.audioSegments);
 
+  // Listen for channel changes and refetch data
+  useEffect(() => {
+    const handleChannelChange = (event) => {
+      const newChannel = event.detail;
+      const newChannelId = newChannel?.id || localStorage.getItem('channelId');
+      if (newChannelId && newChannelId !== channelId) {
+        // Refetch audio segments with current filters
+        const filtersToUse = filters;
+        if ((filtersToUse.startDate && filtersToUse.endDate) || filtersToUse.date) {
+          dispatch(fetchAudioSegments({ 
+            channelId: newChannelId, 
+            date: filtersToUse.date,
+            startDate: filtersToUse.startDate,
+            endDate: filtersToUse.endDate,
+            startTime: filtersToUse.startTime,
+            endTime: filtersToUse.endTime,
+            daypart: filtersToUse.daypart,
+            searchText: filtersToUse.searchText,
+            searchIn: filtersToUse.searchIn,
+            shiftId: filtersToUse.shiftId,
+            predefinedFilterId: filtersToUse.predefinedFilterId,
+            duration: filtersToUse.duration,
+            showFlaggedOnly: filtersToUse.showFlaggedOnly || false,
+            status: filtersToUse.status,
+            recognition_status: filtersToUse.recognition_status,
+            has_content: filtersToUse.has_content,
+            page: 1
+          }));
+        }
+      }
+    };
+
+    window.addEventListener('channelChanged', handleChannelChange);
+    return () => {
+      window.removeEventListener('channelChanged', handleChannelChange);
+    };
+  }, [channelId, filters, dispatch]);
+
   const currentPage = pagination?.current_page || 1;
   const totalPages = pagination?.total_pages || 0;
   

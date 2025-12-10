@@ -6,7 +6,12 @@ import { axiosInstance } from '../../services/api';
 export const fetchCustomFlags = createAsyncThunk(
   'customFlags/fetchCustomFlags',
   async () => {
-    const response = await axiosInstance.get('/custom-flag/');
+    const channelId = localStorage.getItem('channelId');
+    const params = {};
+    if (channelId) {
+      params.channel_id = channelId;
+    }
+    const response = await axiosInstance.get('/custom-flag/', { params });
     return response.data;
   }
 );

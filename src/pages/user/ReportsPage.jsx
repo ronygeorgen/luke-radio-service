@@ -34,6 +34,7 @@ import {
   Ban,
 } from 'lucide-react';
 import { logout } from '../../store/slices/authSlice';
+import ChannelSwitcher from '../../components/ChannelSwitcher';
 
 const ReportsPage = () => {
   const dispatch = useDispatch();
@@ -149,8 +150,9 @@ const ReportsPage = () => {
               )}
             </div>
 
-            {/* Search Bar */}
+            {/* Search Bar and Channel Switcher */}
             <div className="flex items-center space-x-2">
+              <ChannelSwitcher onChannelChange={() => dispatch(fetchReportFolders())} />
               <div className="flex flex-col">
                 <input
                   type="text"

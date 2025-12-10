@@ -8,6 +8,7 @@ import { useDashboard } from '../../hooks/useDashboard';
 import { logout } from '../../store/slices/authSlice';
 import SimpleChannelSelectionModal from '../../pages/user/SimpleChannelSelectionModal';
 import { Radio } from 'lucide-react';
+import ChannelSwitcher from '../ChannelSwitcher';
 
 
 const Hero = ({ onToggleChange }) => {
@@ -94,6 +95,17 @@ const Hero = ({ onToggleChange }) => {
 
           {/* Right Section - Toggle and Navigation */}
           <div className="flex items-center space-x-2">
+            {/* Channel Switcher */}
+            <ChannelSwitcher onChannelChange={async (channel) => {
+              if (dateRange.startDate && dateRange.endDate) {
+                await loadDashboardData(dateRange.startDate, dateRange.endDate, showAllTopics);
+                await dispatch(fetchShiftAnalytics({
+                  startDate: dateRange.startDate,
+                  endDate: dateRange.endDate,
+                  showAllTopics: showAllTopics
+                }));
+              }
+            }} />
             {/* Show All Topics Toggle */}
             <label className="flex items-center space-x-2 bg-white border border-gray-300 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-gray-50 transition-colors">
               <div className="relative inline-flex items-center">

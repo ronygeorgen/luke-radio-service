@@ -4,7 +4,12 @@ export const shiftApi = {
   // Shift Management
   getShifts: async (params = {}) => {
     try {
-      const response = await axiosInstance.get('/shift-analysis/shifts/', { params });
+      const channelId = localStorage.getItem('channelId');
+      const requestParams = { ...params };
+      if (channelId) {
+        requestParams.channel_id = channelId;
+      }
+      const response = await axiosInstance.get('/shift-analysis/shifts/', { params: requestParams });
       return response.data;
     } catch (error) {
       console.error('Error fetching shifts:', error);
@@ -40,7 +45,12 @@ export const shiftApi = {
   // Predefined Filters Management
   getPredefinedFilters: async () => {
     try {
-      const response = await axiosInstance.get('/shift-analysis/predefined-filters/');
+      const channelId = localStorage.getItem('channelId');
+      const params = {};
+      if (channelId) {
+        params.channel_id = channelId;
+      }
+      const response = await axiosInstance.get('/shift-analysis/predefined-filters/', { params });
       return response.data;
     } catch (error) {
       console.error('Error fetching predefined filters:', error);

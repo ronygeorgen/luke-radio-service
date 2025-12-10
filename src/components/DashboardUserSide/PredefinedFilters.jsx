@@ -14,6 +14,7 @@ import { fetchPredefinedFilters } from '../../store/slices/shiftManagementSlice'
 import { formatTimeForDisplay, formatTimeForAPI } from '../../utils/dateUtils';
 import ShimmerLoading from './ShimmerLoading';
 import CommonHeader from './CommonHeader';
+import ChannelSwitcher from '../ChannelSwitcher';
 
 const PredefinedFilters = () => {
   const dispatch = useDispatch();
@@ -173,7 +174,9 @@ const PredefinedFilters = () => {
         <div className="mt-6 mb-8">
           <CommonHeader 
             title="Predefined Filters"
-          />
+          >
+            <ChannelSwitcher onChannelChange={() => dispatch(fetchPredefinedFilters())} />
+          </CommonHeader>
         </div>
 
 

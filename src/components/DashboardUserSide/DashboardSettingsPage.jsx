@@ -4,6 +4,7 @@ import { fetchTopics, setShowAllTopics } from '../../store/slices/dashboardSetti
 import CommonHeader from './CommonHeader';
 import TopicManagement from './TopicManagement';
 import ErrorDisplay from './ErrorDisplay';
+import ChannelSwitcher from '../ChannelSwitcher';
 
 const DashboardSettingsPage = () => {
   const dispatch = useDispatch();
@@ -35,7 +36,9 @@ const DashboardSettingsPage = () => {
     <div className="w-full px-4 sm:px-6 lg:px-8 pt-24 pb-8">
       <CommonHeader 
         title="Topic Settings"
-      />
+      >
+        <ChannelSwitcher onChannelChange={() => dispatch(fetchTopics(showAllTopics))} />
+      </CommonHeader>
 
       <ErrorDisplay error={topicsError} />
 
