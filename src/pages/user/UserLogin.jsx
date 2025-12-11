@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, Radio, Eye, EyeOff, ArrowRight, Waves, Signal, ArrowLeft } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, clearError, resendMagicLink } from '../../store/slices/authSlice';
+import Toast from '../../components/UserSide/Toast';
 const UserLogin = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -13,6 +14,8 @@ const UserLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
+  const [toastMessage, setToastMessage] = useState(null);
+  const [toastType, setToastType] = useState('success');
   
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -129,6 +132,7 @@ const UserLogin = () => {
     e.preventDefault();
     setErrors({});
     setSuccessMessage('');
+    setToastMessage(null);
     dispatch(clearError());
     
     if (!validateForgotPasswordEmail()) {
@@ -139,10 +143,31 @@ const UserLogin = () => {
       const result = await dispatch(resendMagicLink(forgotPasswordEmail));
       if (resendMagicLink.fulfilled.match(result)) {
         setSuccessMessage('Magic link has been sent to your email. Please check your inbox.');
+        setToastMessage('Magic link has been sent to your email. Please check your inbox.');
+        setToastType('success');
         setForgotPasswordEmail('');
+      } else if (resendMagicLink.rejected.match(result)) {
+        const errorData = result.payload;
+        let errorMsg = 'Failed to send magic link. Please try again.';
+        
+        if (errorData?.error) {
+          errorMsg = errorData.error;
+          if (errorData.seconds_remaining) {
+            errorMsg = `${errorData.error} (${errorData.seconds_remaining} seconds remaining)`;
+          }
+        } else if (errorData?.detail) {
+          errorMsg = errorData.detail;
+        } else if (typeof errorData === 'string') {
+          errorMsg = errorData;
+        }
+        
+        setToastMessage(errorMsg);
+        setToastType('error');
       }
     } catch (err) {
-      // Error is handled by the reducer
+      const errorMsg = err?.message || 'Failed to send magic link. Please try again.';
+      setToastMessage(errorMsg);
+      setToastType('error');
     }
   };
 
@@ -454,6 +479,14 @@ const UserLogin = () => {
           </div>
         </div>
       </div>
+
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          onClose={() => setToastMessage(null)}
+          type={toastType}
+        />
+      )}
     </div>
   );
 };

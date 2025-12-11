@@ -105,6 +105,7 @@ const UserManagement = () => {
       delete newState[user.id];
       return newState;
     });
+    setToastMessage(null);
     
     const result = await dispatch(resendMagicLinkAdmin(user.email));
     
@@ -116,6 +117,8 @@ const UserManagement = () => {
     
     if (resendMagicLinkAdmin.fulfilled.match(result)) {
       setResendSuccess(prev => ({ ...prev, [user.id]: true }));
+      setToastMessage('Magic link has been sent successfully.');
+      setToastType('success');
       setTimeout(() => {
         setResendSuccess(prev => {
           const newState = { ...prev };
@@ -123,6 +126,23 @@ const UserManagement = () => {
           return newState;
         });
       }, 3000);
+    } else if (resendMagicLinkAdmin.rejected.match(result)) {
+      const errorData = result.payload;
+      let errorMsg = 'Failed to send magic link. Please try again.';
+      
+      if (errorData?.error) {
+        errorMsg = errorData.error;
+        if (errorData.seconds_remaining) {
+          errorMsg = `${errorData.error} (${errorData.seconds_remaining} seconds remaining)`;
+        }
+      } else if (errorData?.detail) {
+        errorMsg = errorData.detail;
+      } else if (typeof errorData === 'string') {
+        errorMsg = errorData;
+      }
+      
+      setToastMessage(errorMsg);
+      setToastType('error');
     }
   };
 

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, Eye, EyeOff, CheckCircle, Radio, Mail } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { verifyMagicLink, setPassword, resendMagicLink, clearError } from '../../store/slices/authSlice';
+import Toast from '../../components/UserSide/Toast';
 
 const CreatePassword = () => {
   const [formData, setFormData] = useState({
@@ -13,6 +14,8 @@ const CreatePassword = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [resendSuccess, setResendSuccess] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [toastType, setToastType] = useState('success');
 
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
@@ -102,11 +105,31 @@ const CreatePassword = () => {
   const handleResendLink = async () => {
     if (!magicLinkData?.user?.email) return;
     
+    setToastMessage(null);
     const result = await dispatch(resendMagicLink(magicLinkData.user.email));
     
     if (resendMagicLink.fulfilled.match(result)) {
       setResendSuccess(true);
+      setToastMessage('Magic link has been sent successfully. Please check your email.');
+      setToastType('success');
       setTimeout(() => setResendSuccess(false), 5000);
+    } else if (resendMagicLink.rejected.match(result)) {
+      const errorData = result.payload;
+      let errorMsg = 'Failed to send magic link. Please try again.';
+      
+      if (errorData?.error) {
+        errorMsg = errorData.error;
+        if (errorData.seconds_remaining) {
+          errorMsg = `${errorData.error} (${errorData.seconds_remaining} seconds remaining)`;
+        }
+      } else if (errorData?.detail) {
+        errorMsg = errorData.detail;
+      } else if (typeof errorData === 'string') {
+        errorMsg = errorData;
+      }
+      
+      setToastMessage(errorMsg);
+      setToastType('error');
     }
   };
 
@@ -372,7 +395,13 @@ const CreatePassword = () => {
         </div>
       </div>
 
-      
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          onClose={() => setToastMessage(null)}
+          type={toastType}
+        />
+      )}
     </div>
   );
 };
