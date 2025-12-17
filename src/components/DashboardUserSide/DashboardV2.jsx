@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, BarChart3, TrendingUp, Users, Heart, Sparkles, Target, Activity, Menu, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, BarChart3, TrendingUp, Users, Heart, Sparkles, Target, Activity, Menu, X, Filter } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
@@ -11,6 +11,8 @@ import SpiritualSlide from './DashboardV2Slides/SpiritualSlide';
 import TopTopicsSlide from './DashboardV2Slides/TopTopicsSlide';
 import EntityComparisonSlide from './DashboardV2Slides/EntityComparisonSlide';
 import WordCloudSlide from './DashboardV2Slides/WordCloudSlide';
+import DashboardV2Filters from './DashboardV2Filters';
+import ChannelSwitcher from '../ChannelSwitcher';
 
 const slides = [
   { 
@@ -115,11 +117,72 @@ function DashboardV2() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNavMenuVisible, setIsNavMenuVisible] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const dropdownRef = useRef(null);
   const isNavigatingRef = useRef(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+
+  // Filter state - shared across all slides
+  const getDefaultDateRange = () => {
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
+    
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    return {
+      start: formatDate(sevenDaysAgo),
+      end: formatDate(today),
+      selecting: false
+    };
+  };
+
+  const [dateRange, setDateRange] = useState(getDefaultDateRange());
+  const [currentShiftId, setCurrentShiftId] = useState('');
+  const [channelId, setChannelId] = useState(() => localStorage.getItem('channelId') || '');
+  const [channelName, setChannelName] = useState(() => localStorage.getItem('channelName') || '');
+
+  // Listen for channel changes in localStorage (for when channel switcher updates it)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const newChannelId = localStorage.getItem('channelId') || '';
+      const newChannelName = localStorage.getItem('channelName') || '';
+      if (newChannelId !== channelId) {
+        setChannelId(newChannelId);
+        setChannelName(newChannelName);
+        // Reset shift selection when channel changes (shifts are channel-specific)
+        setCurrentShiftId('');
+      }
+    };
+
+    // Check for changes periodically (localStorage events don't fire in same tab)
+    const interval = setInterval(handleStorageChange, 100);
+    
+    // Also listen to storage events (for cross-tab updates)
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [channelId]);
+
+  // Handle channel change from ChannelSwitcher
+  const handleChannelChange = useCallback((channel) => {
+    if (channel) {
+      setChannelId(channel.id?.toString() || '');
+      setChannelName(channel.name || '');
+      // Reset shift selection when channel changes (shifts are channel-specific)
+      setCurrentShiftId('');
+    }
+  }, []);
 
   // Save current slide to localStorage whenever it changes
   useEffect(() => {
@@ -240,8 +303,6 @@ function DashboardV2() {
     }
   }, [currentSlide, validSlideIndex, slides.length]);
 
-  const channelName = localStorage.getItem('channelName');
-
   return (
     <div className={`min-h-screen bg-gradient-to-br ${currentSlideConfig.containerBg} transition-all duration-300`}>
       {/* Navigation Header - Matching Other Headers */}
@@ -265,8 +326,21 @@ function DashboardV2() {
               )}
             </div>
 
-            {/* Right Section - Slide Indicators and Navigation */}
+            {/* Right Section - Channel Switcher, Slide Indicators and Navigation */}
             <div className="flex items-center space-x-4">
+              {/* Channel Switcher */}
+              <ChannelSwitcher 
+                onChannelChange={handleChannelChange}
+                className={`flex items-center space-x-2 px-3 py-1.5 text-sm font-medium rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md ${
+                  currentSlideConfig.headerText === 'text-white' 
+                    ? 'text-gray-200 bg-gray-700/50 border-gray-600 hover:bg-gray-600 hover:border-gray-500' 
+                    : 'text-gray-700 bg-white/80 border-gray-300 hover:bg-white hover:border-gray-400'
+                }`}
+                headerBg={currentSlideConfig.headerBg}
+                headerText={currentSlideConfig.headerText}
+                headerBorder={currentSlideConfig.headerBorder}
+              />
+              
               {/* Slide Indicators */}
               <div className="flex items-center space-x-2">
                 {slides.map((slide, index) => (
@@ -445,7 +519,13 @@ function DashboardV2() {
             isAnimating ? 'opacity-80 translate-y-1' : 'opacity-100 translate-y-0'
           }`}
         >
-          <CurrentSlideComponent key={currentSlide} />
+          <CurrentSlideComponent 
+            key={`${currentSlide}-${channelId}`} 
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+            currentShiftId={currentShiftId}
+            setCurrentShiftId={setCurrentShiftId}
+          />
         </div>
       </div>
 
@@ -480,34 +560,66 @@ function DashboardV2() {
       {isNavMenuVisible && (
         <div className={`fixed bottom-4 right-4 z-20 bg-gradient-to-br ${currentSlideConfig.headerBg} ${currentSlideConfig.headerBorder} rounded-lg shadow-lg border px-4 py-2 transition-all duration-300`}>
           <div className="flex items-center justify-between mb-2">
-            <span className={`text-xs font-semibold ${currentSlideConfig.headerText} transition-colors duration-300`}>Slide Navigation</span>
-            <button
-              onClick={() => setIsNavMenuVisible(false)}
-              className={`ml-2 p-1 ${currentSlideConfig.headerText === 'text-white' ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100'} rounded transition-colors`}
-              aria-label="Close navigation menu"
-            >
-              <X className={`w-4 h-4 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-300' : 'text-gray-600'}`} />
-            </button>
+            <span className={`text-xs font-semibold ${currentSlideConfig.headerText} transition-colors duration-300`}>
+              {showFilters ? 'Filters' : 'Slide Navigation'}
+            </span>
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`p-1 ${currentSlideConfig.headerText === 'text-white' ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100'} rounded transition-colors`}
+                aria-label={showFilters ? 'Show navigation' : 'Show filters'}
+                title={showFilters ? 'Show navigation' : 'Show filters'}
+              >
+                {showFilters ? (
+                  <Menu className={`w-4 h-4 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-300' : 'text-gray-600'}`} />
+                ) : (
+                  <Filter className={`w-4 h-4 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-300' : 'text-gray-600'}`} />
+                )}
+              </button>
+              <button
+                onClick={() => setIsNavMenuVisible(false)}
+                className={`p-1 ${currentSlideConfig.headerText === 'text-white' ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100'} rounded transition-colors`}
+                aria-label="Close navigation menu"
+              >
+                <X className={`w-4 h-4 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-300' : 'text-gray-600'}`} />
+              </button>
+            </div>
           </div>
-          <div className="flex flex-col space-y-1 max-h-96 overflow-y-auto">
-            {slides.map((slide, index) => {
-              const Icon = slide.icon;
-              return (
-                <button
-                  key={slide.id}
-                  onClick={() => handleSlideSelect(index)}
-                  className={`flex items-center space-x-2 px-3 py-1.5 rounded-md transition-all duration-200 text-left ${
-                    index === currentSlide
-                      ? 'bg-blue-500 text-white'
-                      : `${currentSlideConfig.headerText} ${currentSlideConfig.headerText === 'text-white' ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100'}`
-                  }`}
-                >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span className="text-sm font-medium">{slide.title}</span>
-                </button>
-              );
-            })}
-          </div>
+          {showFilters ? (
+            <div className="max-h-96 overflow-y-auto">
+              <DashboardV2Filters
+                dateRange={dateRange}
+                setDateRange={setDateRange}
+                currentShiftId={currentShiftId}
+                setCurrentShiftId={setCurrentShiftId}
+                headerText={currentSlideConfig.headerText}
+                headerBg={currentSlideConfig.headerBg}
+                headerBorder={currentSlideConfig.headerBorder}
+                hideShiftFilter={currentSlideConfig.id === 'entities'}
+                channelId={channelId}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col space-y-1 max-h-96 overflow-y-auto">
+              {slides.map((slide, index) => {
+                const Icon = slide.icon;
+                return (
+                  <button
+                    key={slide.id}
+                    onClick={() => handleSlideSelect(index)}
+                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-md transition-all duration-200 text-left ${
+                      index === currentSlide
+                        ? 'bg-blue-500 text-white'
+                        : `${currentSlideConfig.headerText} ${currentSlideConfig.headerText === 'text-white' ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100'}`
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    <span className="text-sm font-medium">{slide.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

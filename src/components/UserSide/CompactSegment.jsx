@@ -119,16 +119,16 @@ function formatDateTime(dateTimeString) {
 
   <div className="flex space-x-2 items-center">
     <span
-      className={`text-xs px-2 py-1 rounded ${segment?.flag?.duration?.exceeded ? 'text-gray-900' : 'bg-blue-100 text-blue-800'}`}
-      title={segment?.flag?.duration?.exceeded ? segment?.flag?.duration?.message : ''}
-      style={segment?.flag?.duration?.exceeded ? {
+      className={`text-xs px-2 py-1 rounded ${segment?.flag?.duration?.flagged ? 'text-gray-900' : 'bg-blue-100 text-blue-800'}`}
+      title={segment?.flag?.duration?.flagged ? segment?.flag?.duration?.message : ''}
+      style={segment?.flag?.duration?.flagged ? {
         backgroundImage: 'linear-gradient(transparent 55%, rgba(250, 204, 21, 0.75) 0)',
         backgroundRepeat: 'no-repeat',
         backgroundSize: '100% 100%'
       } : undefined}
     >
       {segment.duration_seconds}s
-      {segment?.flag?.duration?.exceeded && (
+      {segment?.flag?.duration?.flagged && (
         <span className="inline-flex items-center ml-1 align-middle">
           <Info className="w-3 h-3 text-yellow-600" />
         </span>
@@ -235,8 +235,8 @@ function formatDateTime(dateTimeString) {
 
           <div className="text-xs text-gray-700 flex items-center">
             <span
-              className={segment?.flag?.duration?.exceeded ? 'font-semibold' : ''}
-              style={segment?.flag?.duration?.exceeded ? {
+              className={segment?.flag?.duration?.flagged ? 'font-semibold' : ''}
+              style={segment?.flag?.duration?.flagged ? {
                 backgroundImage: 'linear-gradient(transparent 55%, rgba(250, 204, 21, 0.75) 0)',
                 backgroundRepeat: 'no-repeat',
                 backgroundSize: '100% 100%'
@@ -244,7 +244,7 @@ function formatDateTime(dateTimeString) {
             >
               {segment.duration_seconds}s
             </span>
-            {segment?.flag?.duration?.exceeded && (
+            {segment?.flag?.duration?.flagged && (
               <span className="inline-flex items-center ml-1" title={segment?.flag?.duration?.message}>
                 <Info className="w-3 h-3 text-yellow-600" />
               </span>

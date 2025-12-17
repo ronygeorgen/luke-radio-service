@@ -1,154 +1,378 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { dashboardApi } from '../../../services/dashboardApi';
 
-const WordCloudSlide = () => {
+const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '' }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [wordCounts, setWordCounts] = useState({});
 
-  useEffect(() => {
-    setIsVisible(false);
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Generate words with varied sizes, colors, positions, and rotations
-  const generateWord = (text, size, color, x, y, rotation = 0) => ({
-    text,
-    size,
-    color,
-    x,
-    y,
-    rotation
-  });
-
-  const words = [
-    // Large prominent words (size 80-90) - Central focus
-    generateWord('TRANSCRIPTION', 90, '#ef4444', 50, 50, -5),
-    generateWord('SENTIMENT', 85, '#fbbf24', 25, 30, 3),
-    generateWord('TOPICS', 85, '#10b981', 75, 35, -2),
-    generateWord('ANALYTICS', 80, '#14b8a6', 45, 20, 4),
-    generateWord('CONTENT', 80, '#ec4899', 70, 60, -3),
-    
-    // Large words (size 70-75)
-    generateWord('RADIO', 75, '#f97316', 20, 50, 2),
-    generateWord('AUDIO', 75, '#8b5cf6', 80, 50, -4),
-    generateWord('INSIGHTS', 70, '#06b6d4', 55, 70, 1),
-    generateWord('REPORTS', 70, '#f59e0b', 30, 65, -2),
-    generateWord('DASHBOARD', 70, '#10b981', 65, 25, 3),
-    generateWord('CHANNELS', 70, '#ef4444', 25, 75, -1),
-    
-    // Medium-large words (size 60-65)
-    generateWord('ANALYSIS', 65, '#ec4899', 50, 85, 2),
-    generateWord('TRENDING', 65, '#fbbf24', 85, 70, -3),
-    generateWord('METRICS', 65, '#14b8a6', 15, 40, 4),
-    generateWord('PERFORMANCE', 60, '#3b82f6', 40, 45, -2),
-    generateWord('ENGAGEMENT', 60, '#10b981', 75, 80, 1),
-    generateWord('MONITORING', 60, '#f97316', 20, 25, -4),
-    generateWord('TRACKING', 60, '#8b5cf6', 80, 30, 2),
-    generateWord('DISTRIBUTION', 60, '#06b6d4', 35, 55, -1),
-    generateWord('WELLBEING', 65, '#8b5cf6', 55, 15, 2),
-    generateWord('COMMUNITY', 60, '#f59e0b', 15, 70, -3),
-    generateWord('SPIRITUAL', 60, '#14b8a6', 85, 75, 1),
-    generateWord('PERSONAL', 60, '#ec4899', 10, 50, -2),
-    
-    // Medium words (size 50-55)
-    generateWord('DATA', 55, '#9ca3af', 60, 40, 3),
-    generateWord('TRENDS', 55, '#f59e0b', 45, 60, -2),
-    generateWord('STATISTICS', 55, '#ec4899', 70, 15, 1),
-    generateWord('OVERVIEW', 55, '#10b981', 15, 60, -3),
-    generateWord('SUMMARY', 55, '#3b82f6', 85, 45, 2),
-    generateWord('BREAKDOWN', 55, '#f97316', 30, 35, -1),
-    generateWord('COMPARISON', 55, '#8b5cf6', 60, 75, 4),
-    generateWord('DETAILS', 55, '#14b8a6', 25, 85, -2),
-    generateWord('PATTERNS', 55, '#06b6d4', 75, 60, 1),
-    generateWord('VISUALIZATION', 55, '#fbbf24', 40, 30, -3),
-    generateWord('IMPACT', 55, '#ef4444', 50, 10, 2),
-    generateWord('INDEX', 55, '#8b5cf6', 90, 50, -1),
-    
-    // Small-medium words (size 40-50)
-    generateWord('POSITIVE', 50, '#10b981', 55, 50, 2),
-    generateWord('NEGATIVE', 50, '#ef4444', 35, 70, -1),
-    generateWord('NEUTRAL', 50, '#9ca3af', 65, 55, 3),
-    generateWord('SCORE', 50, '#f59e0b', 50, 35, -2),
-    generateWord('RATING', 50, '#3b82f6', 40, 75, 1),
-    generateWord('AVERAGE', 50, '#14b8a6', 30, 50, 2),
-    generateWord('PEAK', 50, '#f97316', 80, 65, -1),
-    generateWord('LOW', 50, '#06b6d4', 20, 70, 3),
-    generateWord('HIGH', 50, '#ec4899', 60, 20, -2),
-    generateWord('TOTAL', 50, '#fbbf24', 45, 80, 1),
-    generateWord('COUNT', 50, '#10b981', 75, 25, -4),
-    generateWord('VALUE', 50, '#3b82f6', 40, 20, 1),
-    generateWord('RANGE', 50, '#8b5cf6', 65, 70, -2),
-    generateWord('MIN', 50, '#f97316', 25, 45, 3),
-    generateWord('MAX', 50, '#06b6d4', 75, 45, -1),
-    
-    // Small words (size 35-45)
-    generateWord('SHIFT', 45, '#9ca3af', 50, 60, 2),
-    generateWord('TIME', 45, '#3b82f6', 40, 40, -1),
-    generateWord('DATE', 45, '#f59e0b', 60, 65, 3),
-    generateWord('HOUR', 45, '#8b5cf6', 35, 30, -2),
-    generateWord('WEEK', 45, '#14b8a6', 70, 50, 1),
-    generateWord('MONTH', 45, '#f97316', 25, 55, -3),
-    generateWord('YEAR', 45, '#06b6d4', 80, 35, 2),
-    generateWord('PERIOD', 45, '#ec4899', 45, 25, -1),
-    generateWord('FILTER', 45, '#fbbf24', 30, 45, -2),
-    generateWord('SEARCH', 45, '#3b82f6', 55, 30, 1),
-    generateWord('SORT', 45, '#8b5cf6', 75, 55, -3),
-    generateWord('EXPORT', 45, '#14b6d4', 20, 35, 2),
-    generateWord('IMPORT', 45, '#f97316', 85, 75, -1),
-    generateWord('DOWNLOAD', 45, '#06b6d4', 40, 15, 3),
-    generateWord('UPLOAD', 45, '#ec4899', 60, 80, -2),
-    generateWord('SAVE', 45, '#10b981', 25, 20, 1),
-    generateWord('DELETE', 45, '#ef4444', 70, 85, -3),
-    generateWord('EDIT', 45, '#f59e0b', 50, 10, 2),
-    generateWord('CREATE', 45, '#3b82f6', 80, 20, -1),
-    generateWord('UPDATE', 45, '#8b5cf6', 35, 15, 1),
-    generateWord('REMOVE', 45, '#14b8a6', 65, 80, -2),
-    generateWord('ADD', 45, '#f97316', 15, 30, 3),
-    generateWord('CHANGE', 45, '#06b6d4', 85, 60, -1),
-    
-    // Very small words (size 25-35)
-    generateWord('VIEW', 40, '#9ca3af', 45, 50, 1),
-    generateWord('SHOW', 40, '#8b5cf6', 55, 45, -2),
-    generateWord('HIDE', 40, '#14b8a6', 35, 60, 3),
-    generateWord('TOGGLE', 40, '#f97316', 65, 40, -1),
-    generateWord('SELECT', 40, '#06b6d4', 40, 50, 2),
-    generateWord('CHOOSE', 40, '#ec4899', 60, 55, -3),
-    generateWord('CLICK', 40, '#10b981', 50, 40, 1),
-    generateWord('OPEN', 40, '#fbbf24', 30, 30, -2),
-    generateWord('CLOSE', 40, '#3b82f6', 70, 30, 3),
-    generateWord('BACK', 40, '#8b5cf6', 25, 40, -1),
-    generateWord('NEXT', 40, '#14b8a6', 75, 40, 2),
-    generateWord('PREV', 40, '#f97316', 45, 35, -3),
-    generateWord('FIRST', 40, '#06b6d4', 20, 30, 1),
-    generateWord('LAST', 40, '#ec4899', 80, 30, -2),
-    generateWord('ALL', 40, '#10b981', 50, 25, 3),
-    generateWord('NONE', 40, '#fbbf24', 30, 20, -1),
-    generateWord('MORE', 40, '#3b82f6', 70, 20, 2),
-    generateWord('LESS', 40, '#8b5cf6', 25, 15, -3),
-    generateWord('NEW', 40, '#14b8a6', 75, 15, 1),
-    generateWord('OLD', 40, '#f97316', 45, 20, -2),
-    generateWord('RECENT', 40, '#06b6d4', 35, 25, 1),
-    generateWord('PAST', 40, '#ec4899', 55, 15, -2),
-    generateWord('FUTURE', 40, '#10b981', 65, 10, 3),
-    generateWord('CURRENT', 40, '#fbbf24', 40, 10, -1),
-    generateWord('ACTIVE', 40, '#3b82f6', 80, 10, 2),
-    generateWord('INACTIVE', 40, '#8b5cf6', 20, 10, -3),
-    generateWord('ENABLED', 40, '#14b8a6', 90, 40, 1),
-    generateWord('DISABLED', 40, '#f97316', 10, 40, -2),
-    generateWord('ON', 40, '#06b6d4', 90, 60, 2),
-    generateWord('OFF', 40, '#ec4899', 10, 60, -1),
-    generateWord('YES', 40, '#10b981', 90, 70, 3),
-    generateWord('NO', 40, '#fbbf24', 10, 70, -2),
-    generateWord('TRUE', 40, '#3b82f6', 90, 80, 1),
-    generateWord('FALSE', 40, '#8b5cf6', 10, 80, -3),
-    generateWord('OK', 40, '#14b8a6', 5, 50, 2),
-    generateWord('CANCEL', 40, '#f97316', 95, 50, -1),
-    generateWord('SUBMIT', 40, '#06b6d4', 5, 60, 3),
-    generateWord('RESET', 40, '#ec4899', 95, 60, -2),
-    generateWord('APPLY', 40, '#10b981', 5, 70, 1),
-    generateWord('CLEAR', 40, '#fbbf24', 95, 70, -3),
+  // Color palette for words
+  const colors = [
+    '#ef4444', '#fbbf24', '#10b981', '#14b8a6', '#ec4899',
+    '#f97316', '#8b5cf6', '#06b6d4', '#f59e0b', '#3b82f6',
+    '#9ca3af', '#84cc16', '#a855f7', '#eab308', '#22c55e'
   ];
+
+  // Fetch word count data
+  useEffect(() => {
+    const fetchWordCounts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const channelId = localStorage.getItem('channelId');
+        if (!channelId) {
+          setError('Channel ID not found. Please select a channel first.');
+          setLoading(false);
+          return;
+        }
+        
+        if (!dateRange || !dateRange.start || !dateRange.end) {
+          setLoading(false);
+          return;
+        }
+        
+        const shiftId = currentShiftId ? parseInt(currentShiftId, 10) : null;
+        
+        console.log('Fetching word counts with params:', {
+          startDate: dateRange.start,
+          endDate: dateRange.end,
+          channelId,
+          shiftId
+        });
+        
+        const response = await dashboardApi.getWordCount(
+          dateRange.start,
+          dateRange.end,
+          channelId,
+          shiftId
+        );
+        
+        console.log('Word counts response:', response);
+        
+        setWordCounts(response.word_counts || {});
+        
+        // Reset and trigger animations with delay
+        setIsVisible(false);
+        const timer = setTimeout(() => {
+          setIsVisible(true);
+        }, 100);
+        
+        return () => clearTimeout(timer);
+      } catch (err) {
+        console.error('Error fetching word counts:', err);
+        setError(err.response?.data?.error || err.message || 'Failed to fetch word counts');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWordCounts();
+  }, [dateRange?.start, dateRange?.end, currentShiftId]);
+
+  // Dense packing algorithm - words tightly together without padding
+  const layoutWords = useMemo(() => {
+    if (!wordCounts || Object.keys(wordCounts).length === 0) {
+      return [];
+    }
+
+    // Convert word counts to array and sort by count (descending)
+    const wordsArray = Object.entries(wordCounts)
+      .map(([word, count]) => ({ word, count }))
+      .sort((a, b) => b.count - a.count);
+
+    if (wordsArray.length === 0) return [];
+
+    // Calculate min and max counts for size scaling
+    const counts = wordsArray.map(w => w.count);
+    const minCount = Math.min(...counts);
+    const maxCount = Math.max(...counts);
+    const countRange = maxCount - minCount || 1;
+
+    // Fine-grained grid for tight packing - balance between density and accuracy
+    // Container is approximately 1200px wide x 600px tall
+    const CONTAINER_WIDTH = 1200;
+    const CONTAINER_HEIGHT = 600;
+    const GRID_COLS = 120; // Fine grid for density
+    const GRID_ROWS = 80;  // Fine grid for density
+    const CELL_WIDTH = CONTAINER_WIDTH / GRID_COLS;  // ~10px per cell
+    const CELL_HEIGHT = CONTAINER_HEIGHT / GRID_ROWS; // ~7.5px per cell
+
+    // Create grid to track occupied cells
+    const grid = Array(GRID_ROWS).fill(null).map(() => Array(GRID_COLS).fill(false));
+    
+    // Helper function to check if cells are available
+    const isAreaAvailable = (row, col, width, height) => {
+      if (row + height > GRID_ROWS || col + width > GRID_COLS) {
+        return false;
+      }
+      for (let r = row; r < row + height; r++) {
+        for (let c = col; c < col + width; c++) {
+          if (grid[r][c]) {
+            return false;
+          }
+        }
+      }
+      return true;
+    };
+
+    // Helper function to mark cells as occupied
+    const occupyArea = (row, col, width, height) => {
+      for (let r = row; r < row + height; r++) {
+        for (let c = col; c < col + width; c++) {
+          grid[r][c] = true;
+        }
+      }
+    };
+
+    // Optimized position finding - faster search with step optimization
+    const findPosition = (width, height) => {
+      // Try center first
+      const centerRow = Math.floor(GRID_ROWS / 2);
+      const centerCol = Math.floor(GRID_COLS / 2);
+      
+      // Check center position first
+      if (isAreaAvailable(centerRow, centerCol, width, height)) {
+        return { row: centerRow, col: centerCol };
+      }
+      
+      // Optimized spiral search with step size for performance
+      const step = 2; // Check every 2nd position for speed
+      const maxRadius = Math.max(GRID_ROWS, GRID_COLS);
+      
+      for (let radius = step; radius < maxRadius; radius += step) {
+        const minRow = Math.max(0, centerRow - radius);
+        const maxRow = Math.min(GRID_ROWS - height, centerRow + radius);
+        const minCol = Math.max(0, centerCol - radius);
+        const maxCol = Math.min(GRID_COLS - width, centerCol + radius);
+        
+        // Check perimeter positions first (more likely to find space)
+        for (let row = minRow; row <= maxRow; row += step) {
+          // Left and right edges
+          if (isAreaAvailable(row, minCol, width, height)) {
+            return { row, col: minCol };
+          }
+          if (isAreaAvailable(row, maxCol, width, height)) {
+            return { row, col: maxCol };
+          }
+        }
+        
+        for (let col = minCol; col <= maxCol; col += step) {
+          // Top and bottom edges
+          if (isAreaAvailable(minRow, col, width, height)) {
+            return { row: minRow, col };
+          }
+          if (isAreaAvailable(maxRow, col, width, height)) {
+            return { row: maxRow, col };
+          }
+        }
+      }
+      
+      // Fallback: linear search with step for remaining positions
+      for (let row = 0; row <= GRID_ROWS - height; row += step) {
+        for (let col = 0; col <= GRID_COLS - width; col += step) {
+          if (isAreaAvailable(row, col, width, height)) {
+            return { row, col };
+          }
+        }
+      }
+      
+      // Last resort: check every position (slower but ensures placement)
+      for (let row = 0; row <= GRID_ROWS - height; row++) {
+        for (let col = 0; col <= GRID_COLS - width; col++) {
+          if (isAreaAvailable(row, col, width, height)) {
+            return { row, col };
+          }
+        }
+      }
+      
+      return null;
+    };
+
+    // Calculate size based on count - use logarithmic scale to reduce size difference
+    const calculateSize = (count) => {
+      // Use logarithmic scale so smaller words are relatively larger
+      // This makes the size difference less dramatic
+      const logMin = Math.log(minCount + 1);
+      const logMax = Math.log(maxCount + 1);
+      const logCount = Math.log(count + 1);
+      const normalized = (logCount - logMin) / (logMax - logMin);
+      
+      // Increased size range with smaller difference between min and max
+      const minSize = 16;  // Increased minimum significantly
+      const maxSize = 85;  // Increased maximum
+      // Use square root to compress the range further - makes smaller words bigger
+      const compressedNormalized = Math.sqrt(normalized);
+      return minSize + (compressedNormalized * (maxSize - minSize));
+    };
+
+    // Calculate grid dimensions - prevent overlap with proper spacing
+    const calculateGridDimensions = (fontSize, wordLength, isVertical) => {
+      // Character dimensions: account for bold font (wider) and spacing
+      // Bold text typically takes 0.85-0.9x of font size per character
+      const charWidth = fontSize * 0.85;  // Increased from 0.7 for bold text
+      const charHeight = fontSize * 1.1;  // Increased from 1.0 to account for line-height and bold
+      
+      if (isVertical) {
+        // Vertical words (rotated 90deg): dimensions swap after rotation
+        const originalTextWidth = wordLength * charWidth;
+        const originalTextHeight = charHeight;
+        
+        // After 90deg rotation, dimensions swap
+        const rotatedWidth = originalTextHeight;
+        const rotatedHeight = originalTextWidth;
+        
+        // Convert to grid cells with adequate buffer to prevent overlap
+        // Add 2 cells buffer to account for transform centering and rendering differences
+        const width = Math.max(3, Math.ceil(rotatedWidth / CELL_WIDTH) + 2);
+        const height = Math.max(3, Math.ceil(rotatedHeight / CELL_HEIGHT) + 2);
+        
+        return {
+          width: Math.min(GRID_COLS, width),
+          height: Math.min(GRID_ROWS, height)
+        };
+      } else {
+        // Horizontal words:
+        const textWidth = wordLength * charWidth;
+        const textHeight = charHeight;
+        
+        // Convert to grid cells with adequate buffer to prevent overlap
+        // Add 2 cells buffer to account for transform centering and rendering differences
+        const width = Math.max(3, Math.ceil(textWidth / CELL_WIDTH) + 2);
+        const height = Math.max(3, Math.ceil(textHeight / CELL_HEIGHT) + 2);
+        
+        return {
+          width: Math.min(GRID_COLS, width),
+          height: Math.min(GRID_ROWS, height)
+        };
+      }
+    };
+
+    const placedWords = [];
+    // Limit to top 100 words by count
+    const wordsToPlace = wordsArray.slice(0, 100);
+    const totalWords = wordsToPlace.length;
+    
+    // Decide orientation - mixed distribution to avoid clustering
+    // Use a pattern that ensures good mixing across the entire word cloud
+    const shouldBeVertical = (index, fontSize) => {
+      // Create a pattern that alternates but also has some variation
+      // Pattern: H, V, V, H, H, V, V, H... creates better mixing
+      const patternIndex = index % 6;
+      // Pattern: [H, V, V, H, H, V] = 50% vertical, 50% horizontal
+      const pattern = [false, true, true, false, false, true];
+      return pattern[patternIndex];
+    };
+
+    // Place top 100 words with aggressive packing
+    for (let i = 0; i < totalWords; i++) {
+      const { word, count } = wordsToPlace[i];
+      const fontSize = calculateSize(count);
+      let isVertical = shouldBeVertical(i, fontSize);
+      let { width, height } = calculateGridDimensions(fontSize, word.length, isVertical);
+      
+      let position = findPosition(width, height);
+      let finalWidth = width;
+      let finalHeight = height;
+      let finalFontSize = fontSize;
+      
+      // If can't place, try reducing size progressively
+      if (!position) {
+        // Try with reduced dimensions - aggressive reduction for tight packing
+        for (let reduction = 1; reduction <= 8 && !position; reduction++) {
+          const reducedWidth = Math.max(3, width - reduction);
+          const reducedHeight = Math.max(3, height - reduction);
+          position = findPosition(reducedWidth, reducedHeight);
+          if (position) {
+            finalWidth = reducedWidth;
+            finalHeight = reducedHeight;
+            finalFontSize = Math.max(14, fontSize - (reduction * 2));
+            break;
+          }
+        }
+      }
+      
+      // If still can't place, try opposite orientation with size reduction
+      if (!position) {
+        const oppositeVertical = !isVertical;
+        for (let reduction = 0; reduction <= 5 && !position; reduction++) {
+          const testFontSize = Math.max(14, fontSize - (reduction * 2));
+          const { width: altWidth, height: altHeight } = calculateGridDimensions(testFontSize, word.length, oppositeVertical);
+          position = findPosition(altWidth, altHeight);
+          if (position) {
+            finalWidth = altWidth;
+            finalHeight = altHeight;
+            finalFontSize = testFontSize;
+            isVertical = oppositeVertical; // Update orientation for final placement
+            break; // Exit the reduction loop
+          }
+        }
+      }
+      
+      // Last resort: minimal size with safe dimensions - ensure word is placed
+      if (!position) {
+        // Use minimum safe dimensions to ensure placement
+        const minWidth = 3;
+        const minHeight = 3;
+        position = findPosition(minWidth, minHeight);
+        if (position) {
+          finalWidth = minWidth;
+          finalHeight = minHeight;
+          finalFontSize = 14;
+        }
+      }
+      
+      if (position) {
+        const { row, col } = position;
+        occupyArea(row, col, finalWidth, finalHeight);
+        
+        // Calculate pixel position - center within allocated grid area
+        // Ensure position accounts for the transform origin (center)
+        const x = (col + finalWidth / 2) * (100 / GRID_COLS);
+        const y = (row + finalHeight / 2) * (100 / GRID_ROWS);
+        const color = colors[i % colors.length];
+        
+        placedWords.push({
+          word,
+          count,
+          fontSize: finalFontSize,
+          x,
+          y,
+          color,
+          isVertical
+        });
+      }
+    }
+
+    return placedWords;
+  }, [wordCounts, colors]);
+
+  // Loading skeleton
+  if (loading) {
+    return (
+      <div className="min-h-screen p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="h-10 w-64 bg-gray-300/50 rounded-lg animate-pulse mx-auto mb-8"></div>
+          <div className="relative h-[600px] bg-black rounded-2xl overflow-hidden">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-white/50">Loading word cloud...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen p-8 flex items-center justify-center">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded max-w-md">
+          <strong>Error:</strong> {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
@@ -156,35 +380,51 @@ const WordCloudSlide = () => {
         <h2 className="text-4xl font-bold text-white mb-8 text-center">Word Cloud</h2>
         
         <div className="relative h-[600px] bg-black rounded-2xl overflow-hidden">
-          {words.map((word, index) => (
-            <div
-              key={index}
-              className="absolute transition-all duration-1000 cursor-pointer hover:scale-110"
-              style={{
-                left: `${word.x}%`,
-                top: `${word.y}%`,
-                fontSize: `${Math.max(word.size * 0.12, 12)}px`,
-                color: word.color,
-                fontWeight: 'bold',
-                opacity: isVisible ? 1 : 0,
-                transform: isVisible 
-                  ? `scale(1) rotate(${word.rotation}deg)` 
-                  : `scale(0) rotate(${word.rotation}deg)`,
-                transitionDelay: `${index * 30}ms`,
-                transformOrigin: 'center',
-                textShadow: `0 0 10px ${word.color}40`,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {word.text}
+          {layoutWords.length === 0 ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="text-white/50 text-lg">No word data available</p>
             </div>
-          ))}
+          ) : (
+            layoutWords.map((item, index) => (
+              <div
+                key={`${item.word}-${index}`}
+                className="absolute transition-all duration-1000 cursor-pointer hover:scale-110"
+                style={{
+                  left: `${item.x}%`,
+                  top: `${item.y}%`,
+                  fontSize: `${item.fontSize}px`,
+                  color: item.color,
+                  fontWeight: 'bold',
+                  opacity: isVisible ? 1 : 0,
+                  transform: isVisible 
+                    ? `translate(-50%, -50%) scale(1) ${item.isVertical ? 'rotate(90deg)' : 'rotate(0deg)'}` 
+                    : `translate(-50%, -50%) scale(0) ${item.isVertical ? 'rotate(90deg)' : 'rotate(0deg)'}`,
+                  transitionDelay: `${index * 3}ms`,
+                  transformOrigin: 'center',
+                  textShadow: `0 0 6px ${item.color}40`,
+                  whiteSpace: 'nowrap',
+                  userSelect: 'none',
+                  margin: 0,
+                  padding: 0,
+                  lineHeight: 0.9,
+                  letterSpacing: '-0.5px',
+                }}
+                title={`${item.word}: ${item.count} occurrences`}
+              >
+                {item.word}
+              </div>
+            ))
+          )}
         </div>
+        
+        {layoutWords.length > 0 && (
+          <div className="mt-4 text-center text-white/70 text-sm">
+            Showing top {layoutWords.length} words (of {Object.keys(wordCounts).length} unique words)
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 export default WordCloudSlide;
-
-

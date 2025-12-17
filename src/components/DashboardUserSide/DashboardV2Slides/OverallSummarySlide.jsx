@@ -1,15 +1,9 @@
-import { useEffect, useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { Lightbulb, Target, Users, TrendingUp, Hand, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
+import { Lightbulb, Target, Users, TrendingUp, Hand } from 'lucide-react';
 import { dashboardApi } from '../../../services/dashboardApi';
-import { convertUTCDateStringToLocal, convertLocalToUTC } from '../../../utils/dateTimeUtils';
-import { fetchShifts } from '../../../store/slices/audioSegmentsSlice';
+import { convertUTCDateStringToLocal } from '../../../utils/dateTimeUtils';
 
-const OverallSummarySlide = () => {
-  const dispatch = useDispatch();
-  const { shifts, shiftsLoading } = useSelector(state => state.audioSegments);
-  
+const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '' }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [averageSentimentProgress, setAverageSentimentProgress] = useState(0);
   const [targetSentimentProgress, setTargetSentimentProgress] = useState(0);
@@ -18,235 +12,7 @@ const OverallSummarySlide = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [summaryData, setSummaryData] = useState(null);
-  
-  // Date range state
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const dateButtonRef = useRef(null);
-  const calendarRef = useRef(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  const [dateRange, setDateRange] = useState({
-    start: null,
-    end: null,
-    selecting: false
-  });
-  
-  // Shift state
-  const [currentShiftId, setCurrentShiftId] = useState('');
 
-  // Helper function to get default date range (last 7 days)
-  const getDefaultDateRange = () => {
-    const today = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(today.getDate() - 7);
-    
-    const formatDate = (date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    
-    return {
-      start: formatDate(sevenDaysAgo),
-      end: formatDate(today),
-      selecting: false
-    };
-  };
-
-  // Initialize date range to last 7 days
-  useEffect(() => {
-    const defaultRange = getDefaultDateRange();
-    setDateRange(defaultRange);
-  }, []);
-
-  // Fetch shifts on mount
-  useEffect(() => {
-    dispatch(fetchShifts());
-  }, [dispatch]);
-
-  // Helper functions for date handling (similar to FilterPanel)
-  const convertLocalToUTCDateString = (localDate) => {
-    const utcDate = new Date(Date.UTC(
-      localDate.getFullYear(),
-      localDate.getMonth(),
-      localDate.getDate()
-    ));
-    return utcDate.toISOString().split('T')[0];
-  };
-
-  const convertUTCToLocalDate = (utcDateString) => {
-    if (!utcDateString) return null;
-    const [year, month, day] = utcDateString.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  };
-
-  const getLocalDateString = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const parseDateString = (dateString) => {
-    if (!dateString) return null;
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  };
-
-  // Format shift time
-  const formatShiftTime = (shift) => {
-    const start = (shift.start_time || '').substring(0, 5);
-    const end = (shift.end_time || '').substring(0, 5);
-    return `${start} - ${end}`;
-  };
-
-  // Close date picker when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (calendarRef.current && !calendarRef.current.contains(event.target) && 
-          dateButtonRef.current && !dateButtonRef.current.contains(event.target)) {
-        setShowDatePicker(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  // Calendar navigation
-  const navigateMonth = (direction) => {
-    if (direction === 'prev') {
-      if (currentMonth === 0) {
-        setCurrentMonth(11);
-        setCurrentYear(currentYear - 1);
-      } else {
-        setCurrentMonth(currentMonth - 1);
-      }
-    } else {
-      if (currentMonth === 11) {
-        setCurrentMonth(0);
-        setCurrentYear(currentYear + 1);
-      } else {
-        setCurrentMonth(currentMonth + 1);
-      }
-    }
-  };
-
-  // Generate calendar days
-  const generateCalendarDays = () => {
-    const firstDay = new Date(currentYear, currentMonth, 1);
-    const lastDay = new Date(currentYear, currentMonth + 1, 0);
-    const startingDay = firstDay.getDay();
-    
-    const days = [];
-    
-    const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
-    for (let i = startingDay - 1; i >= 0; i--) {
-      const date = new Date(currentYear, currentMonth - 1, prevMonthLastDay - i);
-      days.push({
-        date,
-        isCurrentMonth: false,
-        isDisabled: true
-      });
-    }
-    
-    for (let i = 1; i <= lastDay.getDate(); i++) {
-      const date = new Date(currentYear, currentMonth, i);
-      days.push({
-        date,
-        isCurrentMonth: true,
-        isDisabled: false
-      });
-    }
-    
-    return days;
-  };
-
-  // Check if date is in selected range
-  const isDateInRange = (date) => {
-    if (!dateRange.start || !dateRange.end) return false;
-    const currentDate = getLocalDateString(date);
-    
-    // Direct string comparison for dates (YYYY-MM-DD format)
-    return currentDate >= dateRange.start && currentDate <= dateRange.end;
-  };
-
-  const isRangeStart = (date) => {
-    if (!dateRange.start) return false;
-    const dateString = getLocalDateString(date);
-    return dateString === dateRange.start;
-  };
-
-  const isRangeEnd = (date) => {
-    if (!dateRange.end) return false;
-    const dateString = getLocalDateString(date);
-    return dateString === dateRange.end;
-  };
-
-  // Date selection handler
-  const handleDateClick = (date) => {
-    const localDateString = getLocalDateString(date);
-    
-    if (!dateRange.start) {
-      setDateRange({
-        start: localDateString,
-        end: null,
-        selecting: true
-      });
-    } else if (dateRange.selecting) {
-      let finalStart = dateRange.start;
-      let finalEnd = localDateString;
-      
-      // Ensure chronological order
-      if (new Date(localDateString) < new Date(dateRange.start)) {
-        finalStart = localDateString;
-        finalEnd = dateRange.start;
-      }
-      
-      setDateRange({
-        start: finalStart,
-        end: finalEnd,
-        selecting: false
-      });
-    } else {
-      setDateRange({
-        start: localDateString,
-        end: null,
-        selecting: true
-      });
-    }
-  };
-
-  const formatDateRangeDisplay = () => {
-    if (dateRange.start && dateRange.end) {
-      return `${dateRange.start} to ${dateRange.end}`;
-    } else if (dateRange.start) {
-      return `${dateRange.start} - Select end date`;
-    }
-    return 'Select date range';
-  };
-
-  const clearDateRange = () => {
-    const defaultRange = getDefaultDateRange();
-    setDateRange(defaultRange);
-    // Force calendar to update by resetting month/year if needed
-    const today = new Date();
-    setCurrentMonth(today.getMonth());
-    setCurrentYear(today.getFullYear());
-  };
-
-  const getTodayDateString = () => {
-    return getLocalDateString(new Date());
-  };
-
-  // Handle shift change
-  const handleShiftChange = (shiftId) => {
-    const normalizedId = shiftId ? String(shiftId) : '';
-    setCurrentShiftId(normalizedId);
-  };
 
   useEffect(() => {
     const fetchSummaryData = async () => {
@@ -261,7 +27,7 @@ const OverallSummarySlide = () => {
           return;
         }
         
-        if (!dateRange.start || !dateRange.end) {
+        if (!dateRange || !dateRange.start || !dateRange.end) {
           setLoading(false);
           return;
         }
@@ -326,7 +92,7 @@ const OverallSummarySlide = () => {
     };
 
     fetchSummaryData();
-  }, [dateRange.start, dateRange.end, currentShiftId]);
+  }, [dateRange?.start, dateRange?.end, currentShiftId]);
 
   // Process sentiment data for chart display
   const processSentimentData = () => {
@@ -418,20 +184,6 @@ const OverallSummarySlide = () => {
     <div className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
         <div className="h-10 w-64 bg-gray-700/50 rounded-lg mx-auto mb-8 animate-pulse"></div>
-        
-        {/* Filters Section Skeleton */}
-        <div className="mb-6 bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <div className="h-4 w-20 bg-gray-600/50 rounded mb-2 animate-pulse"></div>
-              <div className="h-10 w-full bg-gray-700/50 rounded-lg animate-pulse"></div>
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <div className="h-4 w-16 bg-gray-600/50 rounded mb-2 animate-pulse"></div>
-              <div className="h-10 w-full bg-gray-700/50 rounded-lg animate-pulse"></div>
-            </div>
-          </div>
-        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column Skeleton */}
@@ -576,156 +328,11 @@ const OverallSummarySlide = () => {
 
   const sentimentData = processSentimentData();
 
-  // Compact Date Range Calendar Component - Dark Theme
-  const CompactDateRangeCalendar = () => {
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    
-    return (
-      <div ref={calendarRef} className="bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 border border-gray-600 rounded-lg shadow-xl p-3 min-w-72 max-w-80">
-        <div className="flex justify-between items-center mb-3">
-          <button
-            onClick={() => navigateMonth('prev')}
-            className="p-1 hover:bg-gray-600 rounded transition-colors text-white"
-          >
-            <ChevronUp className="w-3 h-3 transform -rotate-90" />
-          </button>
-          
-          <h3 className="font-semibold text-white text-sm">
-            {monthNames[currentMonth]} {currentYear}
-          </h3>
-          
-          <button
-            onClick={() => navigateMonth('next')}
-            className="p-1 hover:bg-gray-600 rounded transition-colors text-white"
-          >
-            <ChevronUp className="w-3 h-3 transform rotate-90" />
-          </button>
-        </div>
-        
-        <div className="mb-2 p-2 bg-blue-500/20 border border-blue-400/30 rounded text-xs text-blue-200">
-          {dateRange.selecting ? (
-            `Select end date (after ${dateRange.start})`
-          ) : (
-            'Select start date'
-          )}
-        </div>
-        
-        <div className="grid grid-cols-7 gap-1 mb-1">
-          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
-            <div key={day} className="text-center text-xs font-medium text-gray-400 py-1">
-              {day}
-            </div>
-          ))}
-        </div>
-        
-        <div className="grid grid-cols-7 gap-1">
-          {generateCalendarDays().map((day, index) => {
-            const dateString = getLocalDateString(day.date);
-            const isInRange = isDateInRange(day.date);
-            const isStart = isRangeStart(day.date);
-            const isEnd = isRangeEnd(day.date);
-            const isSelected = isStart || isEnd;
-            const isToday = dateString === getTodayDateString();
-            
-            return (
-              <button
-                key={index}
-                onClick={() => !day.isDisabled && handleDateClick(day.date)}
-                disabled={day.isDisabled}
-                className={`
-                  relative p-1 text-xs rounded transition-colors min-w-6 h-6
-                  ${day.isDisabled ? 'text-gray-600 cursor-not-allowed' : 'text-gray-200 hover:bg-gray-600'}
-                  ${isSelected ? 'bg-blue-500 text-white hover:bg-blue-600 font-semibold' : ''}
-                  ${isInRange && !isSelected ? 'bg-blue-500/30 text-white' : ''}
-                  ${!day.isCurrentMonth ? 'text-gray-500' : ''}
-                  ${isToday && !isSelected ? 'border-2 border-yellow-400' : ''}
-                `}
-              >
-                {day.date.getDate()}
-              </button>
-            );
-          })}
-        </div>
-        
-        <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-600">
-          <div className="text-xs text-gray-300 flex-1 truncate mr-2">
-            {dateRange.start && dateRange.end ? (
-              `${dateRange.start} to ${dateRange.end}`
-            ) : dateRange.start ? (
-              `Start: ${dateRange.start}`
-            ) : (
-              'Select start date'
-            )}
-          </div>
-          <button
-            onClick={clearDateRange}
-            className="px-2 py-1 text-xs bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors whitespace-nowrap"
-          >
-            Clear
-          </button>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
       <div className="max-w-7xl mx-auto">
         <h2 className="text-3xl font-bold text-white mb-8 text-center">Overall Summary</h2>
-        
-        {/* Filters Section - Outside Cards */}
-        <div className="mb-6 bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-          <div className="flex flex-wrap items-end gap-4">
-            {/* Date Range Picker */}
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-white mb-2">Date Range</label>
-              <div className="relative">
-                <button
-                  ref={dateButtonRef}
-                  onClick={() => setShowDatePicker(!showDatePicker)}
-                  className="w-full p-2 text-sm border border-white/30 rounded-lg bg-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-left flex justify-between items-center"
-                >
-                  <span className={dateRange.start ? 'text-white' : 'text-white/70'}>
-                    {formatDateRangeDisplay()}
-                  </span>
-                  <Calendar className="w-4 h-4 text-white/70" />
-                </button>
-                {showDatePicker && createPortal(
-                  (
-                    <div className="fixed inset-0 z-[10000] flex items-center justify-center">
-                      <div className="absolute inset-0 bg-black/30" onClick={() => setShowDatePicker(false)} />
-                      <div className="relative z-[10001]">
-                        <CompactDateRangeCalendar />
-                      </div>
-                    </div>
-                  ),
-                  document.body
-                )}
-              </div>
-            </div>
-
-            {/* Shift Filter */}
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-white mb-2">Shift</label>
-              <select
-                value={currentShiftId}
-                onChange={(e) => handleShiftChange(e.target.value || null)}
-                className="w-full p-2 text-sm border border-white/30 rounded-lg bg-white/10 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
-              >
-                <option value="" className="bg-gray-800 text-white">All Shifts</option>
-                {shiftsLoading ? (
-                  <option disabled className="bg-gray-800 text-white">Loading shifts...</option>
-                ) : (
-                  shifts.map(shift => (
-                    <option key={shift.id} value={shift.id} className="bg-gray-800 text-white">
-                      {shift.name} ({formatShiftTime(shift)})
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
-          </div>
-        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Sentiment Overview */}

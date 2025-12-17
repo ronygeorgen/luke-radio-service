@@ -172,6 +172,181 @@ export const dashboardApi = {
       throw error;
     }
   },
+
+  getBucketCount: async (startDate, endDate, channelId, shiftId = null) => {
+    try {
+      const { convertLocalToUTC } = await import('../utils/dateTimeUtils');
+      
+      // Convert local dates to UTC datetime strings
+      const startDatetime = convertLocalToUTC(startDate, '00:00:00');
+      const endDatetime = convertLocalToUTC(endDate, '23:59:59');
+      
+      // Format as YYYY-MM-DDTHH:mm:ss (remove milliseconds and Z)
+      const formatForAPI = (isoString) => {
+        if (!isoString) return null;
+        // Remove milliseconds and Z, keep the format as YYYY-MM-DDTHH:mm:ss
+        return isoString.replace(/\.\d{3}Z$/, '').replace('Z', '');
+      };
+      
+      const params = {
+        start_datetime: formatForAPI(startDatetime),
+        end_datetime: formatForAPI(endDatetime),
+        channel_id: parseInt(channelId, 10)
+      };
+      
+      if (shiftId) {
+        params.shift_id = parseInt(shiftId, 10);
+      }
+      
+      const response = await axiosInstance.get('/v2/dashboard/bucket-count/', {
+        params
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching bucket count:', error);
+      throw error;
+    }
+  },
+
+  getCategoryBucketCount: async (startDate, endDate, channelId, categoryName, shiftId = null) => {
+    try {
+      const { convertLocalToUTC } = await import('../utils/dateTimeUtils');
+      
+      // Convert local dates to UTC datetime strings
+      const startDatetime = convertLocalToUTC(startDate, '00:00:00');
+      const endDatetime = convertLocalToUTC(endDate, '23:59:59');
+      
+      // Format as YYYY-MM-DDTHH:mm:ss (remove milliseconds and Z)
+      const formatForAPI = (isoString) => {
+        if (!isoString) return null;
+        // Remove milliseconds and Z, keep the format as YYYY-MM-DDTHH:mm:ss
+        return isoString.replace(/\.\d{3}Z$/, '').replace('Z', '');
+      };
+      
+      const params = {
+        start_datetime: formatForAPI(startDatetime),
+        end_datetime: formatForAPI(endDatetime),
+        channel_id: parseInt(channelId, 10),
+        category_name: categoryName
+      };
+      
+      if (shiftId) {
+        params.shift_id = parseInt(shiftId, 10);
+      }
+      
+      const response = await axiosInstance.get('/v2/dashboard/category-bucket-count/', {
+        params
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching category bucket count:', error);
+      throw error;
+    }
+  },
+
+  getTopTopics: async (startDate, endDate, channelId, sortBy = 'count', shiftId = null, showAllTopics = true) => {
+    try {
+      const { convertLocalToUTC } = await import('../utils/dateTimeUtils');
+      
+      // Convert local dates to UTC datetime strings
+      const startDatetime = convertLocalToUTC(startDate, '00:00:00');
+      const endDatetime = convertLocalToUTC(endDate, '23:59:59');
+      
+      // Format as YYYY-MM-DDTHH:mm:ss (remove milliseconds and Z)
+      const formatForAPI = (isoString) => {
+        if (!isoString) return null;
+        // Remove milliseconds and Z, keep the format as YYYY-MM-DDTHH:mm:ss
+        return isoString.replace(/\.\d{3}Z$/, '').replace('Z', '');
+      };
+      
+      const params = {
+        start_datetime: formatForAPI(startDatetime),
+        end_datetime: formatForAPI(endDatetime),
+        channel_id: parseInt(channelId, 10),
+        show_all_topics: showAllTopics,
+        sort_by: sortBy
+      };
+      
+      if (shiftId) {
+        params.shift_id = parseInt(shiftId, 10);
+      }
+      
+      const response = await axiosInstance.get('/v2/dashboard/topics/', {
+        params
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching top topics:', error);
+      throw error;
+    }
+  },
+
+  getGeneralTopicCountByShift: async (startDate, endDate, channelId, showAllTopics = false) => {
+    try {
+      const { convertLocalToUTC } = await import('../utils/dateTimeUtils');
+      
+      // Convert local dates to UTC datetime strings
+      const startDatetime = convertLocalToUTC(startDate, '00:00:00');
+      const endDatetime = convertLocalToUTC(endDate, '23:59:59');
+      
+      // Format as YYYY-MM-DDTHH:mm:ss (remove milliseconds and Z)
+      const formatForAPI = (isoString) => {
+        if (!isoString) return null;
+        // Remove milliseconds and Z, keep the format as YYYY-MM-DDTHH:mm:ss
+        return isoString.replace(/\.\d{3}Z$/, '').replace('Z', '');
+      };
+      
+      const params = {
+        start_datetime: formatForAPI(startDatetime),
+        end_datetime: formatForAPI(endDatetime),
+        channel_id: parseInt(channelId, 10),
+        show_all_topics: showAllTopics
+      };
+      
+      const response = await axiosInstance.get('/v2/dashboard/general-topic-count-by-shift/', {
+        params
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching general topic count by shift:', error);
+      throw error;
+    }
+  },
+
+  getWordCount: async (startDate, endDate, channelId, shiftId = null) => {
+    try {
+      const { convertLocalToUTC } = await import('../utils/dateTimeUtils');
+      
+      // Convert local dates to UTC datetime strings
+      const startDatetime = convertLocalToUTC(startDate, '00:00:00');
+      const endDatetime = convertLocalToUTC(endDate, '23:59:59');
+      
+      // Format as YYYY-MM-DDTHH:mm:ss (remove milliseconds and Z)
+      const formatForAPI = (isoString) => {
+        if (!isoString) return null;
+        // Remove milliseconds and Z, keep the format as YYYY-MM-DDTHH:mm:ss
+        return isoString.replace(/\.\d{3}Z$/, '').replace('Z', '');
+      };
+      
+      const params = {
+        start_datetime: formatForAPI(startDatetime),
+        end_datetime: formatForAPI(endDatetime),
+        channel_id: parseInt(channelId, 10)
+      };
+      
+      if (shiftId) {
+        params.shift_id = parseInt(shiftId, 10);
+      }
+      
+      const response = await axiosInstance.get('/v2/dashboard/word-count/', {
+        params
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching word count:', error);
+      throw error;
+    }
+  },
 };
 
 

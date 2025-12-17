@@ -100,12 +100,32 @@ const AudioSegmentsPage = () => {
     availablePages
   } = useSelector((state) => state.audioSegments);
 
+  // Track the current channel ID from localStorage to detect changes
+  // This ensures we always use the most up-to-date channel ID, even when switching channels
+  const [currentChannelId, setCurrentChannelId] = useState(channelId);
+
+  // Update currentChannelId when channelId from params changes or when localStorage changes
+  useEffect(() => {
+    const storedChannelId = localStorage.getItem('channelId');
+    if (storedChannelId) {
+      setCurrentChannelId(storedChannelId);
+    } else {
+      setCurrentChannelId(channelId);
+    }
+  }, [channelId]);
+
   // Listen for channel changes and refetch data
   useEffect(() => {
     const handleChannelChange = (event) => {
       const newChannel = event.detail;
       const newChannelId = newChannel?.id || localStorage.getItem('channelId');
-      if (newChannelId && newChannelId !== channelId) {
+      
+      // Always refetch when channel change event is received, even if it's the same channel
+      // This ensures data is refreshed when switching back to the original channel
+      if (newChannelId) {
+        // Update the tracked channel ID
+        setCurrentChannelId(newChannelId);
+        
         // Refetch audio segments with current filters
         const filtersToUse = filters;
         if ((filtersToUse.startDate && filtersToUse.endDate) || filtersToUse.date) {
@@ -136,7 +156,7 @@ const AudioSegmentsPage = () => {
     return () => {
       window.removeEventListener('channelChanged', handleChannelChange);
     };
-  }, [channelId, filters, dispatch]);
+  }, [filters, dispatch]);
 
   const currentPage = pagination?.current_page || 1;
   const totalPages = pagination?.total_pages || 0;

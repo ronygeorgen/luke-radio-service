@@ -55,9 +55,53 @@ const FilterPanel = ({
   const { predefinedFilters, loading: predefinedLoading } = useSelector(state => state.shiftManagement);
   const reduxDispatch = useDispatch();
 
+  // Track the current channel ID to detect changes
+  const [trackedChannelId, setTrackedChannelId] = useState(() => {
+    return localStorage.getItem('channelId') || channelId;
+  });
+
+  // Update trackedChannelId when channelId prop changes or localStorage changes
   useEffect(() => {
-    reduxDispatch(fetchShifts());
-    reduxDispatch(fetchPredefinedFilters());
+    const storedChannelId = localStorage.getItem('channelId');
+    const effectiveChannelId = storedChannelId || channelId;
+    if (effectiveChannelId !== trackedChannelId) {
+      setTrackedChannelId(effectiveChannelId);
+    }
+  }, [channelId, trackedChannelId]);
+
+  // Fetch shifts and predefined filters when component mounts or channelId changes
+  useEffect(() => {
+    const effectiveChannelId = localStorage.getItem('channelId') || channelId;
+    if (effectiveChannelId) {
+      reduxDispatch(fetchShifts());
+      reduxDispatch(fetchPredefinedFilters());
+    }
+  }, [reduxDispatch, channelId, trackedChannelId]);
+
+  // Listen for channel changes and refetch shifts/predefined filters
+  useEffect(() => {
+    const handleChannelChange = (event) => {
+      const newChannel = event.detail;
+      const newChannelId = newChannel?.id || localStorage.getItem('channelId');
+      
+      if (newChannelId) {
+        // Refetch shifts and predefined filters with new channel ID
+        // The Redux thunks will read from localStorage which has been updated
+        reduxDispatch(fetchShifts());
+        reduxDispatch(fetchPredefinedFilters());
+        
+        // Clear selected shift and predefined filter when channel changes
+        setCurrentShiftId('');
+        setLocalShiftId('');
+        setCurrentPredefinedFilterId('');
+        setShowFlaggedOnly(false);
+      }
+    };
+
+    window.addEventListener('channelChanged', handleChannelChange);
+    return () => {
+      window.removeEventListener('channelChanged', handleChannelChange);
+    };
   }, [reduxDispatch]);
 
   // Simple shift time display - show raw times without conversion
