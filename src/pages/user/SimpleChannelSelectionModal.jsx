@@ -10,11 +10,13 @@ const SimpleChannelSelectionModal = ({
   channels,
   title = "Select a Channel",
   description = "Please choose a channel to continue",
-  headerBg = 'from-gray-700 to-gray-800',
-  headerText = 'text-white',
-  headerBorder = 'border-gray-600'
+  headerBg,
+  headerText,
+  headerBorder
 }) => {
-  const isDarkTheme = headerText === 'text-white';
+  // Only use dark theme if explicitly provided (from Dashboard V2)
+  // Otherwise use default light theme
+  const isDarkTheme = headerText === 'text-white' && headerBg && headerBorder;
   const handleChannelSelect = (channel) => {
     // Store the correct ID (internal id) in localStorage
     localStorage.setItem('channelId', channel.id);
@@ -43,12 +45,12 @@ const SimpleChannelSelectionModal = ({
       }}
     >
       <div 
-        className={`${isDarkTheme ? `bg-gradient-to-br ${headerBg} ${headerBorder}` : 'bg-white'} rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden relative border ${isDarkTheme ? headerBorder : 'border-gray-200'}`}
+        className={`${isDarkTheme ? `bg-gradient-to-br ${headerBg} ${headerBorder}` : 'bg-white'} rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden relative border ${isDarkTheme && headerBorder ? headerBorder : 'border-gray-200'}`}
         style={{ zIndex: 10000 }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className={`flex items-center justify-between p-6 border-b ${isDarkTheme ? headerBorder : 'border-gray-200'}`}>
+        <div className={`flex items-center justify-between p-6 border-b ${isDarkTheme && headerBorder ? headerBorder : 'border-gray-200'}`}>
           <div className="flex items-center space-x-3">
             <div className={`w-10 h-10 ${isDarkTheme ? 'bg-blue-500/20' : 'bg-blue-100'} rounded-xl flex items-center justify-center`}>
               <Radio className={`w-5 h-5 ${isDarkTheme ? 'text-blue-400' : 'text-blue-600'}`} />
@@ -110,7 +112,7 @@ const SimpleChannelSelectionModal = ({
         </div>
 
         {/* Footer */}
-        <div className={`flex justify-end p-6 border-t ${isDarkTheme ? headerBorder : 'border-gray-200'} ${isDarkTheme ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
+        <div className={`flex justify-end p-6 border-t ${isDarkTheme && headerBorder ? headerBorder : 'border-gray-200'} ${isDarkTheme ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
           <button
             onClick={onClose}
             className={`px-6 py-2 border rounded-lg font-medium transition-colors ${
