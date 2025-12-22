@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Filter as FilterIcon } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { fetchAudioSegments, setCurrentPlaying, setIsPlaying, setFilter, clearError } from '../../store/slices/audioSegmentsSlice';
 import Header from '../../components/UserSide/Header';
 import FilterPanel from '../../components/UserSide/FilterPanel';
@@ -24,8 +24,11 @@ import Toast from '../../components/UserSide/Toast';
 import { audioManagementApi } from '../../services/audioManagementApi';
 
 const AudioSegmentsPage = () => {
+  const navigate = useNavigate();
   const { channelId: channelIdFromParams } = useParams();
-  const channelId = channelIdFromParams || localStorage.getItem("channelId");
+  // Prioritize localStorage channelId if it differs from URL params (channel was switched)
+  const storedChannelId = localStorage.getItem("channelId");
+  const channelId = storedChannelId && storedChannelId !== channelIdFromParams ? storedChannelId : (channelIdFromParams || storedChannelId);
   
   const [searchParams, setSearchParams] = useSearchParams();
   const date = searchParams.get('date');
@@ -119,12 +122,30 @@ const AudioSegmentsPage = () => {
     const handleChannelChange = (event) => {
       const newChannel = event.detail;
       const newChannelId = newChannel?.id || localStorage.getItem('channelId');
+      const newChannelName = newChannel?.name || localStorage.getItem('channelName');
       
       // Always refetch when channel change event is received, even if it's the same channel
       // This ensures data is refreshed when switching back to the original channel
-      if (newChannelId) {
+      if (newChannelId && newChannelId !== channelIdFromParams) {
         // Update the tracked channel ID
         setCurrentChannelId(newChannelId);
+        
+        // Update URL to reflect the new channel ID while preserving all search params
+        const currentParams = new URLSearchParams(searchParams);
+        
+        // Preserve all existing query parameters
+        const newParams = new URLSearchParams();
+        currentParams.forEach((value, key) => {
+          newParams.set(key, value);
+        });
+        
+        // Update channel name if provided
+        if (newChannelName) {
+          newParams.set('name', encodeURIComponent(newChannelName));
+        }
+        
+        // Navigate to new URL with updated channel ID, preserving all query params
+        navigate(`/channels/${newChannelId}/segments?${newParams.toString()}`, { replace: true });
         
         // Refetch audio segments with current filters
         const filtersToUse = filters;
@@ -156,7 +177,7 @@ const AudioSegmentsPage = () => {
     return () => {
       window.removeEventListener('channelChanged', handleChannelChange);
     };
-  }, [filters, dispatch]);
+  }, [filters, dispatch, navigate, searchParams, channelIdFromParams]);
 
   const currentPage = pagination?.current_page || 1;
   const totalPages = pagination?.total_pages || 0;
