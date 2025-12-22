@@ -80,7 +80,14 @@ const AudioSegmentsPage = () => {
 
   useEffect(() => {
     if (channelName) {
-      localStorage.setItem("channelName", channelName);
+      // Decode URL-encoded channel name before storing in localStorage
+      try {
+        const decodedName = decodeURIComponent(channelName);
+        localStorage.setItem("channelName", decodedName);
+      } catch (e) {
+        // If decoding fails, store as-is
+        localStorage.setItem("channelName", channelName);
+      }
     }
 
     if (channelId) {

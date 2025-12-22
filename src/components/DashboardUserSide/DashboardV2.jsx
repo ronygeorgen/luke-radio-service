@@ -146,19 +146,35 @@ function DashboardV2() {
 
   const [dateRange, setDateRange] = useState(getDefaultDateRange());
   const [currentShiftId, setCurrentShiftId] = useState('');
+  
+  // Helper function to decode URL-encoded channel name
+  const decodeChannelName = (name) => {
+    if (!name) return '';
+    try {
+      // Decode URL-encoded strings (handles %20, %2520, etc.)
+      return decodeURIComponent(name);
+    } catch (e) {
+      // If decoding fails, return original
+      return name;
+    }
+  };
+  
   const [channelId, setChannelId] = useState(() => localStorage.getItem('channelId') || '');
-  const [channelName, setChannelName] = useState(() => localStorage.getItem('channelName') || '');
+  const [channelName, setChannelName] = useState(() => decodeChannelName(localStorage.getItem('channelName') || ''));
 
   // Listen for channel changes in localStorage (for when channel switcher updates it)
   useEffect(() => {
     const handleStorageChange = () => {
       const newChannelId = localStorage.getItem('channelId') || '';
-      const newChannelName = localStorage.getItem('channelName') || '';
+      const newChannelName = decodeChannelName(localStorage.getItem('channelName') || '');
       if (newChannelId !== channelId) {
         setChannelId(newChannelId);
         setChannelName(newChannelName);
         // Reset shift selection when channel changes (shifts are channel-specific)
         setCurrentShiftId('');
+      } else if (newChannelName !== channelName) {
+        // Also update if channel name changes (even if ID is same)
+        setChannelName(newChannelName);
       }
     };
 
@@ -178,7 +194,8 @@ function DashboardV2() {
   const handleChannelChange = useCallback((channel) => {
     if (channel) {
       setChannelId(channel.id?.toString() || '');
-      setChannelName(channel.name || '');
+      // Channel name from API should already be decoded, but decode just in case
+      setChannelName(decodeChannelName(channel.name || ''));
       // Reset shift selection when channel changes (shifts are channel-specific)
       setCurrentShiftId('');
     }

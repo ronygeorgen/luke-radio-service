@@ -8,8 +8,20 @@ const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerTe
   const dispatch = useDispatch();
   const userChannels = useSelector(selectUserChannels);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // Helper function to decode URL-encoded channel name
+  const decodeChannelName = (name) => {
+    if (!name) return '';
+    try {
+      // Decode URL-encoded strings (handles %20, %2520, etc.)
+      return decodeURIComponent(name);
+    } catch (e) {
+      // If decoding fails, return original
+      return name;
+    }
+  };
+
   const [currentChannelId, setCurrentChannelId] = useState(() => localStorage.getItem('channelId') || '');
-  const [currentChannelName, setCurrentChannelName] = useState(() => localStorage.getItem('channelName') || '');
+  const [currentChannelName, setCurrentChannelName] = useState(() => decodeChannelName(localStorage.getItem('channelName') || ''));
 
   useEffect(() => {
     // Fetch user channels if not already loaded
@@ -22,9 +34,12 @@ const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerTe
   useEffect(() => {
     const handleStorageChange = () => {
       const newChannelId = localStorage.getItem('channelId') || '';
-      const newChannelName = localStorage.getItem('channelName') || '';
+      const newChannelName = decodeChannelName(localStorage.getItem('channelName') || '');
       if (newChannelId !== currentChannelId) {
         setCurrentChannelId(newChannelId);
+        setCurrentChannelName(newChannelName);
+      } else if (newChannelName !== currentChannelName) {
+        // Also update if channel name changes (even if ID is same)
         setCurrentChannelName(newChannelName);
       }
     };
