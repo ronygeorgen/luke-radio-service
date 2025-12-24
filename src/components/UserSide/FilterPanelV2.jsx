@@ -63,8 +63,42 @@ const FilterPanelV2 = ({
   
   const [onlyActive, setOnlyActive] = useState(getInitialStatus().onlyActive);
   const [activeStatus, setActiveStatus] = useState(getInitialStatus().activeStatus);
-  const [onlyAnnouncers, setOnlyAnnouncers] = useState(false);
-  const [selectedContentTypes, setSelectedContentTypes] = useState([]); // Array of selected content types
+  
+  // Load filter state from localStorage on mount
+  const loadFilterStateFromStorage = () => {
+    try {
+      const stored = localStorage.getItem('filterV2_contentTypes');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return {
+          onlyAnnouncers: parsed.onlyAnnouncers || false,
+          selectedContentTypes: parsed.selectedContentTypes || []
+        };
+      }
+    } catch (err) {
+      console.error('Error loading filter state from localStorage:', err);
+    }
+    return {
+      onlyAnnouncers: false,
+      selectedContentTypes: []
+    };
+  };
+
+  const initialFilterState = loadFilterStateFromStorage();
+  const [onlyAnnouncers, setOnlyAnnouncers] = useState(initialFilterState.onlyAnnouncers);
+  const [selectedContentTypes, setSelectedContentTypes] = useState(initialFilterState.selectedContentTypes);
+  
+  // Save filter state to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('filterV2_contentTypes', JSON.stringify({
+        onlyAnnouncers,
+        selectedContentTypes
+      }));
+    } catch (err) {
+      console.error('Error saving filter state to localStorage:', err);
+    }
+  }, [onlyAnnouncers, selectedContentTypes]);
   
   // Ref to track if we're manually updating status (to prevent useEffect from interfering)
   const isManuallyUpdatingStatus = useRef(false);
@@ -122,6 +156,16 @@ const FilterPanelV2 = ({
         setLocalShiftId('');
         setCurrentPredefinedFilterId('');
         setShowFlaggedOnly(false);
+        
+        // Clear content type filters when channel changes
+        setOnlyAnnouncers(false);
+        setSelectedContentTypes([]);
+        // Clear localStorage for content type filters
+        try {
+          localStorage.removeItem('filterV2_contentTypes');
+        } catch (err) {
+          console.error('Error clearing filter state from localStorage:', err);
+        }
       }
     };
 
@@ -613,18 +657,50 @@ const FilterPanelV2 = ({
     setOnlyAnnouncers(checked);
     if (checked) {
       setSelectedContentTypes([]); // Clear selected content types when only announcers is on
+      // Apply filters immediately with onlyAnnouncers=true
+      setTimeout(() => {
+        applyFiltersV2(filters, currentShiftId);
+      }, 0);
+    } else {
+      // When turning off only announcers, apply filters with current selectedContentTypes
+      setTimeout(() => {
+        applyFiltersV2(filters, currentShiftId);
+      }, 0);
     }
-    applyFiltersV2(filters, currentShiftId);
   };
 
   const handleContentTypeToggle = (contentType, checked) => {
     if (checked) {
-      setSelectedContentTypes(prev => [...prev, contentType]);
+      setSelectedContentTypes(prev => {
+        const updated = [...prev, contentType];
+        // Apply filters after state update
+        setTimeout(() => {
+          applyFiltersV2(filters, currentShiftId);
+        }, 0);
+        return updated;
+      });
     } else {
-      setSelectedContentTypes(prev => prev.filter(type => type !== contentType));
+      setSelectedContentTypes(prev => {
+        const updated = prev.filter(type => type !== contentType);
+        // Apply filters after state update
+        setTimeout(() => {
+          applyFiltersV2(filters, currentShiftId);
+        }, 0);
+        return updated;
+      });
     }
     setOnlyAnnouncers(false); // Turn off only announcers when selecting specific content types
-    applyFiltersV2(filters, currentShiftId);
+  };
+
+  const handleAllContentTypesToggle = (checked) => {
+    if (checked) {
+      setSelectedContentTypes([]);
+      setOnlyAnnouncers(false);
+      // Apply filters immediately - no content_type param should be added
+      setTimeout(() => {
+        applyFiltersV2(filters, currentShiftId);
+      }, 0);
+    }
   };
 
   // Helper function to determine status parameter
@@ -660,14 +736,27 @@ const FilterPanelV2 = ({
     // Determine status - API expects 'active' or 'inactive' as strings
     const statusParam = getStatusParam(onlyActiveValue, activeStatusValue);
 
-    // Determine content types
-    let contentTypesParam = [];
+    // Determine content types for API call
+    // Rules:
+    // 1. When "Only Announcers" is selected → content_type=Announcer (exact case, capital A)
+    // 2. When "All" is selected → don't add content_type param at all (pass null or empty array)
+    // 3. When specific content types are selected → add them as-is (exact strings, no lowercase conversion)
+    let contentTypesParam = null; // null means don't add content_type param
     if (onlyAnnouncers) {
-      // Filter to only "Announcer" content type
+      // Filter to only "Announcer" content type (exact case as required by backend)
       contentTypesParam = ['Announcer'];
+      console.log('📢 Only Announcers selected - using content_type=Announcer');
     } else if (selectedContentTypes.length > 0) {
-      contentTypesParam = selectedContentTypes;
+      // Use selected content types exactly as they are (no lowercase conversion)
+      // Pass the exact strings from the API/UI without modification
+      contentTypesParam = [...selectedContentTypes];
+      console.log('📋 Selected content types:', contentTypesParam);
+    } else {
+      // "All" is selected - no content_type param will be added
+      contentTypesParam = null; // Explicitly set to null to ensure no param is added
+      console.log('🌐 All content types selected - no content_type param');
     }
+    // If contentTypesParam is null or empty array, content_type won't be added to API call (handled in slice)
 
     // Get duration value
     let durationValue = null;
@@ -687,7 +776,7 @@ const FilterPanelV2 = ({
         page: 1,
         shiftId: shiftId || filterState.shiftId || null,
         predefinedFilterId: filterState.predefinedFilterId || null,
-        contentTypes: contentTypesParam,
+        contentTypes: contentTypesParam || [], // Pass empty array if null to ensure no param is added
         status: statusParam,
         searchText: filterState.searchText || localSearchText || null,
         searchIn: filterState.searchIn || localSearchIn || null
@@ -900,11 +989,8 @@ const FilterPanelV2 = ({
             {!onlyAnnouncers && (
               <div className="space-y-1 pl-4">
                 <ToggleSwitch
-                  checked={selectedContentTypes.length === 0}
-                  onChange={() => {
-                    setSelectedContentTypes([]);
-                    applyFiltersV2(filters, currentShiftId);
-                  }}
+                  checked={selectedContentTypes.length === 0 && !onlyAnnouncers}
+                  onChange={handleAllContentTypesToggle}
                   label="All"
                 />
                 {contentTypePrompt?.loading ? (
@@ -1141,11 +1227,8 @@ const FilterPanelV2 = ({
                   <>
                     <div className="border-t border-gray-200 mt-1 pt-1">
                       <ToggleSwitch
-                        checked={selectedContentTypes.length === 0}
-                        onChange={() => {
-                          setSelectedContentTypes([]);
-                          applyFiltersV2(filters, currentShiftId);
-                        }}
+                        checked={selectedContentTypes.length === 0 && !onlyAnnouncers}
+                        onChange={handleAllContentTypesToggle}
                         label="All"
                       />
                       {contentTypePrompt?.loading ? (
@@ -1401,11 +1484,8 @@ const FilterPanelV2 = ({
                 {!onlyAnnouncers && (
                   <div className="mt-2 space-y-1 pl-4 border-t border-gray-200 pt-2 max-h-64 overflow-y-auto">
                     <ToggleSwitch
-                      checked={selectedContentTypes.length === 0}
-                      onChange={() => {
-                        setSelectedContentTypes([]);
-                        applyFiltersV2(filters, currentShiftId);
-                      }}
+                      checked={selectedContentTypes.length === 0 && !onlyAnnouncers}
+                      onChange={handleAllContentTypesToggle}
                       label="All"
                     />
                     {contentTypePrompt.contentTypes.map((contentType) => (

@@ -227,8 +227,9 @@ export const fetchAudioSegmentsV2 = createAsyncThunk(
       }
       
       // Add content_type parameters (can be multiple)
-      // Axios handles multiple params with same name by using array notation
-      if (contentTypes && contentTypes.length > 0) {
+      // Only add content_type param if contentTypes is provided and has items
+      // If contentTypes is null or empty array, don't add the parameter at all
+      if (contentTypes !== null && contentTypes !== undefined && Array.isArray(contentTypes) && contentTypes.length > 0) {
         // For multiple params with same name, we need to pass them as an array
         // Axios will serialize them correctly
         params['content_type'] = contentTypes;
