@@ -1,8 +1,140 @@
 // pages/admin/CustomFlagModal.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchChannels } from '../../store/slices/channelSlice';
+
+// Dual Range Slider Component
+const DualRangeSlider = ({ min = 0, max = 100, lowerValue, upperValue, onLowerChange, onUpperChange, lowerName, upperName }) => {
+  const sliderRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(null); // 'lower' or 'upper' or null
+
+  // Convert empty strings to numbers for display, default to min for lower and max for upper
+  const lowerNum = lowerValue === '' || lowerValue === null || lowerValue === undefined ? min : Number(lowerValue);
+  const upperNum = upperValue === '' || upperValue === null || upperValue === undefined ? max : Number(upperValue);
+
+  const lowerPercent = ((lowerNum - min) / (max - min)) * 100;
+  const upperPercent = ((upperNum - min) / (max - min)) * 100;
+
+  const handleMouseDown = (type) => {
+    setIsDragging(type);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging || !sliderRef.current) return;
+
+      const rect = sliderRef.current.getBoundingClientRect();
+      const percent = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+      const value = Math.round((percent / 100) * (max - min) + min);
+
+      if (isDragging === 'lower') {
+        const newValue = Math.min(value, upperNum);
+        onLowerChange(newValue);
+      } else if (isDragging === 'upper') {
+        const newValue = Math.max(value, lowerNum);
+        onUpperChange(newValue);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(null);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, lowerNum, upperNum, min, max, onLowerChange, onUpperChange]);
+
+  return (
+    <div className="w-full">
+      <div className="relative h-8 flex items-center mb-2">
+        <div
+          ref={sliderRef}
+          className="relative w-full h-1 bg-gray-200 rounded-full"
+        >
+          {/* Active range track */}
+          <div
+            className="absolute h-1 bg-blue-500 rounded-full"
+            style={{
+              left: `${lowerPercent}%`,
+              width: `${upperPercent - lowerPercent}%`,
+            }}
+          />
+          
+          {/* Lower handle */}
+          <div
+            className="absolute w-6 h-6 -mt-2.5 cursor-grab active:cursor-grabbing"
+            style={{ left: `calc(${lowerPercent}% - 12px)` }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              handleMouseDown('lower');
+            }}
+          >
+            <div className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+              <div className="w-2 h-2 bg-white rounded-full"></div>
+            </div>
+          </div>
+
+          {/* Upper handle */}
+          <div
+            className="absolute w-6 h-6 -mt-2.5 cursor-grab active:cursor-grabbing"
+            style={{ left: `calc(${upperPercent}% - 12px)` }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              handleMouseDown('upper');
+            }}
+          >
+            <div className="w-6 h-6 bg-blue-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+              <div className="w-2 h-2 bg-white rounded-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Value display and manual inputs */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-1">
+          <span className="text-xs text-gray-500 w-8">From:</span>
+          <input
+            type="number"
+            name={lowerName}
+            value={lowerValue !== '' && lowerValue !== null && lowerValue !== undefined ? lowerValue : ''}
+            onChange={(e) => {
+              const val = e.target.value === '' ? '' : Math.max(min, Math.min(upperNum, Number(e.target.value) || min));
+              onLowerChange(val);
+            }}
+            min={min}
+            max={max}
+            className="w-20 border border-gray-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div className="flex items-center gap-2 flex-1">
+          <span className="text-xs text-gray-500 w-8">To:</span>
+          <input
+            type="number"
+            name={upperName}
+            value={upperValue !== '' && upperValue !== null && upperValue !== undefined ? upperValue : ''}
+            onChange={(e) => {
+              const val = e.target.value === '' ? '' : Math.max(lowerNum, Math.min(max, Number(e.target.value) || max));
+              onUpperChange(val);
+            }}
+            min={min}
+            max={max}
+            className="w-20 border border-gray-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div className="text-xs text-gray-400">0 - 100</div>
+      </div>
+    </div>
+  );
+};
 
 const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, error }) => {
   const dispatch = useDispatch();
@@ -12,8 +144,10 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
     channel: '',
     transcription_keywords: [],
     summary_keywords: [],
-    sentiment_min: '',
-    sentiment_max: '',
+    sentiment_min_lower: '',
+    sentiment_min_upper: '',
+    sentiment_max_lower: '',
+    sentiment_max_upper: '',
     iab_topics: [],
     bucket_prompt: [],
     general_topics: [],
@@ -60,8 +194,10 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
           channel: flag.channel || '',
           transcription_keywords: normalizeListField(flag.transcription_keywords || []),
           summary_keywords: normalizeListField(flag.summary_keywords || []),
-          sentiment_min: flag.sentiment_min !== null && flag.sentiment_min !== undefined ? flag.sentiment_min : '',
-          sentiment_max: flag.sentiment_max !== null && flag.sentiment_max !== undefined ? flag.sentiment_max : '',
+          sentiment_min_lower: flag.sentiment_min_lower !== null && flag.sentiment_min_lower !== undefined ? flag.sentiment_min_lower : '',
+          sentiment_min_upper: flag.sentiment_min_upper !== null && flag.sentiment_min_upper !== undefined ? flag.sentiment_min_upper : '',
+          sentiment_max_lower: flag.sentiment_max_lower !== null && flag.sentiment_max_lower !== undefined ? flag.sentiment_max_lower : '',
+          sentiment_max_upper: flag.sentiment_max_upper !== null && flag.sentiment_max_upper !== undefined ? flag.sentiment_max_upper : '',
           iab_topics: normalizeListField(flag.iab_topics || []),
           bucket_prompt: normalizeListField(flag.bucket_prompt || []),
           general_topics: normalizeListField(flag.general_topics || []),
@@ -73,8 +209,10 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
           channel: channelId || '',
           transcription_keywords: [],
           summary_keywords: [],
-          sentiment_min: '',
-          sentiment_max: '',
+          sentiment_min_lower: '',
+          sentiment_min_upper: '',
+          sentiment_max_lower: '',
+          sentiment_max_upper: '',
           iab_topics: [],
           bucket_prompt: [],
           general_topics: [],
@@ -395,8 +533,10 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
     const submitData = {
       ...formData,
       channel: parseInt(formData.channel),
-      sentiment_min: formData.sentiment_min !== '' ? parseFloat(formData.sentiment_min) : null,
-      sentiment_max: formData.sentiment_max !== '' ? parseFloat(formData.sentiment_max) : null,
+      sentiment_min_lower: formData.sentiment_min_lower !== '' && formData.sentiment_min_lower !== null && formData.sentiment_min_lower !== undefined ? Number(formData.sentiment_min_lower) : null,
+      sentiment_min_upper: formData.sentiment_min_upper !== '' && formData.sentiment_min_upper !== null && formData.sentiment_min_upper !== undefined ? Number(formData.sentiment_min_upper) : null,
+      sentiment_max_lower: formData.sentiment_max_lower !== '' && formData.sentiment_max_lower !== null && formData.sentiment_max_lower !== undefined ? Number(formData.sentiment_max_lower) : null,
+      sentiment_max_upper: formData.sentiment_max_upper !== '' && formData.sentiment_max_upper !== null && formData.sentiment_max_upper !== undefined ? Number(formData.sentiment_max_upper) : null,
       // Transform list fields to array of arrays format
       transcription_keywords: transformListField(formData.transcription_keywords),
       summary_keywords: transformListField(formData.summary_keywords),
@@ -461,32 +601,34 @@ const CustomFlagModal = ({ isOpen, onClose, flag = null, onSubmit, loading, erro
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sentiment Min
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sentiment Min Range
                 </label>
-                <input
-                  type="number"
-                  name="sentiment_min"
-                  value={formData.sentiment_min}
-                  onChange={handleInputChange}
-                  step="0.1"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="-1.0"
+                <DualRangeSlider
+                  min={0}
+                  max={100}
+                  lowerValue={formData.sentiment_min_lower}
+                  upperValue={formData.sentiment_min_upper}
+                  onLowerChange={(value) => setFormData(prev => ({ ...prev, sentiment_min_lower: value }))}
+                  onUpperChange={(value) => setFormData(prev => ({ ...prev, sentiment_min_upper: value }))}
+                  lowerName="sentiment_min_lower"
+                  upperName="sentiment_min_upper"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sentiment Max
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sentiment Max Range
                 </label>
-                <input
-                  type="number"
-                  name="sentiment_max"
-                  value={formData.sentiment_max}
-                  onChange={handleInputChange}
-                  step="0.1"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="1.0"
+                <DualRangeSlider
+                  min={0}
+                  max={100}
+                  lowerValue={formData.sentiment_max_lower}
+                  upperValue={formData.sentiment_max_upper}
+                  onLowerChange={(value) => setFormData(prev => ({ ...prev, sentiment_max_lower: value }))}
+                  onUpperChange={(value) => setFormData(prev => ({ ...prev, sentiment_max_upper: value }))}
+                  lowerName="sentiment_max_lower"
+                  upperName="sentiment_max_upper"
                 />
               </div>
             </div>

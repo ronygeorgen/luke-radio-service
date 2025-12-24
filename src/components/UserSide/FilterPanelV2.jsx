@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, RotateCcw, ChevronUp, ChevronDown, Search, X, ToggleRight, ArrowLeftRight } from 'lucide-react';
-import { setFilter, fetchShifts  } from '../../store/slices/audioSegmentsSlice';
+import { Calendar, RotateCcw, ChevronUp, ChevronDown, Search, X, ToggleLeft, ToggleRight, ArrowLeftRight } from 'lucide-react';
+import { setFilter, fetchShifts, fetchContentTypePrompt } from '../../store/slices/audioSegmentsSlice';
 import { fetchPredefinedFilters } from '../../store/slices/shiftManagementSlice';
 import { useDispatch, useSelector } from 'react-redux';
+import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 
-const FilterPanel = ({ 
+const FilterPanelV2 = ({ 
   filters, 
   dispatch, 
   segments, 
@@ -18,7 +19,7 @@ const FilterPanel = ({
   setLocalEndTime,
   handleResetFilters,
   isInHeader = false,
-  compact = false, // NEW: Compact mode for sidebar
+  compact = false,
   localSearchText,
   setLocalSearchText,
   localSearchIn,
@@ -45,20 +46,48 @@ const FilterPanel = ({
   const [currentPredefinedFilterId, setCurrentPredefinedFilterId] = useState(filters.predefinedFilterId || '');
   const [localDuration, setLocalDuration] = useState(filters.duration || '');
   const [showFlaggedOnly, setShowFlaggedOnly] = useState(filters.showFlaggedOnly || false);
-  const [isExpanded, setIsExpanded] = useState(false); // For expanded version
+  const [isExpanded, setIsExpanded] = useState(false);
   const filterRef = useRef(null);
   const calendarRef = useRef(null);
-  // Store original time values before shift selection
   const originalTimesRef = useRef({ startTime: null, endTime: null });
+
+  // V2 specific filter states
+  // Initialize from Redux filters.status if available
+  const getInitialStatus = () => {
+    // Check if filters.status is set (from Redux)
+    if (filters.status === 'active') return { onlyActive: false, activeStatus: 'active' };
+    if (filters.status === 'inactive') return { onlyActive: false, activeStatus: 'inactive' };
+    // Check if there's a special marker for "only active" (we'll use a different approach)
+    return { onlyActive: false, activeStatus: 'all' };
+  };
+  
+  const [onlyActive, setOnlyActive] = useState(getInitialStatus().onlyActive);
+  const [activeStatus, setActiveStatus] = useState(getInitialStatus().activeStatus);
+  const [onlyAnnouncers, setOnlyAnnouncers] = useState(false);
+  const [selectedContentTypes, setSelectedContentTypes] = useState([]); // Array of selected content types
+  
+  // Ref to track if we're manually updating status (to prevent useEffect from interfering)
+  const isManuallyUpdatingStatus = useRef(false);
 
   const { shifts, shiftsLoading } = useSelector(state => state.audioSegments);
   const { predefinedFilters, loading: predefinedLoading } = useSelector(state => state.shiftManagement);
+  const { contentTypePrompt } = useSelector(state => state.audioSegments);
   const reduxDispatch = useDispatch();
+  
+  // Debug: Log content type prompt data
+  useEffect(() => {
+    console.log('Content Type Prompt Data:', contentTypePrompt);
+  }, [contentTypePrompt]);
 
   // Track the current channel ID to detect changes
   const [trackedChannelId, setTrackedChannelId] = useState(() => {
     return localStorage.getItem('channelId') || channelId;
   });
+
+  // Fetch content type prompt data on mount
+  useEffect(() => {
+    reduxDispatch(fetchContentTypePrompt());
+  }, [reduxDispatch]);
 
   // Update trackedChannelId when channelId prop changes or localStorage changes
   useEffect(() => {
@@ -85,12 +114,10 @@ const FilterPanel = ({
       const newChannelId = newChannel?.id || localStorage.getItem('channelId');
       
       if (newChannelId) {
-        // Refetch shifts and predefined filters with new channel ID
-        // The Redux thunks will read from localStorage which has been updated
         reduxDispatch(fetchShifts());
         reduxDispatch(fetchPredefinedFilters());
+        reduxDispatch(fetchContentTypePrompt());
         
-        // Clear selected shift and predefined filter when channel changes
         setCurrentShiftId('');
         setLocalShiftId('');
         setCurrentPredefinedFilterId('');
@@ -104,14 +131,14 @@ const FilterPanel = ({
     };
   }, [reduxDispatch]);
 
-  // Simple shift time display - show raw times without conversion
+  // Simple shift time display
   const formatShiftTime = (shift) => {
-    const start = (shift.start_time || '').substring(0, 5); // "HH:MM"
-    const end = (shift.end_time || '').substring(0, 5);     // "HH:MM"
+    const start = (shift.start_time || '').substring(0, 5);
+    const end = (shift.end_time || '').substring(0, 5);
     return `${start} - ${end}`;
   };
 
-  // Update handleShiftChange to use raw times
+  // Update handleShiftChange
   const handleShiftChange = (shiftId) => {
     console.log('🔄 Shift changed to:', shiftId);
     const normalizedId = shiftId ? String(shiftId) : '';
@@ -121,9 +148,7 @@ const FilterPanel = ({
     
     setLocalShiftId(normalizedId);
     setCurrentShiftId(normalizedId);
-    // When selecting a shift, clear any selected predefined filter locally
     setCurrentPredefinedFilterId('');
-    // Reset showFlaggedOnly when shift is deselected
     if (!normalizedId) {
       setShowFlaggedOnly(false);
     }
@@ -132,7 +157,6 @@ const FilterPanel = ({
       ? shifts.find((shift) => String(shift.id) === normalizedId)
       : null;
 
-    // Store original times before selecting a shift
     if (isSelectingShift && !wasShiftSelected) {
       originalTimesRef.current = {
         startTime: filters.startTime || '',
@@ -141,14 +165,12 @@ const FilterPanel = ({
       console.log('💾 Stored original times:', originalTimesRef.current);
     }
 
-    // Use raw times without conversion
     if (selectedShift) {
       const newLocalStart = (selectedShift.start_time || '').substring(0, 5);
       const newLocalEnd = (selectedShift.end_time || '').substring(0, 5);
       setLocalStartTime(newLocalStart);
       setLocalEndTime(newLocalEnd);
     } else if (isDeselectingShift) {
-      // Restore original times when deselecting shift
       const restoredStartTime = originalTimesRef.current.startTime || '';
       const restoredEndTime = originalTimesRef.current.endTime || '';
       setLocalStartTime(restoredStartTime ? restoredStartTime.substring(0, 5) : '');
@@ -156,20 +178,16 @@ const FilterPanel = ({
       console.log('🔄 Restored original times:', { restoredStartTime, restoredEndTime });
     }
 
-    // Determine the times to use
     let finalStartTime = '';
     let finalEndTime = '';
     
     if (selectedShift) {
-      // Use shift times when selecting a shift
       finalStartTime = selectedShift.start_time || '';
       finalEndTime = selectedShift.end_time || '';
     } else if (isDeselectingShift) {
-      // Restore original times when deselecting shift
       finalStartTime = originalTimesRef.current.startTime || '';
       finalEndTime = originalTimesRef.current.endTime || '';
     } else {
-      // Keep current times (shouldn't happen in normal flow, but fallback)
       finalStartTime = filters.startTime || '';
       finalEndTime = filters.endTime || '';
     }
@@ -187,43 +205,18 @@ const FilterPanel = ({
     };
 
     dispatch(setFilter(newFilters));
-
-    // Trigger API fetch immediately on selection or deselection
-    if (fetchAudioSegments) {
-      reduxDispatch(fetchAudioSegments({
-        channelId,
-        date: newFilters.date,
-        startDate: newFilters.startDate,
-        endDate: newFilters.endDate,
-        startTime: newFilters.startTime,
-        endTime: newFilters.endTime,
-        daypart: newFilters.daypart,
-        searchText: filters.searchText,
-        searchIn: filters.searchIn,
-        shiftId: newFilters.shiftId,
-        predefinedFilterId: null,
-        duration: filters.duration,
-        showFlaggedOnly: normalizedId ? showFlaggedOnly : false,
-        status: filters.status,
-        recognition_status: filters.recognition_status,
-        has_content: filters.has_content,
-        page: 1
-      }));
-    }
+    applyFiltersV2(newFilters, normalizedId);
   };
 
   const handlePredefinedFilterChange = (predefinedId) => {
     const normalizedId = predefinedId ? String(predefinedId) : '';
     setCurrentPredefinedFilterId(normalizedId);
-    // When selecting a predefined filter, clear any selected shift locally
     setCurrentShiftId('');
-    // Reset showFlaggedOnly when predefined filter is selected
     setShowFlaggedOnly(false);
 
     const newFilters = {
       predefinedFilterId: normalizedId || null,
       shiftId: null,
-      // Preserve existing date/time window; clear daypart for consistency
       date: filters.date,
       startDate: filters.startDate,
       endDate: filters.endDate,
@@ -233,44 +226,12 @@ const FilterPanel = ({
       showFlaggedOnly: false
     };
     dispatch(setFilter(newFilters));
-
-    // Trigger API fetch immediately on selection or deselection
-    if (fetchAudioSegments) {
-      reduxDispatch(fetchAudioSegments({
-        channelId,
-        date: newFilters.date,
-        startDate: newFilters.startDate,
-        endDate: newFilters.endDate,
-        startTime: newFilters.startTime,
-        endTime: newFilters.endTime,
-        daypart: newFilters.daypart,
-        searchText: filters.searchText,
-        searchIn: filters.searchIn,
-        shiftId: null,
-        predefinedFilterId: newFilters.predefinedFilterId,
-        duration: filters.duration,
-        showFlaggedOnly: false,
-        status: filters.status,
-        recognition_status: filters.recognition_status,
-        has_content: filters.has_content,
-        page: 1
-      }));
-    }
+    applyFiltersV2(newFilters, null);
   };
-
-  const daypartOptions = [
-    { value: 'none', label: 'None', startTime: '', endTime: '' },
-    { value: 'morning', label: 'Morning (06:00–10:00)', startTime: '06:00:00', endTime: '10:00:00' },
-    { value: 'midday', label: 'Midday (10:00–15:00)', startTime: '10:00:00', endTime: '15:00:00' },
-    { value: 'afternoon', label: 'Afternoon (15:00–19:00)', startTime: '15:00:00', endTime: '19:00:00' },
-    { value: 'evening', label: 'Evening (19:00–00:00)', startTime: '19:00:00', endTime: '23:59:59' },
-    { value: 'overnight', label: 'Overnight (00:00–06:00)', startTime: '00:00:00', endTime: '06:00:00' },
-    { value: 'weekend', label: 'Weekend (Saturday & Sunday)', startTime: '00:00:00', endTime: '23:59:59' }
-  ];
 
   // Helper function to validate time range
   const validateTimeRange = (startTime, endTime) => {
-    if (!startTime || !endTime) return true; // Allow empty values
+    if (!startTime || !endTime) return true;
     
     const start = new Date(`2000-01-01T${startTime}`);
     const end = new Date(`2000-01-01T${endTime}`);
@@ -278,7 +239,6 @@ const FilterPanel = ({
     return end > start;
   };
 
-  // Update start time with validation
   const handleStartTimeChange = (time) => {
     setLocalStartTime(time);
     setTimeError('');
@@ -290,7 +250,6 @@ const FilterPanel = ({
     }
   };
 
-  // Update end time with validation
   const handleEndTimeChange = (time) => {
     setLocalEndTime(time);
     setTimeError('');
@@ -304,7 +263,6 @@ const FilterPanel = ({
 
   // Helper functions for timezone-safe date handling
   const convertLocalToUTCDateString = (localDate) => {
-    // Convert local date to UTC date string (YYYY-MM-DD)
     const utcDate = new Date(Date.UTC(
       localDate.getFullYear(),
       localDate.getMonth(),
@@ -314,15 +272,12 @@ const FilterPanel = ({
   };
 
   const convertUTCToLocalDate = (utcDateString) => {
-    // Convert UTC date string to local Date object for display
     if (!utcDateString) return null;
     const [year, month, day] = utcDateString.split('-').map(Number);
-    // Create date in local timezone from UTC components
     return new Date(year, month - 1, day);
   };
 
   const getLocalDateString = (date) => {
-    // For display only - get local date string
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -335,7 +290,7 @@ const FilterPanel = ({
     return new Date(year, month - 1, day);
   };
 
-  // Initialize date range from filters (convert UTC to local for display)
+  // Initialize date range from filters
   useEffect(() => {
     const startDate = filters.startDate ? convertUTCToLocalDate(filters.startDate) : null;
     const endDate = filters.endDate ? convertUTCToLocalDate(filters.endDate) : null;
@@ -353,7 +308,6 @@ const FilterPanel = ({
     setLocalDuration(filters.duration || '');
     setShowFlaggedOnly(filters.showFlaggedOnly || false);
     
-    // Initialize original times ref if not already set and no shift is selected
     if (!filters.shiftId && !originalTimesRef.current.startTime && !originalTimesRef.current.endTime) {
       originalTimesRef.current = {
         startTime: filters.startTime || '',
@@ -362,24 +316,44 @@ const FilterPanel = ({
     }
   }, [filters.startTime, filters.endTime, filters.duration, filters.showFlaggedOnly, filters.shiftId]);
 
-  // Sync local shift state with Redux state when filters change (including reset)
   useEffect(() => {
-    // Update when shiftId changes in Redux (including when reset to null)
     if (filters.shiftId !== currentShiftId) {
       setCurrentShiftId(filters.shiftId || '');
       setLocalShiftId(filters.shiftId || '');
     }
   }, [filters.shiftId, currentShiftId]);
 
-  // Sync local predefined filter state with Redux state when filters change (including reset)
   useEffect(() => {
-    // Update when predefinedFilterId changes in Redux (including when reset to null)
     if (filters.predefinedFilterId !== currentPredefinedFilterId) {
       setCurrentPredefinedFilterId(filters.predefinedFilterId || '');
     }
   }, [filters.predefinedFilterId, currentPredefinedFilterId]);
 
-  // Close date picker when clicking outside
+  // Sync status state with Redux filters.status (for V2) - only when status changes externally
+  // IMPORTANT: This should NOT interfere when onlyActive is true, as "Only Active" mode takes precedence
+  useEffect(() => {
+    // Skip sync if we're manually updating status or if onlyActive is true
+    if (isManuallyUpdatingStatus.current || onlyActive) {
+      return;
+    }
+    
+    // Only sync if filters.status changes and it's different from our current state
+    // This prevents infinite loops by only updating when Redux state changes externally
+    if (filters.status === 'active' || filters.status === 'inactive') {
+      // If status is set in Redux, update local state
+      if (activeStatus !== filters.status) {
+        setActiveStatus(filters.status);
+        setOnlyActive(false); // Ensure onlyActive is off when using specific status
+      }
+    } else if (filters.status === null) {
+      // If status is null (all), reset to 'all'
+      if (activeStatus !== 'all') {
+        setActiveStatus('all');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.status, onlyActive]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (calendarRef.current && !calendarRef.current.contains(event.target)) {
@@ -393,9 +367,6 @@ const FilterPanel = ({
     };
   }, []);
 
-  // No collapse/expand behavior
-
-  // Position the calendar above all components using a portal
   useEffect(() => {
     const updatePosition = () => {
       if (showDatePicker && dateButtonRef.current) {
@@ -419,7 +390,7 @@ const FilterPanel = ({
     };
   }, [showDatePicker]);
 
-  // Date range selection handler - USING UTC DATES
+  // Date range selection handler
   const handleDateRangeSelection = (startDateUTC, endDateUTC) => {
     console.log('UTC Date range selected:', startDateUTC, 'to', endDateUTC);
     
@@ -427,31 +398,19 @@ const FilterPanel = ({
       handleDateRangeSelect(startDateUTC, endDateUTC);
     } else {
       dispatch(setFilter({ 
-        startDate: startDateUTC,  // Store UTC dates in Redux
+        startDate: startDateUTC,
         endDate: endDateUTC,
         date: null,
         daypart: 'none'
       }));
       
-      if (fetchAudioSegments) {
-        reduxDispatch(fetchAudioSegments({ 
-          channelId, 
-          startDate: startDateUTC,  // Send UTC dates to API
-          endDate: endDateUTC,
-          startTime: filters.startTime,
-          endTime: filters.endTime,
-          daypart: 'none',
-          searchText: filters.searchText,
-          searchIn: filters.searchIn,
-          shiftId: filters.shiftId,
-          predefinedFilterId: filters.predefinedFilterId,
-          duration: filters.duration,
-          status: filters.status,
-          recognition_status: filters.recognition_status,
-          has_content: filters.has_content,
-          page: 1
-        }));
-      }
+      applyFiltersV2({
+        ...filters,
+        startDate: startDateUTC,
+        endDate: endDateUTC,
+        date: null,
+        daypart: 'none'
+      }, currentShiftId);
     }
   };
 
@@ -474,7 +433,6 @@ const FilterPanel = ({
     }
   };
 
-  // Generate calendar days for current month/year
   const generateCalendarDays = () => {
     const firstDay = new Date(currentYear, currentMonth, 1);
     const lastDay = new Date(currentYear, currentMonth + 1, 0);
@@ -482,7 +440,6 @@ const FilterPanel = ({
     
     const days = [];
     
-    // Previous month days
     const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
     for (let i = startingDay - 1; i >= 0; i--) {
       const date = new Date(currentYear, currentMonth - 1, prevMonthLastDay - i);
@@ -493,7 +450,6 @@ const FilterPanel = ({
       });
     }
     
-    // Current month days
     for (let i = 1; i <= lastDay.getDate(); i++) {
       const date = new Date(currentYear, currentMonth, i);
       days.push({
@@ -506,7 +462,6 @@ const FilterPanel = ({
     return days;
   };
 
-  // Check if date is in selected range
   const isDateInRange = (date) => {
     if (!dateRange.start || !dateRange.end) return false;
     
@@ -518,7 +473,6 @@ const FilterPanel = ({
     return dateObj >= startDate && dateObj <= endDate;
   };
 
-  // Check if date is range start/end
   const isRangeStart = (date) => {
     const dateString = getLocalDateString(date);
     return dateString === dateRange.start;
@@ -529,24 +483,20 @@ const FilterPanel = ({
     return dateString === dateRange.end;
   };
 
-  // Calendar date selection - CONVERT TO UTC FOR BACKEND
   const handleDateClick = (date) => {
     const localDateString = getLocalDateString(date);
     const utcDateString = convertLocalToUTCDateString(date);
     
     if (!dateRange.start) {
-      // First click
       setDateRange({
         start: localDateString,
         end: null,
         selecting: true
       });
     } else if (dateRange.selecting) {
-      // Second click - complete selection
       let finalStartUTC = convertLocalToUTCDateString(parseDateString(dateRange.start));
       let finalEndUTC = utcDateString;
       
-      // Ensure chronological order
       if (new Date(utcDateString) < new Date(finalStartUTC)) {
         finalStartUTC = utcDateString;
         finalEndUTC = convertLocalToUTCDateString(parseDateString(dateRange.start));
@@ -558,10 +508,8 @@ const FilterPanel = ({
         selecting: false
       });
       
-      // Send UTC dates to backend
       handleDateRangeSelection(finalStartUTC, finalEndUTC);
     } else {
-      // Start new selection
       setDateRange({
         start: localDateString,
         end: null,
@@ -570,7 +518,6 @@ const FilterPanel = ({
     }
   };
 
-  // Format date for display
   const formatDateRangeDisplay = () => {
     if (dateRange.start && dateRange.end) {
       return `${dateRange.start} to ${dateRange.end}`;
@@ -580,7 +527,6 @@ const FilterPanel = ({
     return 'Select date range';
   };
 
-  // Clear date range
   const clearDateRange = () => {
     setDateRange({ start: null, end: null, selecting: false });
     handleDateRangeSelection(null, null);
@@ -592,12 +538,10 @@ const FilterPanel = ({
     }
   };
 
-  // Get today's date in local format for the calendar
   const getTodayDateString = () => {
     return getLocalDateString(new Date());
   };
 
-  // Handle show flagged only checkbox change
   const handleShowFlaggedOnlyChange = (checked) => {
     setShowFlaggedOnly(checked);
     
@@ -607,51 +551,166 @@ const FilterPanel = ({
     };
     
     dispatch(setFilter(newFilters));
+    applyFiltersV2(newFilters, currentShiftId);
+  };
+
+  // V2 Filter handlers
+  const handleOnlyActiveToggle = (checked) => {
+    console.log('🔄 handleOnlyActiveToggle called with checked:', checked);
+    console.log('📊 Current state before update:', { onlyActive, activeStatus, filtersStatus: filters.status });
     
-    // Trigger API fetch immediately when checkbox is toggled
-    if (fetchAudioSegments && currentShiftId) {
+    // Set flag to prevent useEffect from interfering
+    isManuallyUpdatingStatus.current = true;
+    
+    const newOnlyActive = checked;
+    // When turning on "Only Active", always set status to 'active' and reset activeStatus to 'all'
+    // This ensures "Only Active" takes precedence and hides other status options immediately
+    // When turning off, restore to the previous activeStatus (or 'all' if it was 'all')
+    const newActiveStatus = checked ? 'all' : activeStatus;
+    
+    console.log('📝 Will update to:', { newOnlyActive, newActiveStatus });
+    
+    // Update state immediately - React will batch these updates
+    // IMPORTANT: Set onlyActive first so the UI condition {!onlyActive && ...} works correctly
+    setOnlyActive(newOnlyActive);
+    setActiveStatus(newActiveStatus);
+    
+    // Update Redux filters.status to sync with other components
+    // "Only Active" always means status='active' in the API, regardless of previous activeStatus value
+    // This ensures that even if "Active" was selected before, "Only Active" will work correctly
+    const statusForRedux = checked ? 'active' : (newActiveStatus === 'all' ? null : newActiveStatus);
+    
+    console.log('🔴 Setting Redux status to:', statusForRedux);
+    dispatch(setFilter({ status: statusForRedux }));
+    
+    // Apply filters with the new state values
+    // When onlyActive is true, status will be 'active' regardless of activeStatus
+    applyFiltersV2WithStatus(filters, currentShiftId, newOnlyActive, newActiveStatus);
+    
+    // Reset flag after a short delay to allow state updates to complete
+    setTimeout(() => {
+      isManuallyUpdatingStatus.current = false;
+      console.log('✅ State update complete, flag reset');
+    }, 100);
+  };
+
+  const handleActiveStatusChange = (status) => {
+    const newActiveStatus = status;
+    const newOnlyActive = false; // Turn off only active when selecting specific status
+    
+    setActiveStatus(newActiveStatus);
+    setOnlyActive(newOnlyActive);
+    
+    // Update Redux filters.status to sync with other components
+    const statusForRedux = newActiveStatus === 'all' ? null : newActiveStatus;
+    dispatch(setFilter({ status: statusForRedux }));
+    
+    // Apply filters with the new state values
+    applyFiltersV2WithStatus(filters, currentShiftId, newOnlyActive, newActiveStatus);
+  };
+
+  const handleOnlyAnnouncersToggle = (checked) => {
+    setOnlyAnnouncers(checked);
+    if (checked) {
+      setSelectedContentTypes([]); // Clear selected content types when only announcers is on
+    }
+    applyFiltersV2(filters, currentShiftId);
+  };
+
+  const handleContentTypeToggle = (contentType, checked) => {
+    if (checked) {
+      setSelectedContentTypes(prev => [...prev, contentType]);
+    } else {
+      setSelectedContentTypes(prev => prev.filter(type => type !== contentType));
+    }
+    setOnlyAnnouncers(false); // Turn off only announcers when selecting specific content types
+    applyFiltersV2(filters, currentShiftId);
+  };
+
+  // Helper function to determine status parameter
+  const getStatusParam = (onlyActiveValue, activeStatusValue) => {
+    if (onlyActiveValue) {
+      return 'active'; // Only active
+    } else if (activeStatusValue === 'active') {
+      return 'active';
+    } else if (activeStatusValue === 'inactive') {
+      return 'inactive';
+    }
+    return null;
+  };
+
+  // Apply filters using V2 API with explicit status parameters
+  const applyFiltersV2WithStatus = (filterState, shiftId, onlyActiveValue, activeStatusValue) => {
+    let startDatetime = null;
+    let endDatetime = null;
+
+    // Calculate datetime from date range and time
+    if (filterState.startDate && filterState.endDate) {
+      const startTime = filterState.startTime || '00:00:00';
+      const endTime = filterState.endTime || '23:59:59';
+      startDatetime = convertLocalToUTC(filterState.startDate, startTime);
+      endDatetime = convertLocalToUTC(filterState.endDate, endTime);
+    } else if (filterState.date) {
+      const startTime = filterState.startTime || '00:00:00';
+      const endTime = filterState.endTime || '23:59:59';
+      startDatetime = convertLocalToUTC(filterState.date, startTime);
+      endDatetime = convertLocalToUTC(filterState.date, endTime);
+    }
+
+    // Determine status - API expects 'active' or 'inactive' as strings
+    const statusParam = getStatusParam(onlyActiveValue, activeStatusValue);
+
+    // Determine content types
+    let contentTypesParam = [];
+    if (onlyAnnouncers) {
+      // Filter to only "Announcer" content type
+      contentTypesParam = ['Announcer'];
+    } else if (selectedContentTypes.length > 0) {
+      contentTypesParam = selectedContentTypes;
+    }
+
+    // Get duration value
+    let durationValue = null;
+    if (localDuration && localDuration.toString().trim() !== '') {
+      const parsed = parseInt(localDuration.toString().trim(), 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        durationValue = parsed;
+      }
+    }
+
+    if (fetchAudioSegments) {
+      // fetchAudioSegments prop should be fetchAudioSegmentsV2 function
       reduxDispatch(fetchAudioSegments({
         channelId,
-        date: newFilters.date,
-        startDate: newFilters.startDate,
-        endDate: newFilters.endDate,
-        startTime: newFilters.startTime,
-        endTime: newFilters.endTime,
-        daypart: newFilters.daypart,
-        searchText: newFilters.searchText,
-        searchIn: newFilters.searchIn,
-        shiftId: newFilters.shiftId,
-        predefinedFilterId: null,
-        duration: newFilters.duration,
-        showFlaggedOnly: checked,
-        status: filters.status,
-        recognition_status: filters.recognition_status,
-        has_content: filters.has_content,
-        page: 1
+        startDatetime,
+        endDatetime,
+        page: 1,
+        shiftId: shiftId || filterState.shiftId || null,
+        predefinedFilterId: filterState.predefinedFilterId || null,
+        contentTypes: contentTypesParam,
+        status: statusParam,
+        searchText: filterState.searchText || localSearchText || null,
+        searchIn: filterState.searchIn || localSearchIn || null
       }));
     }
   };
 
-  // Wrapper function to handle Apply button click with duration
+  // Apply filters using V2 API (uses current state values)
+  const applyFiltersV2 = (filterState, shiftId) => {
+    applyFiltersV2WithStatus(filterState, shiftId, onlyActive, activeStatus);
+  };
+
+  // Wrapper function to handle Apply button click
   const handleApplyWithDuration = () => {
-    // Get duration value and convert to number (handle empty string, null, undefined)
     let durationValue = null;
     
     if (localDuration && localDuration.toString().trim() !== '') {
       const parsed = parseInt(localDuration.toString().trim(), 10);
-      // Only use if it's a valid positive number
       if (!isNaN(parsed) && parsed > 0) {
         durationValue = parsed;
       }
     }
     
-    console.log('🔍 Apply clicked - Duration processing:', {
-      localDuration,
-      durationValue,
-      type: typeof durationValue
-    });
-    
-    // Prepare complete filter update with time and duration
     const timeFilters = {
       startTime: localStartTime ? localStartTime + ':00' : '',
       endTime: localEndTime ? localEndTime + ':00' : '',
@@ -660,55 +719,17 @@ const FilterPanel = ({
       showFlaggedOnly: currentShiftId ? showFlaggedOnly : false
     };
     
-    // Update Redux filters with time and duration
     dispatch(setFilter(timeFilters));
     
-    // Prepare complete filter object for API call
     const completeFilters = {
       ...filters,
       ...timeFilters
     };
     
-    console.log('🔍 Calling fetchAudioSegments with duration:', durationValue);
-    
-    // Directly call fetchAudioSegments with all current filters plus duration
-    // This ensures duration is included in the API call immediately
-    if (fetchAudioSegments) {
-      const apiParams = {
-        channelId,
-        date: completeFilters.date,
-        startDate: completeFilters.startDate,
-        endDate: completeFilters.endDate,
-        startTime: completeFilters.startTime,
-        endTime: completeFilters.endTime,
-        daypart: completeFilters.daypart,
-        searchText: completeFilters.searchText,
-        searchIn: completeFilters.searchIn,
-        shiftId: completeFilters.shiftId,
-        predefinedFilterId: completeFilters.predefinedFilterId,
-        status: filters.status,
-        recognition_status: filters.recognition_status,
-        has_content: filters.has_content,
-        page: 1
-      };
-      
-      // Only add duration if it has a valid value
-      if (durationValue !== null && durationValue !== undefined) {
-        apiParams.duration = durationValue;
-      }
-      
-      // Only add showFlaggedOnly if shift is selected
-      if (completeFilters.shiftId && showFlaggedOnly) {
-        apiParams.showFlaggedOnly = true;
-      }
-      
-      console.log('🔍 Final API params:', apiParams);
-      
-      reduxDispatch(fetchAudioSegments(apiParams));
-    }
+    applyFiltersV2(completeFilters, currentShiftId);
   };
 
-  // Compact Calendar component for sidebar
+  // Compact Calendar component
   const CompactDateRangeCalendar = () => {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     
@@ -800,18 +821,360 @@ const FilterPanel = ({
     );
   };
 
+  // Toggle component for switches - matches the image design
+  const ToggleSwitch = ({ checked, onChange, label }) => {
+    return (
+      <div className={`flex items-center justify-between py-2 px-3 rounded transition-colors ${
+        checked ? 'bg-blue-600' : 'hover:bg-gray-50'
+      }`}>
+        <span className={`text-sm ${checked ? 'text-white font-medium' : 'text-gray-700'}`}>{label}</span>
+        <button
+          type="button"
+          onClick={() => onChange(!checked)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+            checked ? 'bg-white' : 'bg-gray-300'
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
+              checked ? 'translate-x-6 bg-blue-600' : 'translate-x-1 bg-white'
+            }`}
+          />
+        </button>
+      </div>
+    );
+  };
+
   // COMPACT VERSION FOR SIDEBAR
   if (compact) {
     return (
       <div className="bg-transparent" ref={filterRef}>
         <div className="space-y-4 bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+          {/* Only Active Section */}
+          <div className="space-y-2 border-b border-gray-200 pb-3">
+            <ToggleSwitch
+              checked={onlyActive}
+              onChange={handleOnlyActiveToggle}
+              label="Only Active"
+            />
+            {!onlyActive && (
+              <div className="space-y-1 pl-4">
+                <ToggleSwitch
+                  checked={activeStatus === 'all'}
+                  onChange={(checked) => {
+                    if (checked) {
+                      handleActiveStatusChange('all');
+                    }
+                  }}
+                  label="All"
+                />
+                <ToggleSwitch
+                  checked={activeStatus === 'active'}
+                  onChange={(checked) => {
+                    if (checked) {
+                      handleActiveStatusChange('active');
+                    }
+                  }}
+                  label="Active"
+                />
+                <ToggleSwitch
+                  checked={activeStatus === 'inactive'}
+                  onChange={(checked) => {
+                    if (checked) {
+                      handleActiveStatusChange('inactive');
+                    }
+                  }}
+                  label="Inactive"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Only Announcers Section */}
+          <div className="space-y-2 border-b border-gray-200 pb-3">
+            <ToggleSwitch
+              checked={onlyAnnouncers}
+              onChange={handleOnlyAnnouncersToggle}
+              label="Only Announcers"
+            />
+            {!onlyAnnouncers && (
+              <div className="space-y-1 pl-4">
+                <ToggleSwitch
+                  checked={selectedContentTypes.length === 0}
+                  onChange={() => {
+                    setSelectedContentTypes([]);
+                    applyFiltersV2(filters, currentShiftId);
+                  }}
+                  label="All"
+                />
+                {contentTypePrompt?.loading ? (
+                  <div className="text-xs text-gray-500 py-2">Loading content types...</div>
+                ) : contentTypePrompt?.contentTypes && contentTypePrompt.contentTypes.length > 0 ? (
+                  contentTypePrompt.contentTypes.map((contentType) => (
+                    <ToggleSwitch
+                      key={contentType}
+                      checked={selectedContentTypes.includes(contentType)}
+                      onChange={(checked) => handleContentTypeToggle(contentType, checked)}
+                      label={contentType}
+                    />
+                  ))
+                ) : (
+                  <div className="text-xs text-gray-500 py-2">No content types available</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Shifts Dropdown */}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-gray-700">Shift</label>
+            <select
+              value={currentShiftId}
+              onChange={(e) => handleShiftChange(e.target.value || null)}
+              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All Shifts</option>
+              {shiftsLoading ? (
+                <option disabled>Loading shifts...</option>
+              ) : (
+                shifts.map(shift => (
+                  <option key={shift.id} value={shift.id}>
+                    {shift.name} ({formatShiftTime(shift)})
+                  </option>
+                ))
+              )}
+            </select>
+            {currentShiftId && (
+              <div className="flex items-center space-x-2 mt-2">
+                <input
+                  type="checkbox"
+                  id="showFlaggedOnly"
+                  checked={showFlaggedOnly}
+                  onChange={(e) => handleShowFlaggedOnlyChange(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="showFlaggedOnly" className="text-xs text-gray-700 cursor-pointer">
+                  Show Flagged Only
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Predefined Filters Dropdown */}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-gray-700">Predefined Filter</label>
+            <select
+              value={currentPredefinedFilterId}
+              onChange={(e) => handlePredefinedFilterChange(e.target.value || null)}
+              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">None</option>
+              {predefinedLoading ? (
+                <option disabled>Loading filters...</option>
+              ) : (
+                predefinedFilters.map(f => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
+          {/* Date Range Picker */}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-gray-700">Date Range</label>
+            <div className="relative">
+              <button
+                ref={dateButtonRef}
+                onClick={() => setShowDatePicker(!showDatePicker)}
+                className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-left flex justify-between items-center"
+              >
+                <span className={dateRange.start ? 'text-gray-900' : 'text-gray-500 truncate'}>
+                  {formatDateRangeDisplay()}
+                </span>
+                <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0 ml-2" />
+              </button>
+              {showDatePicker && createPortal(
+                (
+                  <div className="fixed inset-0 z-[10000] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/30" onClick={() => setShowDatePicker(false)} />
+                    <div ref={calendarRef} className="relative z-[10001]">
+                      <CompactDateRangeCalendar />
+                    </div>
+                  </div>
+                ),
+                document.body
+              )}
+            </div>
+          </div>
+
+          {/* Time inputs */}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-gray-700">Time Range</label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Start</label>
+                <input
+                  type="time"
+                  value={localStartTime}
+                  onChange={(e) => handleStartTimeChange(e.target.value)}
+                  onKeyDown={preventKeyboardInput}
+                  className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">End</label>
+                <input
+                  type="time"
+                  value={localEndTime}
+                  onChange={(e) => handleEndTimeChange(e.target.value)}
+                  onKeyDown={preventKeyboardInput}
+                  className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {timeError && (
+            <div className="p-2 text-xs text-red-600 bg-red-50 rounded border border-red-200">
+              {timeError}
+            </div>
+          )}
+
+          {/* Duration Filter */}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-gray-700">Duration (seconds)</label>
+            <input
+              type="number"
+              value={localDuration}
+              onChange={(e) => setLocalDuration(e.target.value)}
+              placeholder="Enter duration in seconds"
+              min="0"
+              step="1"
+              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex space-x-2 pt-2">
+            <button
+              onClick={handleResetFilters}
+              className="flex-1 bg-gray-200 text-gray-700 text-xs px-2 py-1.5 rounded hover:bg-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-500 transition-colors"
+            >
+              Reset
+            </button>
+            <button
+              onClick={handleApplyWithDuration}
+              className="flex-1 bg-blue-500 text-white text-xs px-2 py-1.5 rounded hover:bg-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Header version - similar structure but horizontal layout
+  if (isInHeader) {
+    return (
+      <div className="bg-white border-t border-gray-200" ref={filterRef}>
+        <div className="border-t border-gray-200 p-4 bg-white">
+          <div className="flex flex-row items-end gap-4 mb-4">
+
+            {/* Only Active Section - Compact */}
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+              <div className="space-y-1 border border-gray-300 rounded p-2 bg-white">
+                <ToggleSwitch
+                  checked={onlyActive}
+                  onChange={handleOnlyActiveToggle}
+                  label="Only Active"
+                />
+                {!onlyActive && (
+                  <>
+                    <div className="border-t border-gray-200 mt-1 pt-1">
+                      <ToggleSwitch
+                        checked={activeStatus === 'all'}
+                        onChange={(checked) => {
+                          if (checked) {
+                            handleActiveStatusChange('all');
+                          }
+                        }}
+                        label="All"
+                      />
+                      <ToggleSwitch
+                        checked={activeStatus === 'active'}
+                        onChange={(checked) => {
+                          if (checked) {
+                            handleActiveStatusChange('active');
+                          }
+                        }}
+                        label="Active"
+                      />
+                      <ToggleSwitch
+                        checked={activeStatus === 'inactive'}
+                        onChange={(checked) => {
+                          if (checked) {
+                            handleActiveStatusChange('inactive');
+                          }
+                        }}
+                        label="Inactive"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Only Announcers Section - Compact */}
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Content Type</label>
+              <div className="space-y-1 border border-gray-300 rounded p-2 bg-white max-h-64 overflow-y-auto">
+                <ToggleSwitch
+                  checked={onlyAnnouncers}
+                  onChange={handleOnlyAnnouncersToggle}
+                  label="Only Announcers"
+                />
+                {!onlyAnnouncers && (
+                  <>
+                    <div className="border-t border-gray-200 mt-1 pt-1">
+                      <ToggleSwitch
+                        checked={selectedContentTypes.length === 0}
+                        onChange={() => {
+                          setSelectedContentTypes([]);
+                          applyFiltersV2(filters, currentShiftId);
+                        }}
+                        label="All"
+                      />
+                      {contentTypePrompt?.loading ? (
+                        <div className="text-xs text-gray-500 py-2">Loading content types...</div>
+                      ) : contentTypePrompt?.contentTypes && contentTypePrompt.contentTypes.length > 0 ? (
+                        contentTypePrompt.contentTypes.map((contentType) => (
+                          <ToggleSwitch
+                            key={contentType}
+                            checked={selectedContentTypes.includes(contentType)}
+                            onChange={(checked) => handleContentTypeToggle(contentType, checked)}
+                            label={contentType}
+                          />
+                        ))
+                      ) : (
+                        <div className="text-xs text-gray-500 py-2">No content types available</div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
             {/* Shifts Dropdown */}
-            <div className="space-y-2">
-              <label className="block text-xs font-medium text-gray-700">Shift</label>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Shift</label>
               <select
                 value={currentShiftId}
                 onChange={(e) => handleShiftChange(e.target.value || null)}
-                className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
               >
                 <option value="">All Shifts</option>
                 {shiftsLoading ? (
@@ -819,22 +1182,21 @@ const FilterPanel = ({
                 ) : (
                   shifts.map(shift => (
                     <option key={shift.id} value={shift.id}>
-                      {shift.name} ({formatShiftTime(shift)})
+                      {shift.name} - {(shift.start_time || '').substring(0, 5)} - {(shift.end_time || '').substring(0, 5)}
                     </option>
                   ))
                 )}
               </select>
-              {/* Show Flagged Only checkbox - only visible when shift is selected */}
               {currentShiftId && (
                 <div className="flex items-center space-x-2 mt-2">
                   <input
                     type="checkbox"
-                    id="showFlaggedOnly"
+                    id="showFlaggedOnlyHeader"
                     checked={showFlaggedOnly}
                     onChange={(e) => handleShowFlaggedOnlyChange(e.target.checked)}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                  <label htmlFor="showFlaggedOnly" className="text-xs text-gray-700 cursor-pointer">
+                  <label htmlFor="showFlaggedOnlyHeader" className="text-xs text-gray-700 cursor-pointer">
                     Show Flagged Only
                   </label>
                 </div>
@@ -842,12 +1204,12 @@ const FilterPanel = ({
             </div>
 
             {/* Predefined Filters Dropdown */}
-            <div className="space-y-2">
-              <label className="block text-xs font-medium text-gray-700">Predefined Filter</label>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Predefined Filter</label>
               <select
                 value={currentPredefinedFilterId}
                 onChange={(e) => handlePredefinedFilterChange(e.target.value || null)}
-                className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
               >
                 <option value="">None</option>
                 {predefinedLoading ? (
@@ -863,18 +1225,17 @@ const FilterPanel = ({
             </div>
 
             {/* Date Range Picker */}
-            <div className="space-y-2">
-              <label className="block text-xs font-medium text-gray-700">Date Range</label>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Date Range</label>
               <div className="relative">
                 <button
-                  ref={dateButtonRef}
                   onClick={() => setShowDatePicker(!showDatePicker)}
-                  className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-left flex justify-between items-center"
+                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-left flex justify-between items-center"
                 >
-                  <span className={dateRange.start ? 'text-gray-900' : 'text-gray-500 truncate'}>
+                  <span className={dateRange.start ? 'text-gray-900' : 'text-gray-500'}>
                     {formatDateRangeDisplay()}
                   </span>
-                  <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0 ml-2" />
+                  <Calendar className="w-4 h-4 text-gray-400" />
                 </button>
                 {showDatePicker && createPortal(
                   (
@@ -891,238 +1252,74 @@ const FilterPanel = ({
             </div>
 
             {/* Time inputs */}
-            <div className="space-y-2">
-              <label className="block text-xs font-medium text-gray-700">Time Range</label>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Start</label>
-                  <input
-                    type="time"
-                    value={localStartTime}
-                    onChange={(e) => handleStartTimeChange(e.target.value)}
-                    onKeyDown={preventKeyboardInput}
-                    className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">End</label>
-                  <input
-                    type="time"
-                    value={localEndTime}
-                    onChange={(e) => handleEndTimeChange(e.target.value)}
-                    onKeyDown={preventKeyboardInput}
-                    className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
+              <input
+                type="time"
+                value={localStartTime}
+                onChange={(e) => handleStartTimeChange(e.target.value)}
+                onKeyDown={preventKeyboardInput}
+                className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              />
             </div>
 
-            {/* Error message */}
-            {timeError && (
-              <div className="p-2 text-xs text-red-600 bg-red-50 rounded border border-red-200">
-                {timeError}
-              </div>
-            )}
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
+              <input
+                type="time"
+                value={localEndTime}
+                onChange={(e) => handleEndTimeChange(e.target.value)}
+                onKeyDown={preventKeyboardInput}
+                className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
 
-            {/* Duration Filter */}
-            <div className="space-y-2">
-              <label className="block text-xs font-medium text-gray-700">Duration (seconds)</label>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Duration (seconds)</label>
               <input
                 type="number"
                 value={localDuration}
                 onChange={(e) => setLocalDuration(e.target.value)}
-                placeholder="Enter duration in seconds"
+                placeholder="Enter duration"
                 min="0"
                 step="1"
-                className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-
-            {/* Action Buttons */}
-            <div className="flex space-x-2 pt-2">
-              <button
-                onClick={handleResetFilters}
-                className="flex-1 bg-gray-200 text-gray-700 text-xs px-2 py-1.5 rounded hover:bg-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-500 transition-colors"
-              >
-                Reset
-              </button>
-              <button
-                onClick={handleApplyWithDuration}
-                className="flex-1 bg-blue-500 text-white text-xs px-2 py-1.5 rounded hover:bg-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
-              >
-                Apply
-              </button>
-            </div>
           </div>
+
+          {timeError && (
+            <div className="mb-3 p-2 text-xs text-red-600 bg-red-50 rounded border border-red-200">
+              {timeError}
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex justify-between items-center">
+            <button
+              onClick={handleResetFilters}
+              className="flex items-center px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
+            >
+              <RotateCcw className="w-3 h-3 mr-1" />
+              Reset
+            </button>
+            <button
+              onClick={handleApplyWithDuration}
+              className="flex items-center px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
-// Compact version for header - Always open, single line
-if (isInHeader) {
-    return (
-      <div className="bg-white border-t border-gray-200" ref={filterRef}>
-        <div className="border-t border-gray-200 p-4 bg-white">
-          {/* All filters in single line */}
-          <div className="flex flex-row items-end gap-4 mb-4">
-
-              {/* NEW: Shifts Dropdown */}
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Shift</label>
-                <select
-                  value={currentShiftId}
-                  onChange={(e) => handleShiftChange(e.target.value || null)}
-                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-                >
-                  <option value="">All Shifts</option>
-                  {shiftsLoading ? (
-                    <option disabled>Loading shifts...</option>
-                  ) : (
-                    shifts.map(shift => (
-                      <option key={shift.id} value={shift.id}>
-                        {shift.name} - {(shift.start_time || '').substring(0, 5)} - {(shift.end_time || '').substring(0, 5)} {shift.days_of_week ? `(${shift.days_of_week})` : ''}
-                      </option>
-                    ))
-                  )}
-                </select>
-                {/* Show Flagged Only checkbox - only visible when shift is selected */}
-                {currentShiftId && (
-                  <div className="flex items-center space-x-2 mt-2">
-                    <input
-                      type="checkbox"
-                      id="showFlaggedOnlyHeader"
-                      checked={showFlaggedOnly}
-                      onChange={(e) => handleShowFlaggedOnlyChange(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <label htmlFor="showFlaggedOnlyHeader" className="text-xs text-gray-700 cursor-pointer">
-                      Show Flagged Only
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              {/* Predefined Filters Dropdown */}
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Predefined Filter</label>
-                <select
-                  value={currentPredefinedFilterId}
-                  onChange={(e) => handlePredefinedFilterChange(e.target.value || null)}
-                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-                >
-                  <option value="">None</option>
-                  {predefinedLoading ? (
-                    <option disabled>Loading filters...</option>
-                  ) : (
-                    predefinedFilters.map(f => (
-                      <option key={f.id} value={f.id}>
-                        {f.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
-
-              {/* Date Range Picker */}
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Date Range</label>
-                <div className="relative">
-                  <button
-                    onClick={() => setShowDatePicker(!showDatePicker)}
-                    className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-left flex justify-between items-center"
-                  >
-                    <span className={dateRange.start ? 'text-gray-900' : 'text-gray-500'}>
-                      {formatDateRangeDisplay()}
-                    </span>
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                  </button>
-                  {showDatePicker && createPortal(
-                    (
-                      <div className="fixed inset-0 z-[10000] flex items-center justify-center">
-                        <div className="absolute inset-0 bg-black/30" onClick={() => setShowDatePicker(false)} />
-                        <div ref={calendarRef} className="relative z-[10001]">
-                          <CompactDateRangeCalendar />
-                        </div>
-                      </div>
-                    ),
-                    document.body
-                  )}
-                </div>
-              </div>
-
-              {/* Time inputs */}
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
-                <input
-                  type="time"
-                  value={localStartTime}
-                  onChange={(e) => handleStartTimeChange(e.target.value)}
-                  onKeyDown={preventKeyboardInput}
-                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
-                <input
-                  type="time"
-                  value={localEndTime}
-                  onChange={(e) => handleEndTimeChange(e.target.value)}
-                  onKeyDown={preventKeyboardInput}
-                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-600 mb-1">Duration (seconds)</label>
-                <input
-                  type="number"
-                  value={localDuration}
-                  onChange={(e) => setLocalDuration(e.target.value)}
-                  placeholder="Enter duration"
-                  min="0"
-                  step="1"
-                  className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-            </div>
-
-            {/* Error message */}
-            {timeError && (
-              <div className="mb-3 p-2 text-xs text-red-600 bg-red-50 rounded border border-red-200">
-                {timeError}
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex justify-between items-center">
-              <button
-                onClick={handleResetFilters}
-                className="flex items-center px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
-              >
-                <RotateCcw className="w-3 h-3 mr-1" />
-                Reset
-              </button>
-              <button
-                onClick={handleApplyWithDuration}
-                className="flex items-center px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
-              >
-                Apply
-              </button>
-            </div>
-          </div>
-      </div>
-    );
-  }
-
-  // Toggle function for expanded version
+  // Expanded version - similar to compact but with expand/collapse
   const toggleFilters = () => {
     setIsExpanded(!isExpanded);
   };
 
-  // Original expanded version - All filters in single line for time section
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6" ref={filterRef}>
       <div 
@@ -1133,7 +1330,7 @@ if (isInHeader) {
           <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
             <Search className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-lg font-semibold text-blue-600">Filter Parameters</h2>
+          <h2 className="text-lg font-semibold text-blue-600">Filter Parameters V2</h2>
         </div>
         <div className="flex items-center space-x-2">
           {isExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
@@ -1143,16 +1340,97 @@ if (isInHeader) {
       {isExpanded && (
         <div className="border-t border-gray-200 p-6">
           <div className="grid grid-cols-1 gap-8">
+            {/* Status & Content Type Section */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                  <FilterIcon className="w-4 h-4 text-white" />
+                </div>
+                <h3 className="font-semibold text-gray-900">Status & Content Type</h3>
+              </div>
+
+              {/* Only Active Section */}
+              <div className="border border-gray-300 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Status</h4>
+                <ToggleSwitch
+                  checked={onlyActive}
+                  onChange={handleOnlyActiveToggle}
+                  label="Only Active"
+                />
+                {!onlyActive && (
+                  <div className="mt-2 space-y-1 pl-4 border-t border-gray-200 pt-2">
+                    <ToggleSwitch
+                      checked={activeStatus === 'all'}
+                      onChange={(checked) => {
+                        if (checked) {
+                          handleActiveStatusChange('all');
+                        }
+                      }}
+                      label="All"
+                    />
+                    <ToggleSwitch
+                      checked={activeStatus === 'active'}
+                      onChange={(checked) => {
+                        if (checked) {
+                          handleActiveStatusChange('active');
+                        }
+                      }}
+                      label="Active"
+                    />
+                    <ToggleSwitch
+                      checked={activeStatus === 'inactive'}
+                      onChange={(checked) => {
+                        if (checked) {
+                          handleActiveStatusChange('inactive');
+                        }
+                      }}
+                      label="Inactive"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Only Announcers Section */}
+              <div className="border border-gray-300 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Content Type</h4>
+                <ToggleSwitch
+                  checked={onlyAnnouncers}
+                  onChange={handleOnlyAnnouncersToggle}
+                  label="Only Announcers"
+                />
+                {!onlyAnnouncers && (
+                  <div className="mt-2 space-y-1 pl-4 border-t border-gray-200 pt-2 max-h-64 overflow-y-auto">
+                    <ToggleSwitch
+                      checked={selectedContentTypes.length === 0}
+                      onChange={() => {
+                        setSelectedContentTypes([]);
+                        applyFiltersV2(filters, currentShiftId);
+                      }}
+                      label="All"
+                    />
+                    {contentTypePrompt.contentTypes.map((contentType) => (
+                      <ToggleSwitch
+                        key={contentType}
+                        checked={selectedContentTypes.includes(contentType)}
+                        onChange={(checked) => handleContentTypeToggle(contentType, checked)}
+                        label={contentType}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Date & Time Section */}
             <div className="space-y-4">
-            <div className="flex items-center space-x-2 mb-4">
+              <div className="flex items-center space-x-2 mb-4">
                 <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
                   <Calendar className="w-4 h-4 text-white" />
                 </div>
                 <h3 className="font-semibold text-gray-900">Date & Time</h3>
               </div>
 
-              {/* NEW: Shifts Dropdown */}
+              {/* Shifts Dropdown */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Shift</label>
                 <div className="relative">
@@ -1176,7 +1454,6 @@ if (isInHeader) {
                     <ChevronDown className="h-4 w-4" />
                   </div>
                 </div>
-                {/* Show Flagged Only checkbox - only visible when shift is selected */}
                 {currentShiftId && (
                   <div className="flex items-center space-x-2 mt-3">
                     <input
@@ -1272,7 +1549,6 @@ if (isInHeader) {
                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
-
                   </div>
                   
                   {/* Error message */}
@@ -1322,4 +1598,22 @@ if (isInHeader) {
   );
 };
 
-export default FilterPanel;
+// Helper component for the missing FilterIcon
+const FilterIcon = (props) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width="16" 
+    height="16" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+    {...props}
+  >
+    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+  </svg>
+);
+
+export default FilterPanelV2;

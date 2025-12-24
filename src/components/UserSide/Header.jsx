@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Menu, Settings, ArrowLeft, FileText, BarChart3, Search, Layers, UserCog, Music, Plus, LifeBuoy,Clock, Filter, Radio, Flag, Ban } from "lucide-react";
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from "../../store/slices/authSlice";
+import { fetchContentTypePrompt } from "../../store/slices/audioSegmentsSlice";
 import ChannelSwitcher from '../ChannelSwitcher';
 
 const Header = ({
@@ -27,6 +28,12 @@ const Header = ({
   const [isChannelSelectionOpen, setIsChannelSelectionOpen] = useState(false);
   const userChannels = [];
   const { user } = useSelector((state) => state.auth);
+  const { contentTypePrompt } = useSelector((state) => state.audioSegments);
+
+  // Fetch content type prompt data on mount to get search_in options
+  useEffect(() => {
+    reduxDispatch(fetchContentTypePrompt());
+  }, [reduxDispatch]);
   const handleChannelSelect = (channel) => {
     try {
       if (channel?.id) localStorage.setItem('channelId', String(channel.id));
@@ -96,12 +103,23 @@ const Header = ({
                 onChange={(e) => setLocalSearchIn(e.target.value)}
                 className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
               >
-                <option value="transcription">Transcription</option>
-                <option value="general_topics">General Topics</option>
-                <option value="iab_topics">IAB Topics</option>
-                <option value="bucket_prompt">Bucket Prompt</option>
-                <option value="summary">Summary</option>
-                <option value="title">Title</option>
+                {contentTypePrompt?.searchInOptions && contentTypePrompt.searchInOptions.length > 0 ? (
+                  contentTypePrompt.searchInOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))
+                ) : (
+                  // Fallback to default options if API hasn't loaded yet
+                  <>
+                    <option value="transcription">Transcription</option>
+                    <option value="general_topics">General Topics</option>
+                    <option value="iab_topics">IAB Topics</option>
+                    <option value="bucket_prompt">Bucket Prompt</option>
+                    <option value="summary">Summary</option>
+                    <option value="title">Title</option>
+                  </>
+                )}
               </select>
             </div>
             <div className="flex flex-col">

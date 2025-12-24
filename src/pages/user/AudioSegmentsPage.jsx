@@ -1,16 +1,18 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Filter as FilterIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Filter as FilterIcon, ArrowLeftRight } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { fetchAudioSegments, setCurrentPlaying, setIsPlaying, setFilter, clearError } from '../../store/slices/audioSegmentsSlice';
+import { fetchAudioSegments, fetchAudioSegmentsV2, setCurrentPlaying, setIsPlaying, setFilter, clearError } from '../../store/slices/audioSegmentsSlice';
 import Header from '../../components/UserSide/Header';
 import FilterPanel from '../../components/UserSide/FilterPanel';
+import FilterPanelV2 from '../../components/UserSide/FilterPanelV2';
 import SegmentCard from '../../components/UserSide/SegmentCard';
 import SegmentShimmer from '../../components/UserSide/SegmentShimmer';
 import SummaryModal from './SummaryModal';
 import TranscriptionModal from './TranscriptionModal';
 import AudioPlayer from './AudioPlayer';
 import { formatDateForDisplay, formatTimeDisplay } from '../../utils/formatters'
+import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 import useTranscriptionPolling from '../../hooks/useTranscriptionPolling';
 import { openTrimmer } from '../../store/slices/audioTrimmerSlice';
 import AudioTrimmer from './AudioTrimmer';
@@ -66,6 +68,9 @@ const AudioSegmentsPage = () => {
   const [showToggleAllConfirm, setShowToggleAllConfirm] = useState(false);
   const [showConversionConfirm, setShowConversionConfirm] = useState(false);
   const [pendingConversion, setPendingConversion] = useState(null); // 'activeToInactive' or 'inactiveToActive'
+  
+  // Filter version state - default to V1
+  const [filterVersion, setFilterVersion] = useState('v1'); // 'v1' or 'v2'
   
   const handleTrimClick = (segment) => {
     dispatch(openTrimmer(segment));
@@ -308,8 +313,9 @@ const AudioSegmentsPage = () => {
     // Reset auto-switch flag when filters change
     hasAutoSwitchedPage.current = false;
     
-    if ((filtersToUse.startDate && filtersToUse.endDate) || filtersToUse.date) {
-      console.log('Making API call with filters:', filtersToUse);
+    // Only call V1 API if we're in V1 mode
+    if (filterVersion === 'v1' && ((filtersToUse.startDate && filtersToUse.endDate) || filtersToUse.date)) {
+      console.log('Making V1 API call with filters:', filtersToUse);
       
       dispatch(fetchAudioSegments({ 
         channelId, 
@@ -347,9 +353,9 @@ useEffect(() => {
   setLocalSearchIn(filters.searchIn || 'transcription');
 }, [filters]); 
 
-// Add this useEffect for search-specific changes
+// Add this useEffect for search-specific changes - only for V1
  useEffect(() => {
-    if (hasInitialFiltersSet.current && (filters.searchText || (filters.searchIn && filters.searchIn !== 'transcription'))) {
+    if (hasInitialFiltersSet.current && filterVersion === 'v1' && (filters.searchText || (filters.searchIn && filters.searchIn !== 'transcription'))) {
       console.log('Search filter changed:', {
         searchText: filters.searchText,
         searchIn: filters.searchIn
@@ -375,12 +381,12 @@ useEffect(() => {
         page: 1
       }));
     }
-  }, [filters.searchText, filters.searchIn, channelId]);
+  }, [filters.searchText, filters.searchIn, channelId, filterVersion]);
 
-  // Auto-switch to a page with data if current page has no segments
+  // Auto-switch to a page with data if current page has no segments - only for V1
   useEffect(() => {
-    // Only check after initial load and when not loading
-    if (!hasInitialFiltersSet.current || loading) {
+    // Only check after initial load and when not loading, and only for V1
+    if (!hasInitialFiltersSet.current || loading || filterVersion !== 'v1') {
       return;
     }
 
@@ -425,50 +431,17 @@ useEffect(() => {
       // Reset the flag when we have segments
       hasAutoSwitchedPage.current = false;
     }
-  }, [segments.length, pagination, currentPage, loading, channelId, filters, dispatch]);
+  }, [segments.length, pagination, currentPage, loading, channelId, filters, dispatch, filterVersion]);
 
   const handlePageChange = (pageNumber) => {
-  console.log('Page change requested to:', pageNumber);
-  
-  // Reset auto-switch flag when user manually changes page
-  hasAutoSwitchedPage.current = false;
-  
-  // Use the unified fetchAudioSegments with page parameter
-  dispatch(fetchAudioSegments({ 
-    channelId, 
-    date: filters.date,
-    startDate: filters.startDate,
-    endDate: filters.endDate,
-    startTime: filters.startTime,
-    endTime: filters.endTime,
-    daypart: filters.daypart,
-    searchText: filters.searchText,
-    searchIn: filters.searchIn,
-    shiftId: filters.shiftId,  // Add shiftId parameter
-    predefinedFilterId: filters.predefinedFilterId,
-    duration: filters.duration,
-    showFlaggedOnly: filters.showFlaggedOnly || false,
-    status: filters.status,
-    recognition_status: filters.recognition_status,
-    has_content: filters.has_content,
-    page: pageNumber  // Pass the page number directly
-  }));
-};
-
-
-useEffect(() => {
-  if (!isInitialLoad.current && hasInitialFiltersSet.current) {
-    // Check if time filters have actually changed
-    const timeFiltersChanged = 
-      filters.startTime !== lastFilters.current?.startTime || 
-      filters.endTime !== lastFilters.current?.endTime;
+    console.log('Page change requested to:', pageNumber);
     
-    if (timeFiltersChanged && (filters.startTime || filters.endTime)) {
-      console.log('Time filters changed, triggering API call:', {
-        startTime: filters.startTime,
-        endTime: filters.endTime
-      });
-      
+    // Reset auto-switch flag when user manually changes page
+    hasAutoSwitchedPage.current = false;
+    
+    // Use the appropriate API based on filter version
+    if (filterVersion === 'v1') {
+      // Use the unified fetchAudioSegments with page parameter
       dispatch(fetchAudioSegments({ 
         channelId, 
         date: filters.date,
@@ -486,25 +459,59 @@ useEffect(() => {
         status: filters.status,
         recognition_status: filters.recognition_status,
         has_content: filters.has_content,
-        page: 1
+        page: pageNumber
       }));
+    } else {
+    // V2 API
+    let startDatetime = null;
+    let endDatetime = null;
+    if (filters.startDate && filters.endDate) {
+      const startTime = filters.startTime || '00:00:00';
+      const endTime = filters.endTime || '23:59:59';
+      startDatetime = convertLocalToUTC(filters.startDate, startTime);
+      endDatetime = convertLocalToUTC(filters.endDate, endTime);
+    } else if (filters.date) {
+      const startTime = filters.startTime || '00:00:00';
+      const endTime = filters.endTime || '23:59:59';
+      startDatetime = convertLocalToUTC(filters.date, startTime);
+      endDatetime = convertLocalToUTC(filters.date, endTime);
+    }
+    if (startDatetime && endDatetime) {
+      // Determine status parameter from Redux filters
+      let statusParam = null;
+      if (filters.status === 'active' || filters.status === 'inactive') {
+        statusParam = filters.status;
+      }
       
-      // Update last filters
-      lastFilters.current = { ...filters };
+      dispatch(fetchAudioSegmentsV2({
+        channelId,
+        startDatetime,
+        endDatetime,
+        page: pageNumber,
+        shiftId: filters.shiftId || null,
+        predefinedFilterId: filters.predefinedFilterId || null,
+        contentTypes: [],
+        status: statusParam,
+        searchText: filters.searchText || null,
+        searchIn: filters.searchIn || null
+      }));
     }
   }
-  }, [filters.startTime, filters.endTime, channelId]);
+};
 
-  // Handle errors with toast instead of replacing entire UI
   useEffect(() => {
-    if (error) {
-      // Check if error is about flag_seconds configuration
-      if (error.includes('flag_seconds') || error.includes('Cannot filter flagged segments')) {
-        // Automatically uncheck showFlaggedOnly
-        dispatch(setFilter({ showFlaggedOnly: false }));
-        setErrorToast('This shift does not have flag duration configured. Flagged filter has been disabled.');
+    if (!isInitialLoad.current && hasInitialFiltersSet.current && filterVersion === 'v1') {
+      // Check if time filters have actually changed
+      const timeFiltersChanged = 
+        filters.startTime !== lastFilters.current?.startTime || 
+        filters.endTime !== lastFilters.current?.endTime;
+      
+      if (timeFiltersChanged && (filters.startTime || filters.endTime)) {
+        console.log('Time filters changed, triggering V1 API call:', {
+          startTime: filters.startTime,
+          endTime: filters.endTime
+        });
         
-        // Refetch data without showFlaggedOnly
         dispatch(fetchAudioSegments({ 
           channelId, 
           date: filters.date,
@@ -518,21 +525,59 @@ useEffect(() => {
           shiftId: filters.shiftId,
           predefinedFilterId: filters.predefinedFilterId,
           duration: filters.duration,
-          showFlaggedOnly: false,
+          showFlaggedOnly: filters.showFlaggedOnly || false,
           status: filters.status,
           recognition_status: filters.recognition_status,
           has_content: filters.has_content,
-          page: currentPage
+          page: 1
         }));
+        
+        // Update last filters
+        lastFilters.current = { ...filters };
+      }
+    }
+  }, [filters.startTime, filters.endTime, channelId, filterVersion]);
+
+  // Handle errors with toast instead of replacing entire UI
+  useEffect(() => {
+    if (error) {
+      // Check if error is about flag_seconds configuration
+      if (error.includes('flag_seconds') || error.includes('Cannot filter flagged segments')) {
+        // Automatically uncheck showFlaggedOnly
+        dispatch(setFilter({ showFlaggedOnly: false }));
+        setErrorToast('This shift does not have flag duration configured. Flagged filter has been disabled.');
+        
+        // Refetch data without showFlaggedOnly - only for V1
+        if (filterVersion === 'v1') {
+          dispatch(fetchAudioSegments({ 
+            channelId, 
+            date: filters.date,
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            startTime: filters.startTime,
+            endTime: filters.endTime,
+            daypart: filters.daypart,
+            searchText: filters.searchText,
+            searchIn: filters.searchIn,
+            shiftId: filters.shiftId,
+            predefinedFilterId: filters.predefinedFilterId,
+            duration: filters.duration,
+            showFlaggedOnly: false,
+            status: filters.status,
+            recognition_status: filters.recognition_status,
+            has_content: filters.has_content,
+            page: currentPage
+          }));
+        }
       } else {
         setErrorToast(error);
       }
       // Clear error after showing toast
       dispatch(clearError());
     }
-  }, [error, dispatch, channelId, filters, currentPage]);
+  }, [error, dispatch, channelId, filters, currentPage, filterVersion]);
 
-const handleSearch = () => {
+  const handleSearch = () => {
     console.log('🔍 Search button clicked - Current state:');
     console.log('  - localSearchText:', localSearchText);
     console.log('  - localSearchIn:', localSearchIn);
@@ -1296,9 +1341,63 @@ if (loading && segments.length === 0) {
             </button>
           </div>
           <div className="space-y-6">
-            {/* Status Filter - Amazon Style */}
-            <div className="border-b border-gray-200 pb-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Status</h3>
+            {/* Filter Version Toggle - At the top */}
+            <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+              <span className="text-sm font-medium text-gray-700">Filter Version</span>
+              <button
+                onClick={() => {
+                  const newVersion = filterVersion === 'v1' ? 'v2' : 'v1';
+                  setFilterVersion(newVersion);
+                  // Trigger API call when switching versions
+                  if (newVersion === 'v2' && hasInitialFiltersSet.current) {
+                    // Calculate datetime for V2 API
+                    let startDatetime = null;
+                    let endDatetime = null;
+                    if (filters.startDate && filters.endDate) {
+                      const startTime = filters.startTime || '00:00:00';
+                      const endTime = filters.endTime || '23:59:59';
+                      startDatetime = convertLocalToUTC(filters.startDate, startTime);
+                      endDatetime = convertLocalToUTC(filters.endDate, endTime);
+                    } else if (filters.date) {
+                      const startTime = filters.startTime || '00:00:00';
+                      const endTime = filters.endTime || '23:59:59';
+                      startDatetime = convertLocalToUTC(filters.date, startTime);
+                      endDatetime = convertLocalToUTC(filters.date, endTime);
+                    }
+                    if (startDatetime && endDatetime) {
+                      // Determine status parameter from Redux filters
+                      let statusParam = null;
+                      if (filters.status === 'active' || filters.status === 'inactive') {
+                        statusParam = filters.status;
+                      }
+                      
+                      dispatch(fetchAudioSegmentsV2({
+                        channelId,
+                        startDatetime,
+                        endDatetime,
+                        page: 1,
+                        shiftId: filters.shiftId || null,
+                        predefinedFilterId: filters.predefinedFilterId || null,
+                        contentTypes: [],
+                        status: statusParam,
+                        searchText: filters.searchText || null,
+                        searchIn: filters.searchIn || null
+                      }));
+                    }
+                  }
+                }}
+                className="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-700"
+                title={filterVersion === 'v1' ? 'Switch to V2 filters' : 'Switch to V1 filters'}
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+                <span>{filterVersion === 'v1' ? 'V2' : 'V1'}</span>
+              </button>
+            </div>
+
+            {/* Status Filter - Amazon Style - Only show in V1 */}
+            {filterVersion === 'v1' && (
+              <div className="border-b border-gray-200 pb-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Status</h3>
               <div className="space-y-2">
                 {[
                   { value: null, label: 'All Status' },
@@ -1328,11 +1427,13 @@ if (loading && segments.length === 0) {
                   );
                 })}
               </div>
-            </div>
+              </div>
+            )}
 
-            {/* Recognition Filter - Amazon Style */}
-            <div className="border-b border-gray-200 pb-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Recognition</h3>
+            {/* Recognition Filter - Amazon Style - Only show in V1 */}
+            {filterVersion === 'v1' && (
+              <div className="border-b border-gray-200 pb-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Recognition</h3>
               <div className="space-y-2">
                 {[
                   { value: null, label: 'All Recognition' },
@@ -1362,11 +1463,13 @@ if (loading && segments.length === 0) {
                   );
                 })}
               </div>
-            </div>
+              </div>
+            )}
 
-            {/* Content Filter - Amazon Style */}
-            <div className="border-b border-gray-200 pb-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Content</h3>
+            {/* Content Filter - Amazon Style - Only show in V1 */}
+            {filterVersion === 'v1' && (
+              <div className="border-b border-gray-200 pb-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Content</h3>
               <div className="space-y-2">
                 {[
                   { value: null, label: 'All Content' },
@@ -1396,36 +1499,66 @@ if (loading && segments.length === 0) {
                   );
                 })}
               </div>
-            </div>
+              </div>
+            )}
 
             {/* Filter Panel (Collapsible) - Compact */}
             <div className="border-b border-gray-200 pb-4">
-              <FilterPanel
-                filters={filters}
-                dispatch={dispatch}
-                segments={segments}
-                channelId={channelId}
-                fetchAudioSegments={fetchAudioSegments}
-                handleDaypartChange={handleDaypartChange}
-                handleSearchWithCustomTime={handleSearchWithCustomTime}
-                localStartTime={localStartTime}
-                localEndTime={localEndTime}
-                setLocalStartTime={setLocalStartTime}
-                setLocalEndTime={setLocalEndTime}
-                handleResetFilters={handleResetFilters}
-                isInHeader={false}
-                compact={true}
-                // Search props
-                localSearchText={localSearchText}
-                setLocalSearchText={setLocalSearchText}
-                localSearchIn={localSearchIn}
-                setLocalSearchIn={setLocalSearchIn}
-                handleSearch={handleSearch}
-                handleClearSearch={handleClearSearch}
-                // Date handlers
-                handleDateSelect={handleDateSelect}
-                handleDateRangeSelect={handleDateRangeSelect}
-              />
+              {filterVersion === 'v1' ? (
+                <FilterPanel
+                  filters={filters}
+                  dispatch={dispatch}
+                  segments={segments}
+                  channelId={channelId}
+                  fetchAudioSegments={fetchAudioSegments}
+                  handleDaypartChange={handleDaypartChange}
+                  handleSearchWithCustomTime={handleSearchWithCustomTime}
+                  localStartTime={localStartTime}
+                  localEndTime={localEndTime}
+                  setLocalStartTime={setLocalStartTime}
+                  setLocalEndTime={setLocalEndTime}
+                  handleResetFilters={handleResetFilters}
+                  isInHeader={false}
+                  compact={true}
+                  // Search props
+                  localSearchText={localSearchText}
+                  setLocalSearchText={setLocalSearchText}
+                  localSearchIn={localSearchIn}
+                  setLocalSearchIn={setLocalSearchIn}
+                  handleSearch={handleSearch}
+                  handleClearSearch={handleClearSearch}
+                  // Date handlers
+                  handleDateSelect={handleDateSelect}
+                  handleDateRangeSelect={handleDateRangeSelect}
+                />
+              ) : (
+                <FilterPanelV2
+                  filters={filters}
+                  dispatch={dispatch}
+                  segments={segments}
+                  channelId={channelId}
+                  fetchAudioSegments={fetchAudioSegmentsV2}
+                  handleDaypartChange={handleDaypartChange}
+                  handleSearchWithCustomTime={handleSearchWithCustomTime}
+                  localStartTime={localStartTime}
+                  localEndTime={localEndTime}
+                  setLocalStartTime={setLocalStartTime}
+                  setLocalEndTime={setLocalEndTime}
+                  handleResetFilters={handleResetFilters}
+                  isInHeader={false}
+                  compact={true}
+                  // Search props
+                  localSearchText={localSearchText}
+                  setLocalSearchText={setLocalSearchText}
+                  localSearchIn={localSearchIn}
+                  setLocalSearchIn={setLocalSearchIn}
+                  handleSearch={handleSearch}
+                  handleClearSearch={handleClearSearch}
+                  // Date handlers
+                  handleDateSelect={handleDateSelect}
+                  handleDateRangeSelect={handleDateRangeSelect}
+                />
+              )}
             </div>
           </div>
         </div>

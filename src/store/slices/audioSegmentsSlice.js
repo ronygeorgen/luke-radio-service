@@ -195,6 +195,129 @@ export const fetchAudioSegments = createAsyncThunk(
 );
 
 
+// V2 API function for audio segments with new filter structure
+export const fetchAudioSegmentsV2 = createAsyncThunk(
+  'audioSegments/fetchAudioSegmentsV2',
+  async ({ 
+    channelId, 
+    startDatetime, 
+    endDatetime, 
+    page = 1,
+    shiftId = null,
+    predefinedFilterId = null,
+    contentTypes = [], // Array of content type strings
+    status = null, // 'active', 'inactive', or null
+    searchText = null,
+    searchIn = null
+  }, { rejectWithValue }) => {
+    try {
+      const params = { 
+        channel_id: channelId
+      };
+      
+      if (startDatetime) params.start_datetime = startDatetime;
+      if (endDatetime) params.end_datetime = endDatetime;
+      if (page) params.page = page;
+      
+      // Add shift_id or predefined_filter_id (mutually exclusive)
+      if (predefinedFilterId) {
+        params.predefined_filter_id = predefinedFilterId;
+      } else if (shiftId) {
+        params.shift_id = shiftId;
+      }
+      
+      // Add content_type parameters (can be multiple)
+      // Axios handles multiple params with same name by using array notation
+      if (contentTypes && contentTypes.length > 0) {
+        // For multiple params with same name, we need to pass them as an array
+        // Axios will serialize them correctly
+        params['content_type'] = contentTypes;
+      }
+      
+      // Add status parameter if provided
+      if (status !== null && status !== undefined) {
+        params.status = status;
+      }
+      
+      // Add search parameters
+      if (searchText && searchIn) {
+        params.search_text = searchText;
+        params.search_in = searchIn;
+      }
+      
+      console.log('V2 API Request - Final params:', params);
+      
+      // Handle multiple content_type params
+      const config = {
+        params: params
+      };
+      
+      // If we have multiple content types, we need to serialize them properly
+      if (contentTypes && contentTypes.length > 0) {
+        // Use paramsSerializer to handle array params
+        config.paramsSerializer = (params) => {
+          const searchParams = new URLSearchParams();
+          Object.keys(params).forEach(key => {
+            if (key === 'content_type' && Array.isArray(params[key])) {
+              params[key].forEach(value => {
+                searchParams.append(key, value);
+              });
+            } else if (params[key] !== null && params[key] !== undefined) {
+              searchParams.append(key, params[key]);
+            }
+          });
+          return searchParams.toString();
+        };
+      }
+      
+      const response = await axiosInstance.get('/v2/audio-segments/', config);
+      console.log('V2 API Response:', response.data);
+      return response.data;
+    } catch (err) {
+      let errorMessage = 'Failed to fetch audio segments';
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+// Fetch content type prompt data
+export const fetchContentTypePrompt = createAsyncThunk(
+  'audioSegments/fetchContentTypePrompt',
+  async (_, { rejectWithValue }) => {
+    try {
+      // Check if baseURL already includes /api to avoid double /api in URL
+      const baseURL = axiosInstance.defaults.baseURL || '';
+      const endpoint = baseURL.endsWith('/api') || baseURL.includes('/api/') 
+        ? '/v2/filter/options/' 
+        : '/api/v2/filter/options/';
+      
+      console.log('Fetching content type prompt from:', endpoint);
+      console.log('Base URL:', baseURL);
+      
+      const response = await axiosInstance.get(endpoint);
+      console.log('Content Type Prompt Response:', response.data);
+      return response.data;
+    } catch (err) {
+      console.error('Error fetching content type prompt:', err);
+      console.error('Error URL:', err.config?.url);
+      console.error('Full error:', err);
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  }
+);
+
 export const transcribeAudioSegment = createAsyncThunk(
   'audioSegments/transcribeAudioSegment',
   async (segmentId, { rejectWithValue }) => {
@@ -332,6 +455,12 @@ const audioSegmentsSlice = createSlice({
       predefinedFilterId: null,
       duration: null, // Duration filter in seconds
       showFlaggedOnly: false, // Show flagged only when shift is selected
+    },
+    contentTypePrompt: {
+      contentTypes: [],
+      searchInOptions: [],
+      loading: false,
+      error: null
     },
     transcriptionLoading: {}, // Track loading state per segment
     transcriptionErrors: {}, // Track errors per segment
@@ -515,6 +644,60 @@ const audioSegmentsSlice = createSlice({
     .addCase(fetchPieChartData.rejected, (state, action) => {
       state.pieChartLoading = false;
       state.pieChartError = action.payload || 'Failed to fetch pie chart data';
+    })
+    // V2 Audio Segments cases
+    .addCase(fetchAudioSegmentsV2.pending, (state) => {
+      state.loading = true;
+    })
+    .addCase(fetchAudioSegmentsV2.fulfilled, (state, action) => {
+      state.loading = false;
+      state.segments = action.payload.data?.segments || [];
+      state.channelInfo = action.payload.data?.channel_info || null;
+      state.pagination = action.payload.pagination;
+
+      console.log('🔍 V2 API Response - Full pagination:', action.payload.pagination);
+      
+      if (action.payload.pagination) {
+        state.availablePages = action.payload.pagination;
+        console.log('✅ Updated availablePages:', state.availablePages);
+      }
+      
+      const segments = action.payload.data?.segments || [];
+      const unrecognizedSegments = segments.filter(s => !s.is_recognized);
+      
+      state.totals = {
+        total: action.payload.data?.total_segments || 0,
+        recognized: action.payload.data?.total_recognized || 0,
+        unrecognized: action.payload.data?.total_unrecognized || 0,
+        unrecognizedWithContent: unrecognizedSegments.filter(s => 
+          s.analysis?.summary || s.transcription?.transcript
+        ).length,
+        unrecognizedWithoutContent: unrecognizedSegments.filter(s => 
+          !s.analysis?.summary && !s.transcription?.transcript
+        ).length,
+        withTranscription: action.payload.data?.total_with_transcription || 0,
+        withAnalysis: action.payload.data?.total_with_analysis || 0
+      };
+    })
+    .addCase(fetchAudioSegmentsV2.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload || 'Failed to fetch audio segments';
+    })
+    // Content Type Prompt cases
+    .addCase(fetchContentTypePrompt.pending, (state) => {
+      state.contentTypePrompt.loading = true;
+      state.contentTypePrompt.error = null;
+    })
+    .addCase(fetchContentTypePrompt.fulfilled, (state, action) => {
+      state.contentTypePrompt.loading = false;
+      if (action.payload.success && action.payload.data) {
+        state.contentTypePrompt.contentTypes = action.payload.data.content_type_prompt || [];
+        state.contentTypePrompt.searchInOptions = action.payload.data.search_in || [];
+      }
+    })
+    .addCase(fetchContentTypePrompt.rejected, (state, action) => {
+      state.contentTypePrompt.loading = false;
+      state.contentTypePrompt.error = action.payload || 'Failed to fetch content type prompt data';
     })
   }
 });

@@ -353,8 +353,16 @@ const CustomFlagsPage = () => {
                   </td>
                   <td className="sw-td">
                     <div className="text-sm text-gray-600">
-                      {flag.sentiment_min !== null && flag.sentiment_max !== null ? (
-                        <span>{flag.sentiment_min} to {flag.sentiment_max}</span>
+                      {(flag.sentiment_min_lower !== null && flag.sentiment_min_upper !== null) || 
+                       (flag.sentiment_max_lower !== null && flag.sentiment_max_upper !== null) ? (
+                        <div className="space-y-1">
+                          {flag.sentiment_min_lower !== null && flag.sentiment_min_upper !== null && (
+                            <div>Min: {flag.sentiment_min_lower} to {flag.sentiment_min_upper}</div>
+                          )}
+                          {flag.sentiment_max_lower !== null && flag.sentiment_max_upper !== null && (
+                            <div>Max: {flag.sentiment_max_lower} to {flag.sentiment_max_upper}</div>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-gray-400">N/A</span>
                       )}

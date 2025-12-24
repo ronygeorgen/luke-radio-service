@@ -27,7 +27,6 @@ const UserChannelsPage = () => {
   useEffect(() => {
     localStorage.removeItem("channelName");
     localStorage.removeItem("channelId");
-    console.log("✅ Cleared channelName and channelId from localStorage");
     
     dispatch(fetchUserChannels());
   }, [dispatch]);
