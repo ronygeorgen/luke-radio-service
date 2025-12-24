@@ -102,6 +102,8 @@ const FilterPanelV2 = ({
 
   // Ref to track if we're manually updating status (to prevent useEffect from interfering)
   const isManuallyUpdatingStatus = useRef(false);
+  // Ref to track if we're manually updating content types (to prevent sync useEffect from interfering)
+  const isManuallyUpdatingContentTypes = useRef(false);
 
   const { shifts, shiftsLoading } = useSelector(state => state.audioSegments);
   const { predefinedFilters, loading: predefinedLoading } = useSelector(state => state.shiftManagement);
@@ -160,8 +162,11 @@ const FilterPanelV2 = ({
         // Clear content type filters when channel changes
         setOnlyAnnouncers(false);
         setSelectedContentTypes([]);
+        // Clear status filters when channel changes
+        setOnlyActive(false);
+        setActiveStatus('all');
         // Clear Redux state
-        dispatch(setFilter({ contentTypes: [] }));
+        dispatch(setFilter({ contentTypes: [], onlyAnnouncers: false, onlyActive: false, status: null }));
         // Clear localStorage for content type filters
         try {
           localStorage.removeItem('filterV2_contentTypes');
@@ -375,14 +380,46 @@ const FilterPanelV2 = ({
     }
   }, [filters.predefinedFilterId, currentPredefinedFilterId]);
 
-  // Sync content types with Redux state
-  // IMPORTANT: Don't sync when onlyAnnouncers is true to prevent "Announcer" item from appearing checked
+  // Sync onlyAnnouncers from Redux state
   useEffect(() => {
-    // Skip sync if "Only Announcers" is selected
-    if (onlyAnnouncers) {
+    // Skip sync if we're manually updating content types
+    if (isManuallyUpdatingContentTypes.current) {
       return;
     }
 
+    // Sync onlyAnnouncers from Redux to local state
+    if (filters.onlyAnnouncers !== undefined && filters.onlyAnnouncers !== onlyAnnouncers) {
+      setOnlyAnnouncers(filters.onlyAnnouncers);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.onlyAnnouncers]);
+
+  // Sync content types with Redux state
+  // IMPORTANT: Don't sync when onlyAnnouncers is true to prevent "Announcer" item from appearing checked
+  // When "Only Announcers" is selected, we track it via onlyAnnouncers state, not via Redux contentTypes
+  useEffect(() => {
+    // Skip sync if we're manually updating content types
+    if (isManuallyUpdatingContentTypes.current) {
+      return;
+    }
+
+    // Skip sync if "Only Announcers" is selected (check both local and Redux state)
+    // This ensures the UI shows "Only Announcers" as selected, not "Announcer" as a checked item
+    const isOnlyAnnouncersActive = onlyAnnouncers || filters.onlyAnnouncers;
+    if (isOnlyAnnouncersActive) {
+      // When onlyAnnouncers is true, ensure selectedContentTypes stays empty
+      // This prevents any Redux contentTypes from syncing and showing "Announcer" as checked
+      if (selectedContentTypes.length > 0) {
+        setSelectedContentTypes([]);
+      }
+      // Also ensure onlyAnnouncers local state matches Redux
+      if (filters.onlyAnnouncers && !onlyAnnouncers) {
+        setOnlyAnnouncers(true);
+      }
+      return;
+    }
+
+    // Only sync from Redux when onlyAnnouncers is false
     if (filters.contentTypes && Array.isArray(filters.contentTypes)) {
       // Only update if different to avoid infinite loops
       const currentTypes = JSON.stringify([...selectedContentTypes].sort());
@@ -391,14 +428,43 @@ const FilterPanelV2 = ({
         console.log('🔄 Syncing content types from Redux:', filters.contentTypes);
         setSelectedContentTypes(filters.contentTypes);
       }
+    } else if (filters.contentTypes === null || (Array.isArray(filters.contentTypes) && filters.contentTypes.length === 0)) {
+      // If Redux has empty/null contentTypes and we have selected types, clear them
+      if (selectedContentTypes.length > 0) {
+        setSelectedContentTypes([]);
+      }
     }
-  }, [filters.contentTypes, onlyAnnouncers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.contentTypes, onlyAnnouncers, filters.onlyAnnouncers]);
+
+  // Sync onlyActive from Redux state
+  useEffect(() => {
+    // Skip sync if we're manually updating status
+    if (isManuallyUpdatingStatus.current) {
+      return;
+    }
+
+    // Sync onlyActive from Redux to local state
+    if (filters.onlyActive !== undefined && filters.onlyActive !== onlyActive) {
+      setOnlyActive(filters.onlyActive);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.onlyActive]);
 
   // Sync status state with Redux filters.status (for V2) - only when status changes externally
   // IMPORTANT: This should NOT interfere when onlyActive is true, as "Only Active" mode takes precedence
   useEffect(() => {
-    // Skip sync if we're manually updating status or if onlyActive is true
-    if (isManuallyUpdatingStatus.current || onlyActive) {
+    // Skip sync if we're manually updating status or if onlyActive is true (check both local and Redux state)
+    const isOnlyActiveActive = onlyActive || filters.onlyActive;
+    if (isManuallyUpdatingStatus.current || isOnlyActiveActive) {
+      // When onlyActive is true, ensure activeStatus stays at 'all' to prevent UI confusion
+      if (isOnlyActiveActive && activeStatus !== 'all') {
+        setActiveStatus('all');
+      }
+      // Also ensure onlyActive local state matches Redux
+      if (filters.onlyActive && !onlyActive) {
+        setOnlyActive(true);
+      }
       return;
     }
 
@@ -417,7 +483,7 @@ const FilterPanelV2 = ({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.status, onlyActive]);
+  }, [filters.status, onlyActive, filters.onlyActive]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -646,7 +712,9 @@ const FilterPanelV2 = ({
     const statusForRedux = checked ? 'active' : (newActiveStatus === 'all' ? null : newActiveStatus);
 
     console.log('🔴 Setting Redux status to:', statusForRedux);
-    dispatch(setFilter({ status: statusForRedux }));
+    // CRITICAL: Update Redux onlyActive flag to prevent stale state from showing in UI
+    // This ensures the sync useEffect respects "Only Active" mode
+    dispatch(setFilter({ status: statusForRedux, onlyActive: checked }));
 
     // Apply filters with the new state values
     // When onlyActive is true, status will be 'active' regardless of activeStatus
@@ -668,48 +736,85 @@ const FilterPanelV2 = ({
 
     // Update Redux filters.status to sync with other components
     const statusForRedux = newActiveStatus === 'all' ? null : newActiveStatus;
-    dispatch(setFilter({ status: statusForRedux }));
+    // Clear onlyActive flag in Redux when selecting specific status
+    dispatch(setFilter({ status: statusForRedux, onlyActive: false }));
 
     // Apply filters with the new state values
     applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, newOnlyActive, newActiveStatus, onlyAnnouncers, selectedContentTypes);
   };
 
   const handleOnlyAnnouncersToggle = (checked) => {
-    setOnlyAnnouncers(checked);
     if (checked) {
-      setSelectedContentTypes([]); // Clear selected content types when only announcers is on
-      // Update Redux state with Announcer content type
-      dispatch(setFilter({ contentTypes: ['Announcer'] }));
-      // Apply filters immediately with onlyAnnouncers=true
-      // Pass the new values directly to avoid race condition
+      // When turning on "Only Announcers", first clear any selected content types (like clicking "All")
+      // This ensures a clean transition and prevents UI confusion
+      // Workflow: Set onlyAnnouncers first, then clear selected content types
+      // This prevents "All" from showing as checked during the transition
+      
+      // Set flag FIRST to prevent sync useEffect from interfering
+      isManuallyUpdatingContentTypes.current = true;
+      
+      // IMPORTANT: Update both states synchronously in the same event handler
+      // React 18 automatically batches these updates, but we set onlyAnnouncers first
+      // to ensure the UI condition {!onlyAnnouncers && ...} evaluates correctly
+      // Set onlyAnnouncers to true FIRST - this ensures "All" toggle section is hidden immediately
+      setOnlyAnnouncers(true);
+      
+      // Then clear selected content types (acts like clicking "All")
+      // Since onlyAnnouncers is already true, the "All" toggle won't be visible/checked
+      setSelectedContentTypes([]);
+      
+      // CRITICAL: Clear Redux contentTypes to prevent stale data from showing in UI
+      // Even though we track "Only Announcers" via local state, we must clear Redux
+      // to ensure the sync useEffect doesn't restore old content types after the timeout
+      dispatch(setFilter({ contentTypes: [], onlyAnnouncers: true }));
+      
+      // Apply filters with onlyAnnouncers=true (this will send content_type=Announcer to API)
       applyFiltersV2WithContentTypes(filters, currentShiftId, true, []);
+      
+      // Reset flag after a short delay
+      setTimeout(() => {
+        isManuallyUpdatingContentTypes.current = false;
+      }, 100);
     } else {
-      // When turning off only announcers, clear content types in Redux
-      dispatch(setFilter({ contentTypes: [] }));
       // When turning off only announcers, apply filters with current selectedContentTypes
-      // Pass the new values directly to avoid race condition
+      setOnlyAnnouncers(false);
+      // Clear onlyAnnouncers flag in Redux
+      dispatch(setFilter({ onlyAnnouncers: false }));
       applyFiltersV2WithContentTypes(filters, currentShiftId, false, selectedContentTypes);
     }
   };
 
   const handleContentTypeToggle = (contentType, checked) => {
+    // Set flag to prevent sync useEffect from interfering
+    isManuallyUpdatingContentTypes.current = true;
+    
     setOnlyAnnouncers(false); // Turn off only announcers when selecting specific content types
-
-    if (checked) {
-      const updatedContentTypes = [...selectedContentTypes, contentType];
-      setSelectedContentTypes(updatedContentTypes);
-      // Update Redux state
+    
+    // Calculate updated content types using functional update to ensure we have latest state
+    setSelectedContentTypes(prev => {
+      let updatedContentTypes;
+      if (checked) {
+        // Add the content type if it's not already in the list
+        updatedContentTypes = prev.includes(contentType) ? prev : [...prev, contentType];
+      } else {
+        // Remove the content type
+        updatedContentTypes = prev.filter(type => type !== contentType);
+      }
+      
+      // Update Redux state immediately with the new content types
       dispatch(setFilter({ contentTypes: updatedContentTypes }));
+      
       // Apply filters with the updated content types immediately
+      // Use the calculated value directly to avoid race conditions
       applyFiltersV2WithContentTypes(filters, currentShiftId, false, updatedContentTypes);
-    } else {
-      const updatedContentTypes = selectedContentTypes.filter(type => type !== contentType);
-      setSelectedContentTypes(updatedContentTypes);
-      // Update Redux state
-      dispatch(setFilter({ contentTypes: updatedContentTypes }));
-      // Apply filters with the updated content types immediately
-      applyFiltersV2WithContentTypes(filters, currentShiftId, false, updatedContentTypes);
-    }
+      
+      return updatedContentTypes;
+    });
+    
+    // Reset flag after a short delay to allow state updates to complete
+    setTimeout(() => {
+      isManuallyUpdatingContentTypes.current = false;
+    }, 100);
   };
 
   const handleAllContentTypesToggle = (checked) => {

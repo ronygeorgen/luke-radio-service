@@ -948,7 +948,11 @@ const AudioSegmentsPage = () => {
       searchIn: 'transcription',
       shiftId: null,
       predefinedFilterId: null,
-      duration: null
+      duration: null,
+      onlyActive: false,
+      onlyAnnouncers: false,
+      contentTypes: [],
+      showFlaggedOnly: false
     };
 
     dispatch(setFilter(newFilters));
@@ -963,7 +967,37 @@ const AudioSegmentsPage = () => {
       searchIn: 'transcription'
     });
 
-    handleFilterChange(newFilters);
+    // Reset auto-switch flag when filters change
+    hasAutoSwitchedPage.current = false;
+
+    // Handle V1 and V2 differently
+    if (filterVersion === 'v1') {
+      handleFilterChange(newFilters);
+    } else {
+      // Clear FilterPanelV2 localStorage for content type filters
+      try {
+        localStorage.removeItem('filterV2_contentTypes');
+      } catch (err) {
+        console.error('Error clearing filter state from localStorage:', err);
+      }
+
+      // V2 API call
+      const startDatetime = convertLocalToUTC(today, defaultStartTime);
+      const endDatetime = convertLocalToUTC(today, defaultEndTime);
+      
+      dispatch(fetchAudioSegmentsV2({
+        channelId,
+        startDatetime,
+        endDatetime,
+        page: 1,
+        shiftId: null,
+        predefinedFilterId: null,
+        contentTypes: [], // Reset to empty array
+        status: null, // Reset status
+        searchText: null,
+        searchIn: null
+      }));
+    }
   };
 
   const handleSummaryClick = (segment) => {
@@ -1565,8 +1599,8 @@ const AudioSegmentsPage = () => {
 
         {/* Main Content - Takes remaining width */}
         <main className={`flex-1 p-6 min-w-0 z-30 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
-          {/* Show pagination if we have pages with data in Redux */}
-          {totalPages > 1 && (
+          {/* Show pagination if we have pages with data in Redux and showFlaggedOnly is not active */}
+          {totalPages > 1 && !filters.showFlaggedOnly && (
             <div className="mb-6 flex justify-center">
               <TimePagination
                 currentPage={currentPage}
