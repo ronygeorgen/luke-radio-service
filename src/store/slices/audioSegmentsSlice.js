@@ -27,15 +27,15 @@ export const fetchShifts = createAsyncThunk(
 // Replace both fetchAudioSegmentsWithFilter and fetchAudioSegmentsForPage with this:
 export const fetchAudioSegments = createAsyncThunk(
   'audioSegments/fetchAudioSegments',
-  async ({ 
-    channelId, 
-    date, 
-    startTime, 
-    endTime, 
-    daypart, 
-    searchText, 
-    searchIn, 
-    startDate, 
+  async ({
+    channelId,
+    date,
+    startTime,
+    endTime,
+    daypart,
+    searchText,
+    searchIn,
+    startDate,
     endDate,
     page = 1,
     shiftId = null,
@@ -49,7 +49,7 @@ export const fetchAudioSegments = createAsyncThunk(
     try {
       let startDatetime = null;
       let endDatetime = null;
-      
+
       console.log('API Request - Received params:', {
         channelId, date, startTime, endTime, startDate, endDate, daypart, page, shiftId, duration
       });
@@ -76,11 +76,11 @@ export const fetchAudioSegments = createAsyncThunk(
       }
       else if (date) {
         let useDate = date;
-        
+
         if (daypart === 'weekend') {
           const dateObj = new Date(useDate);
           const dayOfWeek = dateObj.getDay();
-          
+
           if (dayOfWeek === 0 || dayOfWeek === 6) {
             startDatetime = convertLocalToUTC(useDate, '00:00:00');
             endDatetime = convertLocalToUTC(useDate, '23:59:59');
@@ -94,7 +94,7 @@ export const fetchAudioSegments = createAsyncThunk(
             'overnight': { start: '00:00:00', end: '06:00:00' },
             'weekend': { start: '00:00:00', end: '23:59:59' }
           };
-          
+
           const times = daypartTimes[daypart];
           if (times) {
             startDatetime = convertLocalToUTC(useDate, times.start);
@@ -105,17 +105,17 @@ export const fetchAudioSegments = createAsyncThunk(
           endDatetime = convertLocalToUTC(useDate, '23:59:59');
         }
       }
-      
-      const params = { 
+
+      const params = {
         channel_id: channelId
       };
-      
+
       if (startDatetime) params.start_datetime = startDatetime;
       if (endDatetime) params.end_datetime = endDatetime;
-      
+
       // Add page parameter to API call
       if (page) params.page = page;
-      
+
       // Add either shift_id or predefined_filter_id to API call (mutually exclusive)
       if (predefinedFilterId) {
         params.predefined_filter_id = predefinedFilterId;
@@ -126,15 +126,15 @@ export const fetchAudioSegments = createAsyncThunk(
           params.show_flagged_only = true;
         }
       }
-      
+
       console.log('API Request - Final params:', params);
-      
+
       // Search validation
       if (searchText && searchIn) {
         params.search_text = searchText;
         params.search_in = searchIn;
       }
-      
+
       // Add duration parameter if provided (must be a positive number)
       if (duration !== null && duration !== undefined && duration !== '' && !isNaN(duration) && duration > 0) {
         params.duration = duration;
@@ -142,7 +142,7 @@ export const fetchAudioSegments = createAsyncThunk(
       } else {
         console.log('ℹ️ No duration parameter (value was:', duration, ', type:', typeof duration, ')');
       }
-      
+
       // Add status parameter if provided
       // status can be 'active', 'inactive', or null
       if (status !== null && status !== undefined) {
@@ -152,12 +152,12 @@ export const fetchAudioSegments = createAsyncThunk(
           params.status = false;
         }
       }
-      
+
       // Add recognition_status parameter if provided
       if (recognition_status !== null && recognition_status !== undefined) {
         params.recognition_status = recognition_status;
       }
-      
+
       // Add has_content parameter if provided
       // has_content can be true, false, or null
       if (has_content !== null && has_content !== undefined) {
@@ -168,7 +168,7 @@ export const fetchAudioSegments = createAsyncThunk(
           params.has_content = false;
         }
       }
-      
+
       const response = await axiosInstance.get('/audio_segments', {
         params
       });
@@ -198,10 +198,10 @@ export const fetchAudioSegments = createAsyncThunk(
 // V2 API function for audio segments with new filter structure
 export const fetchAudioSegmentsV2 = createAsyncThunk(
   'audioSegments/fetchAudioSegmentsV2',
-  async ({ 
-    channelId, 
-    startDatetime, 
-    endDatetime, 
+  async ({
+    channelId,
+    startDatetime,
+    endDatetime,
     page = 1,
     shiftId = null,
     predefinedFilterId = null,
@@ -211,21 +211,21 @@ export const fetchAudioSegmentsV2 = createAsyncThunk(
     searchIn = null
   }, { rejectWithValue }) => {
     try {
-      const params = { 
+      const params = {
         channel_id: channelId
       };
-      
+
       if (startDatetime) params.start_datetime = startDatetime;
       if (endDatetime) params.end_datetime = endDatetime;
       if (page) params.page = page;
-      
+
       // Add shift_id or predefined_filter_id (mutually exclusive)
       if (predefinedFilterId) {
         params.predefined_filter_id = predefinedFilterId;
       } else if (shiftId) {
         params.shift_id = shiftId;
       }
-      
+
       // Add content_type parameters (can be multiple)
       // Only add content_type param if contentTypes is provided and has items
       // If contentTypes is null or empty array, don't add the parameter at all
@@ -234,25 +234,25 @@ export const fetchAudioSegmentsV2 = createAsyncThunk(
         // Axios will serialize them correctly
         params['content_type'] = contentTypes;
       }
-      
+
       // Add status parameter if provided
       if (status !== null && status !== undefined) {
         params.status = status;
       }
-      
+
       // Add search parameters
       if (searchText && searchIn) {
         params.search_text = searchText;
         params.search_in = searchIn;
       }
-      
+
       console.log('V2 API Request - Final params:', params);
-      
+
       // Handle multiple content_type params
       const config = {
         params: params
       };
-      
+
       // If we have multiple content types, we need to serialize them properly
       if (contentTypes && contentTypes.length > 0) {
         // Use paramsSerializer to handle array params
@@ -270,7 +270,7 @@ export const fetchAudioSegmentsV2 = createAsyncThunk(
           return searchParams.toString();
         };
       }
-      
+
       const response = await axiosInstance.get('/v2/audio-segments/', config);
       console.log('V2 API Response:', response.data);
       return response.data;
@@ -300,13 +300,13 @@ export const fetchContentTypePrompt = createAsyncThunk(
     try {
       // Check if baseURL already includes /api to avoid double /api in URL
       const baseURL = axiosInstance.defaults.baseURL || '';
-      const endpoint = baseURL.endsWith('/api') || baseURL.includes('/api/') 
-        ? '/v2/filter/options/' 
+      const endpoint = baseURL.endsWith('/api') || baseURL.includes('/api/')
+        ? '/v2/filter/options/'
         : '/api/v2/filter/options/';
-      
+
       console.log('Fetching content type prompt from:', endpoint);
       console.log('Base URL:', baseURL);
-      
+
       const response = await axiosInstance.get(endpoint);
       console.log('Content Type Prompt Response:', response.data);
       return response.data;
@@ -340,7 +340,7 @@ export const fetchPieChartData = createAsyncThunk(
     try {
       let startDatetime = null;
       let endDatetime = null;
-      
+
       console.log('Pie Chart API - Received params:', {
         channelId, date, startTime, endTime, startDate, endDate, daypart
       });
@@ -368,11 +368,11 @@ export const fetchPieChartData = createAsyncThunk(
       // Handle daypart logic
       else if (date) {
         let useDate = date;
-        
+
         if (daypart === 'weekend') {
           const dateObj = new Date(useDate);
           const dayOfWeek = dateObj.getDay();
-          
+
           if (dayOfWeek === 0 || dayOfWeek === 6) {
             startDatetime = convertLocalToUTC(useDate, '00:00:00');
             endDatetime = convertLocalToUTC(useDate, '23:59:59');
@@ -386,7 +386,7 @@ export const fetchPieChartData = createAsyncThunk(
             'overnight': { start: '00:00:00', end: '06:00:00' },
             'weekend': { start: '00:00:00', end: '23:59:59' }
           };
-          
+
           const times = daypartTimes[daypart];
           if (times) {
             startDatetime = convertLocalToUTC(useDate, times.start);
@@ -398,19 +398,19 @@ export const fetchPieChartData = createAsyncThunk(
           endDatetime = convertLocalToUTC(useDate, '23:59:59');
         }
       }
-      
-      
-      
-      const params = { 
+
+
+
+      const params = {
         channel_id: channelId
       };
-      
+
       // These are REQUIRED parameters
       if (startDatetime) params.start_datetime = startDatetime;
       if (endDatetime) params.end_datetime = endDatetime;
-      
+
       console.log('Pie Chart API - Final params:', params);
-      
+
       const response = await axiosInstance.get('/pie_chart', {
         params
       });
@@ -452,10 +452,12 @@ const audioSegmentsSlice = createSlice({
       daypart: 'none',
       searchText: '',  // NEW: search text
       searchIn: 'transcription', // NEW: search category
-      shiftId: null, 
+      shiftId: null,
       predefinedFilterId: null,
       duration: null, // Duration filter in seconds
       showFlaggedOnly: false, // Show flagged only when shift is selected
+      contentTypes: [], // V2: Array of selected content types
+      onlyAnnouncers: false, // V2: Only Announcers toggle state
     },
     contentTypePrompt: {
       contentTypes: [],
@@ -466,8 +468,8 @@ const audioSegmentsSlice = createSlice({
     transcriptionLoading: {}, // Track loading state per segment
     transcriptionErrors: {}, // Track errors per segment
     transcriptionStatus: {}, // Track status per segment
-    transcriptionPolling: {}, 
-    nextPollTime: {} 
+    transcriptionPolling: {},
+    nextPollTime: {}
   },
   reducers: {
     setCurrentPlaying: (state, action) => {
@@ -515,7 +517,7 @@ const audioSegmentsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-    // Add shifts cases
+      // Add shifts cases
       .addCase(fetchShifts.pending, (state) => {
         state.shiftsLoading = true;
       })
@@ -537,24 +539,24 @@ const audioSegmentsSlice = createSlice({
         state.pagination = action.payload.pagination;
 
         console.log('🔍 API Response - Full pagination:', action.payload.pagination);
-        
+
         // Always update availablePages with the full pagination data
         if (action.payload.pagination) {
           state.availablePages = action.payload.pagination;
           console.log('✅ Updated availablePages:', state.availablePages);
         }
-        
+
         const segments = action.payload.data?.segments || [];
         const unrecognizedSegments = segments.filter(s => !s.is_recognized);
-        
+
         state.totals = {
           total: action.payload.data?.total_segments || 0,
           recognized: action.payload.data?.total_recognized || 0,
           unrecognized: action.payload.data?.total_unrecognized || 0,
-          unrecognizedWithContent: unrecognizedSegments.filter(s => 
+          unrecognizedWithContent: unrecognizedSegments.filter(s =>
             s.analysis?.summary || s.transcription?.transcript
           ).length,
-          unrecognizedWithoutContent: unrecognizedSegments.filter(s => 
+          unrecognizedWithoutContent: unrecognizedSegments.filter(s =>
             !s.analysis?.summary && !s.transcription?.transcript
           ).length,
           withTranscription: action.payload.data?.total_with_transcription || 0,
@@ -576,14 +578,14 @@ const audioSegmentsSlice = createSlice({
       .addCase(transcribeAudioSegment.fulfilled, (state, action) => {
         const segmentId = action.meta.arg;
         state.transcriptionLoading[segmentId] = false;
-        
+
         if (action.payload.success) {
           if (action.payload.data?.transcription || action.payload.data?.analysis) {
             // Update the segment with new data
             const segmentIndex = state.segments.findIndex(s => s.id === segmentId);
             if (segmentIndex !== -1) {
               const updatedSegment = { ...state.segments[segmentIndex] };
-              
+
               if (action.payload.data.transcription) {
                 updatedSegment.transcription = {
                   id: action.payload.data.transcription.id,
@@ -592,7 +594,7 @@ const audioSegmentsSlice = createSlice({
                   rev_job_id: action.payload.data.transcription.rev_job_id
                 };
               }
-              
+
               if (action.payload.data.analysis) {
                 updatedSegment.analysis = {
                   summary: action.payload.data.analysis.summary,
@@ -603,7 +605,7 @@ const audioSegmentsSlice = createSlice({
                   created_at: action.payload.data.analysis.created_at
                 };
               }
-              
+
               state.segments[segmentIndex] = updatedSegment;
               // Stop polling since we got the data
               delete state.transcriptionPolling[segmentId];
@@ -634,80 +636,80 @@ const audioSegmentsSlice = createSlice({
         state.transcriptionErrors[segmentId] = action.payload?.error || 'Failed to transcribe audio';
       })
       // Pie Chart cases
-    .addCase(fetchPieChartData.pending, (state) => {
-      state.pieChartLoading = true;
-      state.pieChartError = null;
-    })
-    .addCase(fetchPieChartData.fulfilled, (state, action) => {
-      state.pieChartLoading = false;
-      state.pieChartData = action.payload.data || [];
-    })
-    .addCase(fetchPieChartData.rejected, (state, action) => {
-      state.pieChartLoading = false;
-      state.pieChartError = action.payload || 'Failed to fetch pie chart data';
-    })
-    // V2 Audio Segments cases
-    .addCase(fetchAudioSegmentsV2.pending, (state) => {
-      state.loading = true;
-    })
-    .addCase(fetchAudioSegmentsV2.fulfilled, (state, action) => {
-      state.loading = false;
-      state.segments = action.payload.data?.segments || [];
-      state.channelInfo = action.payload.data?.channel_info || null;
-      state.pagination = action.payload.pagination;
+      .addCase(fetchPieChartData.pending, (state) => {
+        state.pieChartLoading = true;
+        state.pieChartError = null;
+      })
+      .addCase(fetchPieChartData.fulfilled, (state, action) => {
+        state.pieChartLoading = false;
+        state.pieChartData = action.payload.data || [];
+      })
+      .addCase(fetchPieChartData.rejected, (state, action) => {
+        state.pieChartLoading = false;
+        state.pieChartError = action.payload || 'Failed to fetch pie chart data';
+      })
+      // V2 Audio Segments cases
+      .addCase(fetchAudioSegmentsV2.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchAudioSegmentsV2.fulfilled, (state, action) => {
+        state.loading = false;
+        state.segments = action.payload.data?.segments || [];
+        state.channelInfo = action.payload.data?.channel_info || null;
+        state.pagination = action.payload.pagination;
 
-      console.log('🔍 V2 API Response - Full pagination:', action.payload.pagination);
-      
-      if (action.payload.pagination) {
-        state.availablePages = action.payload.pagination;
-        console.log('✅ Updated availablePages:', state.availablePages);
-      }
-      
-      const segments = action.payload.data?.segments || [];
-      const unrecognizedSegments = segments.filter(s => !s.is_recognized);
-      
-      state.totals = {
-        total: action.payload.data?.total_segments || 0,
-        recognized: action.payload.data?.total_recognized || 0,
-        unrecognized: action.payload.data?.total_unrecognized || 0,
-        unrecognizedWithContent: unrecognizedSegments.filter(s => 
-          s.analysis?.summary || s.transcription?.transcript
-        ).length,
-        unrecognizedWithoutContent: unrecognizedSegments.filter(s => 
-          !s.analysis?.summary && !s.transcription?.transcript
-        ).length,
-        withTranscription: action.payload.data?.total_with_transcription || 0,
-        withAnalysis: action.payload.data?.total_with_analysis || 0
-      };
-    })
-    .addCase(fetchAudioSegmentsV2.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload || 'Failed to fetch audio segments';
-    })
-    // Content Type Prompt cases
-    .addCase(fetchContentTypePrompt.pending, (state) => {
-      state.contentTypePrompt.loading = true;
-      state.contentTypePrompt.error = null;
-    })
-    .addCase(fetchContentTypePrompt.fulfilled, (state, action) => {
-      state.contentTypePrompt.loading = false;
-      if (action.payload.success && action.payload.data) {
-        state.contentTypePrompt.contentTypes = action.payload.data.content_type_prompt || [];
-        state.contentTypePrompt.searchInOptions = action.payload.data.search_in || [];
-      }
-    })
-    .addCase(fetchContentTypePrompt.rejected, (state, action) => {
-      state.contentTypePrompt.loading = false;
-      state.contentTypePrompt.error = action.payload || 'Failed to fetch content type prompt data';
-    })
+        console.log('🔍 V2 API Response - Full pagination:', action.payload.pagination);
+
+        if (action.payload.pagination) {
+          state.availablePages = action.payload.pagination;
+          console.log('✅ Updated availablePages:', state.availablePages);
+        }
+
+        const segments = action.payload.data?.segments || [];
+        const unrecognizedSegments = segments.filter(s => !s.is_recognized);
+
+        state.totals = {
+          total: action.payload.data?.total_segments || 0,
+          recognized: action.payload.data?.total_recognized || 0,
+          unrecognized: action.payload.data?.total_unrecognized || 0,
+          unrecognizedWithContent: unrecognizedSegments.filter(s =>
+            s.analysis?.summary || s.transcription?.transcript
+          ).length,
+          unrecognizedWithoutContent: unrecognizedSegments.filter(s =>
+            !s.analysis?.summary && !s.transcription?.transcript
+          ).length,
+          withTranscription: action.payload.data?.total_with_transcription || 0,
+          withAnalysis: action.payload.data?.total_with_analysis || 0
+        };
+      })
+      .addCase(fetchAudioSegmentsV2.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Failed to fetch audio segments';
+      })
+      // Content Type Prompt cases
+      .addCase(fetchContentTypePrompt.pending, (state) => {
+        state.contentTypePrompt.loading = true;
+        state.contentTypePrompt.error = null;
+      })
+      .addCase(fetchContentTypePrompt.fulfilled, (state, action) => {
+        state.contentTypePrompt.loading = false;
+        if (action.payload.success && action.payload.data) {
+          state.contentTypePrompt.contentTypes = action.payload.data.content_type_prompt || [];
+          state.contentTypePrompt.searchInOptions = action.payload.data.search_in || [];
+        }
+      })
+      .addCase(fetchContentTypePrompt.rejected, (state, action) => {
+        state.contentTypePrompt.loading = false;
+        state.contentTypePrompt.error = action.payload || 'Failed to fetch content type prompt data';
+      })
   }
 });
 
-export const { 
-  setCurrentPlaying, 
-  setIsPlaying, 
-  setFilter, 
-  clearError, 
+export const {
+  setCurrentPlaying,
+  setIsPlaying,
+  setFilter,
+  clearError,
   clearTranscriptionError,
   resetTranscriptionState,
   startTranscriptionPolling,

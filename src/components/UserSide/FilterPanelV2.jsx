@@ -6,12 +6,12 @@ import { fetchPredefinedFilters } from '../../store/slices/shiftManagementSlice'
 import { useDispatch, useSelector } from 'react-redux';
 import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 
-const FilterPanelV2 = ({ 
-  filters, 
-  dispatch, 
-  segments, 
-  channelId, 
-  handleDaypartChange, 
+const FilterPanelV2 = ({
+  filters,
+  dispatch,
+  segments,
+  channelId,
+  handleDaypartChange,
   handleSearchWithCustomTime,
   localStartTime,
   localEndTime,
@@ -28,7 +28,7 @@ const FilterPanelV2 = ({
   handleClearSearch,
   handleDateSelect,
   handleDateRangeSelect,
-  fetchAudioSegments = () => {}
+  fetchAudioSegments = () => { }
 }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const dateButtonRef = useRef(null);
@@ -60,10 +60,10 @@ const FilterPanelV2 = ({
     // Check if there's a special marker for "only active" (we'll use a different approach)
     return { onlyActive: false, activeStatus: 'all' };
   };
-  
+
   const [onlyActive, setOnlyActive] = useState(getInitialStatus().onlyActive);
   const [activeStatus, setActiveStatus] = useState(getInitialStatus().activeStatus);
-  
+
   // Load filter state from localStorage on mount
   const loadFilterStateFromStorage = () => {
     try {
@@ -87,7 +87,7 @@ const FilterPanelV2 = ({
   const initialFilterState = loadFilterStateFromStorage();
   const [onlyAnnouncers, setOnlyAnnouncers] = useState(initialFilterState.onlyAnnouncers);
   const [selectedContentTypes, setSelectedContentTypes] = useState(initialFilterState.selectedContentTypes);
-  
+
   // Save filter state to localStorage whenever it changes
   useEffect(() => {
     try {
@@ -99,7 +99,7 @@ const FilterPanelV2 = ({
       console.error('Error saving filter state to localStorage:', err);
     }
   }, [onlyAnnouncers, selectedContentTypes]);
-  
+
   // Ref to track if we're manually updating status (to prevent useEffect from interfering)
   const isManuallyUpdatingStatus = useRef(false);
 
@@ -107,7 +107,7 @@ const FilterPanelV2 = ({
   const { predefinedFilters, loading: predefinedLoading } = useSelector(state => state.shiftManagement);
   const { contentTypePrompt } = useSelector(state => state.audioSegments);
   const reduxDispatch = useDispatch();
-  
+
   // Debug: Log content type prompt data
   useEffect(() => {
     console.log('Content Type Prompt Data:', contentTypePrompt);
@@ -146,20 +146,22 @@ const FilterPanelV2 = ({
     const handleChannelChange = (event) => {
       const newChannel = event.detail;
       const newChannelId = newChannel?.id || localStorage.getItem('channelId');
-      
+
       if (newChannelId) {
         reduxDispatch(fetchShifts());
         reduxDispatch(fetchPredefinedFilters());
         reduxDispatch(fetchContentTypePrompt());
-        
+
         setCurrentShiftId('');
         setLocalShiftId('');
         setCurrentPredefinedFilterId('');
         setShowFlaggedOnly(false);
-        
+
         // Clear content type filters when channel changes
         setOnlyAnnouncers(false);
         setSelectedContentTypes([]);
+        // Clear Redux state
+        dispatch(setFilter({ contentTypes: [] }));
         // Clear localStorage for content type filters
         try {
           localStorage.removeItem('filterV2_contentTypes');
@@ -189,7 +191,7 @@ const FilterPanelV2 = ({
     const wasShiftSelected = currentShiftId && currentShiftId !== '';
     const isSelectingShift = normalizedId && normalizedId !== '';
     const isDeselectingShift = wasShiftSelected && !normalizedId;
-    
+
     setLocalShiftId(normalizedId);
     setCurrentShiftId(normalizedId);
     setCurrentPredefinedFilterId('');
@@ -224,7 +226,7 @@ const FilterPanelV2 = ({
 
     let finalStartTime = '';
     let finalEndTime = '';
-    
+
     if (selectedShift) {
       finalStartTime = selectedShift.start_time || '';
       finalEndTime = selectedShift.end_time || '';
@@ -276,17 +278,17 @@ const FilterPanelV2 = ({
   // Helper function to validate time range
   const validateTimeRange = (startTime, endTime) => {
     if (!startTime || !endTime) return true;
-    
+
     const start = new Date(`2000-01-01T${startTime}`);
     const end = new Date(`2000-01-01T${endTime}`);
-    
+
     return end > start;
   };
 
   const handleStartTimeChange = (time) => {
     setLocalStartTime(time);
     setTimeError('');
-    
+
     if (time && localEndTime) {
       if (!validateTimeRange(time, localEndTime)) {
         setTimeError('End time cannot be before start time');
@@ -297,7 +299,7 @@ const FilterPanelV2 = ({
   const handleEndTimeChange = (time) => {
     setLocalEndTime(time);
     setTimeError('');
-    
+
     if (time && localStartTime) {
       if (!validateTimeRange(localStartTime, time)) {
         setTimeError('End time cannot be before start time');
@@ -338,7 +340,7 @@ const FilterPanelV2 = ({
   useEffect(() => {
     const startDate = filters.startDate ? convertUTCToLocalDate(filters.startDate) : null;
     const endDate = filters.endDate ? convertUTCToLocalDate(filters.endDate) : null;
-    
+
     setDateRange({
       start: startDate ? getLocalDateString(startDate) : null,
       end: endDate ? getLocalDateString(endDate) : null,
@@ -351,7 +353,7 @@ const FilterPanelV2 = ({
     setLocalEndTime(filters.endTime?.substring(0, 5) || '');
     setLocalDuration(filters.duration || '');
     setShowFlaggedOnly(filters.showFlaggedOnly || false);
-    
+
     if (!filters.shiftId && !originalTimesRef.current.startTime && !originalTimesRef.current.endTime) {
       originalTimesRef.current = {
         startTime: filters.startTime || '',
@@ -373,6 +375,25 @@ const FilterPanelV2 = ({
     }
   }, [filters.predefinedFilterId, currentPredefinedFilterId]);
 
+  // Sync content types with Redux state
+  // IMPORTANT: Don't sync when onlyAnnouncers is true to prevent "Announcer" item from appearing checked
+  useEffect(() => {
+    // Skip sync if "Only Announcers" is selected
+    if (onlyAnnouncers) {
+      return;
+    }
+
+    if (filters.contentTypes && Array.isArray(filters.contentTypes)) {
+      // Only update if different to avoid infinite loops
+      const currentTypes = JSON.stringify([...selectedContentTypes].sort());
+      const reduxTypes = JSON.stringify([...filters.contentTypes].sort());
+      if (currentTypes !== reduxTypes) {
+        console.log('🔄 Syncing content types from Redux:', filters.contentTypes);
+        setSelectedContentTypes(filters.contentTypes);
+      }
+    }
+  }, [filters.contentTypes, onlyAnnouncers]);
+
   // Sync status state with Redux filters.status (for V2) - only when status changes externally
   // IMPORTANT: This should NOT interfere when onlyActive is true, as "Only Active" mode takes precedence
   useEffect(() => {
@@ -380,7 +401,7 @@ const FilterPanelV2 = ({
     if (isManuallyUpdatingStatus.current || onlyActive) {
       return;
     }
-    
+
     // Only sync if filters.status changes and it's different from our current state
     // This prevents infinite loops by only updating when Redux state changes externally
     if (filters.status === 'active' || filters.status === 'inactive') {
@@ -437,17 +458,17 @@ const FilterPanelV2 = ({
   // Date range selection handler
   const handleDateRangeSelection = (startDateUTC, endDateUTC) => {
     console.log('UTC Date range selected:', startDateUTC, 'to', endDateUTC);
-    
+
     if (handleDateRangeSelect) {
       handleDateRangeSelect(startDateUTC, endDateUTC);
     } else {
-      dispatch(setFilter({ 
+      dispatch(setFilter({
         startDate: startDateUTC,
         endDate: endDateUTC,
         date: null,
         daypart: 'none'
       }));
-      
+
       applyFiltersV2({
         ...filters,
         startDate: startDateUTC,
@@ -481,9 +502,9 @@ const FilterPanelV2 = ({
     const firstDay = new Date(currentYear, currentMonth, 1);
     const lastDay = new Date(currentYear, currentMonth + 1, 0);
     const startingDay = firstDay.getDay();
-    
+
     const days = [];
-    
+
     const prevMonthLastDay = new Date(currentYear, currentMonth, 0).getDate();
     for (let i = startingDay - 1; i >= 0; i--) {
       const date = new Date(currentYear, currentMonth - 1, prevMonthLastDay - i);
@@ -493,7 +514,7 @@ const FilterPanelV2 = ({
         isDisabled: true
       });
     }
-    
+
     for (let i = 1; i <= lastDay.getDate(); i++) {
       const date = new Date(currentYear, currentMonth, i);
       days.push({
@@ -502,18 +523,18 @@ const FilterPanelV2 = ({
         isDisabled: false
       });
     }
-    
+
     return days;
   };
 
   const isDateInRange = (date) => {
     if (!dateRange.start || !dateRange.end) return false;
-    
+
     const currentDate = getLocalDateString(date);
     const startDate = parseDateString(dateRange.start);
     const endDate = parseDateString(dateRange.end);
     const dateObj = parseDateString(currentDate);
-    
+
     return dateObj >= startDate && dateObj <= endDate;
   };
 
@@ -530,7 +551,7 @@ const FilterPanelV2 = ({
   const handleDateClick = (date) => {
     const localDateString = getLocalDateString(date);
     const utcDateString = convertLocalToUTCDateString(date);
-    
+
     if (!dateRange.start) {
       setDateRange({
         start: localDateString,
@@ -540,18 +561,18 @@ const FilterPanelV2 = ({
     } else if (dateRange.selecting) {
       let finalStartUTC = convertLocalToUTCDateString(parseDateString(dateRange.start));
       let finalEndUTC = utcDateString;
-      
+
       if (new Date(utcDateString) < new Date(finalStartUTC)) {
         finalStartUTC = utcDateString;
         finalEndUTC = convertLocalToUTCDateString(parseDateString(dateRange.start));
       }
-      
+
       setDateRange({
         start: dateRange.start,
         end: localDateString,
         selecting: false
       });
-      
+
       handleDateRangeSelection(finalStartUTC, finalEndUTC);
     } else {
       setDateRange({
@@ -588,12 +609,12 @@ const FilterPanelV2 = ({
 
   const handleShowFlaggedOnlyChange = (checked) => {
     setShowFlaggedOnly(checked);
-    
+
     const newFilters = {
       ...filters,
       showFlaggedOnly: checked
     };
-    
+
     dispatch(setFilter(newFilters));
     applyFiltersV2(newFilters, currentShiftId);
   };
@@ -602,35 +623,35 @@ const FilterPanelV2 = ({
   const handleOnlyActiveToggle = (checked) => {
     console.log('🔄 handleOnlyActiveToggle called with checked:', checked);
     console.log('📊 Current state before update:', { onlyActive, activeStatus, filtersStatus: filters.status });
-    
+
     // Set flag to prevent useEffect from interfering
     isManuallyUpdatingStatus.current = true;
-    
+
     const newOnlyActive = checked;
     // When turning on "Only Active", always set status to 'active' and reset activeStatus to 'all'
     // This ensures "Only Active" takes precedence and hides other status options immediately
     // When turning off, restore to the previous activeStatus (or 'all' if it was 'all')
     const newActiveStatus = checked ? 'all' : activeStatus;
-    
+
     console.log('📝 Will update to:', { newOnlyActive, newActiveStatus });
-    
+
     // Update state immediately - React will batch these updates
     // IMPORTANT: Set onlyActive first so the UI condition {!onlyActive && ...} works correctly
     setOnlyActive(newOnlyActive);
     setActiveStatus(newActiveStatus);
-    
+
     // Update Redux filters.status to sync with other components
     // "Only Active" always means status='active' in the API, regardless of previous activeStatus value
     // This ensures that even if "Active" was selected before, "Only Active" will work correctly
     const statusForRedux = checked ? 'active' : (newActiveStatus === 'all' ? null : newActiveStatus);
-    
+
     console.log('🔴 Setting Redux status to:', statusForRedux);
     dispatch(setFilter({ status: statusForRedux }));
-    
+
     // Apply filters with the new state values
     // When onlyActive is true, status will be 'active' regardless of activeStatus
-    applyFiltersV2WithStatus(filters, currentShiftId, newOnlyActive, newActiveStatus);
-    
+    applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, newOnlyActive, newActiveStatus, onlyAnnouncers, selectedContentTypes);
+
     // Reset flag after a short delay to allow state updates to complete
     setTimeout(() => {
       isManuallyUpdatingStatus.current = false;
@@ -641,65 +662,65 @@ const FilterPanelV2 = ({
   const handleActiveStatusChange = (status) => {
     const newActiveStatus = status;
     const newOnlyActive = false; // Turn off only active when selecting specific status
-    
+
     setActiveStatus(newActiveStatus);
     setOnlyActive(newOnlyActive);
-    
+
     // Update Redux filters.status to sync with other components
     const statusForRedux = newActiveStatus === 'all' ? null : newActiveStatus;
     dispatch(setFilter({ status: statusForRedux }));
-    
+
     // Apply filters with the new state values
-    applyFiltersV2WithStatus(filters, currentShiftId, newOnlyActive, newActiveStatus);
+    applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, newOnlyActive, newActiveStatus, onlyAnnouncers, selectedContentTypes);
   };
 
   const handleOnlyAnnouncersToggle = (checked) => {
     setOnlyAnnouncers(checked);
     if (checked) {
       setSelectedContentTypes([]); // Clear selected content types when only announcers is on
+      // Update Redux state with Announcer content type
+      dispatch(setFilter({ contentTypes: ['Announcer'] }));
       // Apply filters immediately with onlyAnnouncers=true
-      setTimeout(() => {
-        applyFiltersV2(filters, currentShiftId);
-      }, 0);
+      // Pass the new values directly to avoid race condition
+      applyFiltersV2WithContentTypes(filters, currentShiftId, true, []);
     } else {
+      // When turning off only announcers, clear content types in Redux
+      dispatch(setFilter({ contentTypes: [] }));
       // When turning off only announcers, apply filters with current selectedContentTypes
-      setTimeout(() => {
-        applyFiltersV2(filters, currentShiftId);
-      }, 0);
+      // Pass the new values directly to avoid race condition
+      applyFiltersV2WithContentTypes(filters, currentShiftId, false, selectedContentTypes);
     }
   };
 
   const handleContentTypeToggle = (contentType, checked) => {
-    if (checked) {
-      setSelectedContentTypes(prev => {
-        const updated = [...prev, contentType];
-        // Apply filters after state update
-        setTimeout(() => {
-          applyFiltersV2(filters, currentShiftId);
-        }, 0);
-        return updated;
-      });
-    } else {
-      setSelectedContentTypes(prev => {
-        const updated = prev.filter(type => type !== contentType);
-        // Apply filters after state update
-        setTimeout(() => {
-          applyFiltersV2(filters, currentShiftId);
-        }, 0);
-        return updated;
-      });
-    }
     setOnlyAnnouncers(false); // Turn off only announcers when selecting specific content types
+
+    if (checked) {
+      const updatedContentTypes = [...selectedContentTypes, contentType];
+      setSelectedContentTypes(updatedContentTypes);
+      // Update Redux state
+      dispatch(setFilter({ contentTypes: updatedContentTypes }));
+      // Apply filters with the updated content types immediately
+      applyFiltersV2WithContentTypes(filters, currentShiftId, false, updatedContentTypes);
+    } else {
+      const updatedContentTypes = selectedContentTypes.filter(type => type !== contentType);
+      setSelectedContentTypes(updatedContentTypes);
+      // Update Redux state
+      dispatch(setFilter({ contentTypes: updatedContentTypes }));
+      // Apply filters with the updated content types immediately
+      applyFiltersV2WithContentTypes(filters, currentShiftId, false, updatedContentTypes);
+    }
   };
 
   const handleAllContentTypesToggle = (checked) => {
     if (checked) {
       setSelectedContentTypes([]);
       setOnlyAnnouncers(false);
+      // Clear content types in Redux
+      dispatch(setFilter({ contentTypes: [] }));
       // Apply filters immediately - no content_type param should be added
-      setTimeout(() => {
-        applyFiltersV2(filters, currentShiftId);
-      }, 0);
+      // Pass empty array to indicate "All" is selected
+      applyFiltersV2WithContentTypes(filters, currentShiftId, false, []);
     }
   };
 
@@ -715,8 +736,8 @@ const FilterPanelV2 = ({
     return null;
   };
 
-  // Apply filters using V2 API with explicit status parameters
-  const applyFiltersV2WithStatus = (filterState, shiftId, onlyActiveValue, activeStatusValue) => {
+  // Apply filters using V2 API with explicit status and content type parameters
+  const applyFiltersV2WithStatusAndContentTypes = (filterState, shiftId, onlyActiveValue, activeStatusValue, onlyAnnouncersValue, selectedContentTypesValue) => {
     let startDatetime = null;
     let endDatetime = null;
 
@@ -736,20 +757,20 @@ const FilterPanelV2 = ({
     // Determine status - API expects 'active' or 'inactive' as strings
     const statusParam = getStatusParam(onlyActiveValue, activeStatusValue);
 
-    // Determine content types for API call
+    // Determine content types for API call using explicit parameters
     // Rules:
     // 1. When "Only Announcers" is selected → content_type=Announcer (exact case, capital A)
     // 2. When "All" is selected → don't add content_type param at all (pass null or empty array)
     // 3. When specific content types are selected → add them as-is (exact strings, no lowercase conversion)
     let contentTypesParam = null; // null means don't add content_type param
-    if (onlyAnnouncers) {
+    if (onlyAnnouncersValue) {
       // Filter to only "Announcer" content type (exact case as required by backend)
       contentTypesParam = ['Announcer'];
       console.log('📢 Only Announcers selected - using content_type=Announcer');
-    } else if (selectedContentTypes.length > 0) {
+    } else if (selectedContentTypesValue && selectedContentTypesValue.length > 0) {
       // Use selected content types exactly as they are (no lowercase conversion)
       // Pass the exact strings from the API/UI without modification
-      contentTypesParam = [...selectedContentTypes];
+      contentTypesParam = [...selectedContentTypesValue];
       console.log('📋 Selected content types:', contentTypesParam);
     } else {
       // "All" is selected - no content_type param will be added
@@ -768,6 +789,20 @@ const FilterPanelV2 = ({
     }
 
     if (fetchAudioSegments) {
+      console.log('🚀 Calling V2 API with contentTypes:', contentTypesParam);
+      console.log('📊 Full API params:', {
+        channelId,
+        startDatetime,
+        endDatetime,
+        page: 1,
+        shiftId: shiftId || filterState.shiftId || null,
+        predefinedFilterId: filterState.predefinedFilterId || null,
+        contentTypes: contentTypesParam || [],
+        status: statusParam,
+        searchText: filterState.searchText || localSearchText || null,
+        searchIn: filterState.searchIn || localSearchIn || null
+      });
+
       // fetchAudioSegments prop should be fetchAudioSegmentsV2 function
       reduxDispatch(fetchAudioSegments({
         channelId,
@@ -784,22 +819,29 @@ const FilterPanelV2 = ({
     }
   };
 
+
+  // Helper function to apply filters with explicit content type values
+  // This avoids race conditions where state hasn't updated yet
+  const applyFiltersV2WithContentTypes = (filterState, shiftId, onlyAnnouncersValue, selectedContentTypesValue) => {
+    applyFiltersV2WithStatusAndContentTypes(filterState, shiftId, onlyActive, activeStatus, onlyAnnouncersValue, selectedContentTypesValue);
+  };
+
   // Apply filters using V2 API (uses current state values)
   const applyFiltersV2 = (filterState, shiftId) => {
-    applyFiltersV2WithStatus(filterState, shiftId, onlyActive, activeStatus);
+    applyFiltersV2WithStatusAndContentTypes(filterState, shiftId, onlyActive, activeStatus, onlyAnnouncers, selectedContentTypes);
   };
 
   // Wrapper function to handle Apply button click
   const handleApplyWithDuration = () => {
     let durationValue = null;
-    
+
     if (localDuration && localDuration.toString().trim() !== '') {
       const parsed = parseInt(localDuration.toString().trim(), 10);
       if (!isNaN(parsed) && parsed > 0) {
         durationValue = parsed;
       }
     }
-    
+
     const timeFilters = {
       startTime: localStartTime ? localStartTime + ':00' : '',
       endTime: localEndTime ? localEndTime + ':00' : '',
@@ -807,21 +849,21 @@ const FilterPanelV2 = ({
       duration: durationValue,
       showFlaggedOnly: currentShiftId ? showFlaggedOnly : false
     };
-    
+
     dispatch(setFilter(timeFilters));
-    
+
     const completeFilters = {
       ...filters,
       ...timeFilters
     };
-    
+
     applyFiltersV2(completeFilters, currentShiftId);
   };
 
   // Compact Calendar component
   const CompactDateRangeCalendar = () => {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    
+
     return (
       <div ref={calendarRef} className="bg-white border border-gray-300 rounded-lg shadow-lg p-3 min-w-72 max-w-80">
         <div className="flex justify-between items-center mb-3">
@@ -831,11 +873,11 @@ const FilterPanelV2 = ({
           >
             <ChevronUp className="w-3 h-3 transform -rotate-90" />
           </button>
-          
+
           <h3 className="font-semibold text-gray-700 text-sm">
             {monthNames[currentMonth]} {currentYear}
           </h3>
-          
+
           <button
             onClick={() => navigateMonth('next')}
             className="p-1 hover:bg-gray-100 rounded transition-colors"
@@ -843,7 +885,7 @@ const FilterPanelV2 = ({
             <ChevronUp className="w-3 h-3 transform rotate-90" />
           </button>
         </div>
-        
+
         <div className="mb-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
           {dateRange.selecting ? (
             `Select end date (after ${dateRange.start})`
@@ -851,7 +893,7 @@ const FilterPanelV2 = ({
             'Select start date'
           )}
         </div>
-        
+
         <div className="grid grid-cols-7 gap-1 mb-1">
           {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
             <div key={day} className="text-center text-xs font-medium text-gray-500 py-1">
@@ -859,7 +901,7 @@ const FilterPanelV2 = ({
             </div>
           ))}
         </div>
-        
+
         <div className="grid grid-cols-7 gap-1">
           {generateCalendarDays().map((day, index) => {
             const dateString = getLocalDateString(day.date);
@@ -868,7 +910,7 @@ const FilterPanelV2 = ({
             const isEnd = isRangeEnd(day.date);
             const isSelected = isStart || isEnd;
             const isToday = dateString === getTodayDateString();
-            
+
             return (
               <button
                 key={index}
@@ -888,7 +930,7 @@ const FilterPanelV2 = ({
             );
           })}
         </div>
-        
+
         <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-200">
           <div className="text-xs text-gray-600 flex-1 truncate mr-2">
             {dateRange.start && dateRange.end ? (
@@ -913,21 +955,18 @@ const FilterPanelV2 = ({
   // Toggle component for switches - matches the image design
   const ToggleSwitch = ({ checked, onChange, label }) => {
     return (
-      <div className={`flex items-center justify-between py-2 px-3 rounded transition-colors ${
-        checked ? 'bg-blue-600' : 'hover:bg-gray-50'
-      }`}>
+      <div className={`flex items-center justify-between py-2 px-3 rounded transition-colors ${checked ? 'bg-blue-600' : 'hover:bg-gray-50'
+        }`}>
         <span className={`text-sm ${checked ? 'text-white font-medium' : 'text-gray-700'}`}>{label}</span>
         <button
           type="button"
           onClick={() => onChange(!checked)}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-            checked ? 'bg-white' : 'bg-gray-300'
-          }`}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${checked ? 'bg-white' : 'bg-gray-300'
+            }`}
         >
           <span
-            className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
-              checked ? 'translate-x-6 bg-blue-600' : 'translate-x-1 bg-white'
-            }`}
+            className={`inline-block h-4 w-4 transform rounded-full transition-transform ${checked ? 'translate-x-6 bg-blue-600' : 'translate-x-1 bg-white'
+              }`}
           />
         </button>
       </div>
@@ -1405,7 +1444,7 @@ const FilterPanelV2 = ({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6" ref={filterRef}>
-      <div 
+      <div
         className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
         onClick={toggleFilters}
       >
@@ -1630,7 +1669,7 @@ const FilterPanelV2 = ({
                       />
                     </div>
                   </div>
-                  
+
                   {/* Error message */}
                   {timeError && (
                     <div className="mt-2 p-2 text-sm text-red-600 bg-red-50 rounded border border-red-200">
@@ -1680,15 +1719,15 @@ const FilterPanelV2 = ({
 
 // Helper component for the missing FilterIcon
 const FilterIcon = (props) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width="16" 
-    height="16" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
     strokeLinejoin="round"
     {...props}
   >

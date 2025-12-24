@@ -31,13 +31,13 @@ const AudioSegmentsPage = () => {
   // Prioritize localStorage channelId if it differs from URL params (channel was switched)
   const storedChannelId = localStorage.getItem("channelId");
   const channelId = storedChannelId && storedChannelId !== channelIdFromParams ? storedChannelId : (channelIdFromParams || storedChannelId);
-  
+
   const [searchParams, setSearchParams] = useSearchParams();
   const date = searchParams.get('date');
   const startTime = searchParams.get('startTime');
   const endTime = searchParams.get('endTime');
   const daypart = searchParams.get('daypart');
-  
+
   const [localSearchText, setLocalSearchText] = useState('');
   const [localSearchIn, setLocalSearchIn] = useState('transcription');
 
@@ -47,18 +47,18 @@ const AudioSegmentsPage = () => {
 
   const [showPieChartModal, setShowPieChartModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  
+
   // Multi-select state for merging segments
   const [isMergeMode, setIsMergeMode] = useState(false);
   const [selectedSegmentIds, setSelectedSegmentIds] = useState(new Set());
   const [isMerging, setIsMerging] = useState(false);
   const [mergeError, setMergeError] = useState(null);
-  
+
   // Status toggle state
   const [isStatusToggleMode, setIsStatusToggleMode] = useState(false);
   const [statusSelectedSegmentIds, setStatusSelectedSegmentIds] = useState(new Set());
   const [showStatusToggleOptions, setShowStatusToggleOptions] = useState(false);
-  
+
   const [isFabExpanded, setIsFabExpanded] = useState(false);
   const [isFabHovered, setIsFabHovered] = useState(false);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
@@ -68,10 +68,10 @@ const AudioSegmentsPage = () => {
   const [showToggleAllConfirm, setShowToggleAllConfirm] = useState(false);
   const [showConversionConfirm, setShowConversionConfirm] = useState(false);
   const [pendingConversion, setPendingConversion] = useState(null); // 'activeToInactive' or 'inactiveToActive'
-  
+
   // Filter version state - default to V1
   const [filterVersion, setFilterVersion] = useState('v1'); // 'v1' or 'v2'
-  
+
   const handleTrimClick = (segment) => {
     dispatch(openTrimmer(segment));
   };
@@ -80,8 +80,8 @@ const AudioSegmentsPage = () => {
     setCompactEditorSegment(segment);
     setIsCompactEditorOpen(true);
   };
-  
-  const channelName = searchParams.get("name"); 
+
+  const channelName = searchParams.get("name");
 
   useEffect(() => {
     if (channelName) {
@@ -99,15 +99,15 @@ const AudioSegmentsPage = () => {
       localStorage.setItem("channelId", channelId);
     }
   }, [channelName, channelId]);
-  
+
   const dispatch = useDispatch();
   useTranscriptionPolling();
-  
-  const { 
-    segments, 
-    channelInfo, 
-    loading, 
-    error, 
+
+  const {
+    segments,
+    channelInfo,
+    loading,
+    error,
     currentPlayingId,
     isPlaying,
     filters,
@@ -135,35 +135,35 @@ const AudioSegmentsPage = () => {
       const newChannel = event.detail;
       const newChannelId = newChannel?.id || localStorage.getItem('channelId');
       const newChannelName = newChannel?.name || localStorage.getItem('channelName');
-      
+
       // Always refetch when channel change event is received, even if it's the same channel
       // This ensures data is refreshed when switching back to the original channel
       if (newChannelId && newChannelId !== channelIdFromParams) {
         // Update the tracked channel ID
         setCurrentChannelId(newChannelId);
-        
+
         // Update URL to reflect the new channel ID while preserving all search params
         const currentParams = new URLSearchParams(searchParams);
-        
+
         // Preserve all existing query parameters
         const newParams = new URLSearchParams();
         currentParams.forEach((value, key) => {
           newParams.set(key, value);
         });
-        
+
         // Update channel name if provided
         if (newChannelName) {
           newParams.set('name', encodeURIComponent(newChannelName));
         }
-        
+
         // Navigate to new URL with updated channel ID, preserving all query params
         navigate(`/channels/${newChannelId}/segments?${newParams.toString()}`, { replace: true });
-        
+
         // Refetch audio segments with current filters
         const filtersToUse = filters;
         if ((filtersToUse.startDate && filtersToUse.endDate) || filtersToUse.date) {
-          dispatch(fetchAudioSegments({ 
-            channelId: newChannelId, 
+          dispatch(fetchAudioSegments({
+            channelId: newChannelId,
             date: filtersToUse.date,
             startDate: filtersToUse.startDate,
             endDate: filtersToUse.endDate,
@@ -193,10 +193,10 @@ const AudioSegmentsPage = () => {
 
   const currentPage = pagination?.current_page || 1;
   const totalPages = pagination?.total_pages || 0;
-  
+
   // Track if we've already auto-switched pages to avoid infinite loops
   const hasAutoSwitchedPage = useRef(false);
-  
+
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
   const [selectedSegment, setSelectedSegment] = useState(null);
@@ -226,65 +226,65 @@ const AudioSegmentsPage = () => {
   const lastFilters = useRef(null);
   const hasInitialFiltersSet = useRef(false);
 
-// Simplified useEffect for initial load
- useEffect(() => {
-  if (isInitialLoad.current) {
-    isInitialLoad.current = false;
-    
-    const today = new Date().toLocaleDateString('en-CA'); 
-    
-    setSearchParams({
-      date: today,
-      searchIn: 'transcription'
-    });
+  // Simplified useEffect for initial load
+  useEffect(() => {
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
 
-    // Store current filters to detect changes
-    lastFilters.current = {
-      date: today,
-      startDate: today,
-      endDate: today,
-      startTime: '00:00:00',
-      endTime: '23:59:59',
-      daypart: 'none',
-      searchText: '',
-      searchIn: 'transcription',
-      shiftId: null,
-      predefinedFilterId: null 
-    };
+      const today = new Date().toLocaleDateString('en-CA');
 
-    dispatch(setFilter(lastFilters.current));
+      setSearchParams({
+        date: today,
+        searchIn: 'transcription'
+      });
 
-    setLocalStartTime('');
-    setLocalEndTime('');
-    setLocalSearchText('');
-    setLocalSearchIn('transcription');
-    
-    // Set hasInitialFiltersSet to true after initial setup
-    hasInitialFiltersSet.current = true;
-    
-    // Make only ONE API call on initial load
-    dispatch(fetchAudioSegments({ 
-      channelId, 
-      date: today,
-      startTime: '00:00:00',
-      endTime: '23:59:59',
-      daypart: 'none',
-      shiftId: null,
-      predefinedFilterId: null,
-      duration: null,
-      showFlaggedOnly: false,
-      status: filters.status,
-      recognition_status: filters.recognition_status,
-      has_content: filters.has_content,
-      page: 1
-    }));
-  }
-}, [channelId]);
+      // Store current filters to detect changes
+      lastFilters.current = {
+        date: today,
+        startDate: today,
+        endDate: today,
+        startTime: '00:00:00',
+        endTime: '23:59:59',
+        daypart: 'none',
+        searchText: '',
+        searchIn: 'transcription',
+        shiftId: null,
+        predefinedFilterId: null
+      };
+
+      dispatch(setFilter(lastFilters.current));
+
+      setLocalStartTime('');
+      setLocalEndTime('');
+      setLocalSearchText('');
+      setLocalSearchIn('transcription');
+
+      // Set hasInitialFiltersSet to true after initial setup
+      hasInitialFiltersSet.current = true;
+
+      // Make only ONE API call on initial load
+      dispatch(fetchAudioSegments({
+        channelId,
+        date: today,
+        startTime: '00:00:00',
+        endTime: '23:59:59',
+        daypart: 'none',
+        shiftId: null,
+        predefinedFilterId: null,
+        duration: null,
+        showFlaggedOnly: false,
+        status: filters.status,
+        recognition_status: filters.recognition_status,
+        has_content: filters.has_content,
+        page: 1
+      }));
+    }
+  }, [channelId]);
 
 
-  
-// Simplified filter change handler
- useEffect(() => {
+
+  // Simplified filter change handler
+  useEffect(() => {
     if (!isInitialLoad.current) {
       const params = {};
       if (filters.date) params.date = filters.date;
@@ -295,7 +295,7 @@ const AudioSegmentsPage = () => {
       if (filters.daypart && filters.daypart !== 'none') params.daypart = filters.daypart;
       if (filters.searchText) params.searchText = filters.searchText;
       if (filters.searchIn) params.searchIn = filters.searchIn;
-      
+
       setSearchParams(params);
     }
   }, [filters.date, filters.startDate, filters.endDate, filters.startTime, filters.endTime, filters.daypart, filters.searchText, filters.searchIn]);
@@ -309,16 +309,16 @@ const AudioSegmentsPage = () => {
 
   const handleFilterChange = (newFilters = null) => {
     const filtersToUse = newFilters || filters;
-    
+
     // Reset auto-switch flag when filters change
     hasAutoSwitchedPage.current = false;
-    
+
     // Only call V1 API if we're in V1 mode
     if (filterVersion === 'v1' && ((filtersToUse.startDate && filtersToUse.endDate) || filtersToUse.date)) {
       console.log('Making V1 API call with filters:', filtersToUse);
-      
-      dispatch(fetchAudioSegments({ 
-        channelId, 
+
+      dispatch(fetchAudioSegments({
+        channelId,
         date: filtersToUse.date,
         startDate: filtersToUse.startDate,
         endDate: filtersToUse.endDate,
@@ -339,30 +339,30 @@ const AudioSegmentsPage = () => {
     }
   };
 
-useEffect(() => {
-  console.log('🔄 useEffect [filters] triggered - Syncing local state:');
-  console.log('  - filters.startTime:', filters.startTime);
-  console.log('  - filters.endTime:', filters.endTime);
-  console.log('  - filters.searchText:', filters.searchText);
-  console.log('  - filters.searchIn:', filters.searchIn);
-  
-  // Sync local time state with Redux filters
-  setLocalStartTime(filters.startTime?.substring(0, 5) || '');
-  setLocalEndTime(filters.endTime?.substring(0, 5) || '');
-  setLocalSearchText(filters.searchText || '');
-  setLocalSearchIn(filters.searchIn || 'transcription');
-}, [filters]); 
+  useEffect(() => {
+    console.log('🔄 useEffect [filters] triggered - Syncing local state:');
+    console.log('  - filters.startTime:', filters.startTime);
+    console.log('  - filters.endTime:', filters.endTime);
+    console.log('  - filters.searchText:', filters.searchText);
+    console.log('  - filters.searchIn:', filters.searchIn);
 
-// Add this useEffect for search-specific changes - only for V1
- useEffect(() => {
+    // Sync local time state with Redux filters
+    setLocalStartTime(filters.startTime?.substring(0, 5) || '');
+    setLocalEndTime(filters.endTime?.substring(0, 5) || '');
+    setLocalSearchText(filters.searchText || '');
+    setLocalSearchIn(filters.searchIn || 'transcription');
+  }, [filters]);
+
+  // Add this useEffect for search-specific changes - only for V1
+  useEffect(() => {
     if (hasInitialFiltersSet.current && filterVersion === 'v1' && (filters.searchText || (filters.searchIn && filters.searchIn !== 'transcription'))) {
       console.log('Search filter changed:', {
         searchText: filters.searchText,
         searchIn: filters.searchIn
       });
-      
-      dispatch(fetchAudioSegments({ 
-        channelId, 
+
+      dispatch(fetchAudioSegments({
+        channelId,
         date: filters.date,
         startDate: filters.startDate,
         endDate: filters.endDate,
@@ -394,20 +394,20 @@ useEffect(() => {
     if (segments.length === 0 && pagination?.available_pages) {
       // Find pages with data
       const pagesWithData = pagination.available_pages.filter(page => page.has_data);
-      
+
       // If there are pages with data and current page is not one of them
       if (pagesWithData.length > 0) {
         const currentPageHasData = pagesWithData.some(page => page.page === currentPage);
-        
+
         if (!currentPageHasData && !hasAutoSwitchedPage.current) {
           // Switch to the first page with data
           const firstPageWithData = pagesWithData[0].page;
           console.log(`🔄 Auto-switching from page ${currentPage} (no data) to page ${firstPageWithData} (has data)`);
-          
+
           hasAutoSwitchedPage.current = true;
-          
-          dispatch(fetchAudioSegments({ 
-            channelId, 
+
+          dispatch(fetchAudioSegments({
+            channelId,
             date: filters.date,
             startDate: filters.startDate,
             endDate: filters.endDate,
@@ -435,15 +435,15 @@ useEffect(() => {
 
   const handlePageChange = (pageNumber) => {
     console.log('Page change requested to:', pageNumber);
-    
+
     // Reset auto-switch flag when user manually changes page
     hasAutoSwitchedPage.current = false;
-    
+
     // Use the appropriate API based on filter version
     if (filterVersion === 'v1') {
       // Use the unified fetchAudioSegments with page parameter
-      dispatch(fetchAudioSegments({ 
-        channelId, 
+      dispatch(fetchAudioSegments({
+        channelId,
         date: filters.date,
         startDate: filters.startDate,
         endDate: filters.endDate,
@@ -462,58 +462,58 @@ useEffect(() => {
         page: pageNumber
       }));
     } else {
-    // V2 API
-    let startDatetime = null;
-    let endDatetime = null;
-    if (filters.startDate && filters.endDate) {
-      const startTime = filters.startTime || '00:00:00';
-      const endTime = filters.endTime || '23:59:59';
-      startDatetime = convertLocalToUTC(filters.startDate, startTime);
-      endDatetime = convertLocalToUTC(filters.endDate, endTime);
-    } else if (filters.date) {
-      const startTime = filters.startTime || '00:00:00';
-      const endTime = filters.endTime || '23:59:59';
-      startDatetime = convertLocalToUTC(filters.date, startTime);
-      endDatetime = convertLocalToUTC(filters.date, endTime);
-    }
-    if (startDatetime && endDatetime) {
-      // Determine status parameter from Redux filters
-      let statusParam = null;
-      if (filters.status === 'active' || filters.status === 'inactive') {
-        statusParam = filters.status;
+      // V2 API
+      let startDatetime = null;
+      let endDatetime = null;
+      if (filters.startDate && filters.endDate) {
+        const startTime = filters.startTime || '00:00:00';
+        const endTime = filters.endTime || '23:59:59';
+        startDatetime = convertLocalToUTC(filters.startDate, startTime);
+        endDatetime = convertLocalToUTC(filters.endDate, endTime);
+      } else if (filters.date) {
+        const startTime = filters.startTime || '00:00:00';
+        const endTime = filters.endTime || '23:59:59';
+        startDatetime = convertLocalToUTC(filters.date, startTime);
+        endDatetime = convertLocalToUTC(filters.date, endTime);
       }
-      
-      dispatch(fetchAudioSegmentsV2({
-        channelId,
-        startDatetime,
-        endDatetime,
-        page: pageNumber,
-        shiftId: filters.shiftId || null,
-        predefinedFilterId: filters.predefinedFilterId || null,
-        contentTypes: [],
-        status: statusParam,
-        searchText: filters.searchText || null,
-        searchIn: filters.searchIn || null
-      }));
+      if (startDatetime && endDatetime) {
+        // Determine status parameter from Redux filters
+        let statusParam = null;
+        if (filters.status === 'active' || filters.status === 'inactive') {
+          statusParam = filters.status;
+        }
+
+        dispatch(fetchAudioSegmentsV2({
+          channelId,
+          startDatetime,
+          endDatetime,
+          page: pageNumber,
+          shiftId: filters.shiftId || null,
+          predefinedFilterId: filters.predefinedFilterId || null,
+          contentTypes: filters.contentTypes || [], // Use content types from Redux state
+          status: statusParam,
+          searchText: filters.searchText || null,
+          searchIn: filters.searchIn || null
+        }));
+      }
     }
-  }
-};
+  };
 
   useEffect(() => {
     if (!isInitialLoad.current && hasInitialFiltersSet.current && filterVersion === 'v1') {
       // Check if time filters have actually changed
-      const timeFiltersChanged = 
-        filters.startTime !== lastFilters.current?.startTime || 
+      const timeFiltersChanged =
+        filters.startTime !== lastFilters.current?.startTime ||
         filters.endTime !== lastFilters.current?.endTime;
-      
+
       if (timeFiltersChanged && (filters.startTime || filters.endTime)) {
         console.log('Time filters changed, triggering V1 API call:', {
           startTime: filters.startTime,
           endTime: filters.endTime
         });
-        
-        dispatch(fetchAudioSegments({ 
-          channelId, 
+
+        dispatch(fetchAudioSegments({
+          channelId,
           date: filters.date,
           startDate: filters.startDate,
           endDate: filters.endDate,
@@ -531,7 +531,7 @@ useEffect(() => {
           has_content: filters.has_content,
           page: 1
         }));
-        
+
         // Update last filters
         lastFilters.current = { ...filters };
       }
@@ -546,11 +546,11 @@ useEffect(() => {
         // Automatically uncheck showFlaggedOnly
         dispatch(setFilter({ showFlaggedOnly: false }));
         setErrorToast('This shift does not have flag duration configured. Flagged filter has been disabled.');
-        
+
         // Refetch data without showFlaggedOnly - only for V1
         if (filterVersion === 'v1') {
-          dispatch(fetchAudioSegments({ 
-            channelId, 
+          dispatch(fetchAudioSegments({
+            channelId,
             date: filters.date,
             startDate: filters.startDate,
             endDate: filters.endDate,
@@ -581,7 +581,7 @@ useEffect(() => {
     console.log('🔍 Search button clicked - Current state:');
     console.log('  - localSearchText:', localSearchText);
     console.log('  - localSearchIn:', localSearchIn);
-    
+
     const newFilters = {
       searchText: localSearchText,
       searchIn: localSearchIn,
@@ -590,9 +590,9 @@ useEffect(() => {
       shiftId: filters.shiftId,
       daypart: filters.daypart
     };
-    
+
     console.log('  - newFilters:', newFilters);
-    
+
     dispatch(setFilter(newFilters));
     handleSearchWithPagination({ ...filters, ...newFilters });
   };
@@ -600,7 +600,7 @@ useEffect(() => {
   const handleClearSearch = () => {
     setLocalSearchText('');
     setLocalSearchIn('transcription');
-    
+
     const newFilters = {
       searchText: '',
       searchIn: 'transcription',
@@ -609,7 +609,7 @@ useEffect(() => {
       shiftId: filters.shiftId,
       daypart: filters.daypart
     };
-    
+
     dispatch(setFilter(newFilters));
     handleFilterChange({ ...filters, ...newFilters });
   };
@@ -620,7 +620,7 @@ useEffect(() => {
 
   const handleToggleAllStatus = () => {
     setShowStatusToggleOptions(false);
-    
+
     if (filteredSegments.length === 0) {
       setStatusMessage('No segments available to update.');
       setStatusMessageType('success');
@@ -791,7 +791,7 @@ useEffect(() => {
       .map(segment => segment.id);
 
     await updateSegmentStatuses(activeSegmentIds, inactiveSegmentIds);
-    
+
     // Reset selection mode
     setIsStatusToggleMode(false);
     setStatusSelectedSegmentIds(new Set());
@@ -813,8 +813,8 @@ useEffect(() => {
 
       await Promise.all(requests);
 
-      dispatch(fetchAudioSegments({ 
-        channelId, 
+      dispatch(fetchAudioSegments({
+        channelId,
         date: filters.date,
         startDate: filters.startDate,
         endDate: filters.endDate,
@@ -870,13 +870,13 @@ useEffect(() => {
     }
   };
 
-const handleDaypartChange = (selectedDaypart) => {
+  const handleDaypartChange = (selectedDaypart) => {
     const today = new Date().toISOString().split('T')[0];
-    
+
     if (selectedDaypart === 'none') {
       const newFilters = {
-        daypart: 'none', 
-        startTime: '', 
+        daypart: 'none',
+        startTime: '',
         endTime: '',
       };
       dispatch(setFilter(newFilters));
@@ -884,8 +884,8 @@ const handleDaypartChange = (selectedDaypart) => {
     } else {
       const daypart = daypartOptions.find(opt => opt.value === selectedDaypart);
       const newFilters = {
-        daypart: selectedDaypart, 
-        startTime: daypart.startTime, 
+        daypart: selectedDaypart,
+        startTime: daypart.startTime,
         endTime: daypart.endTime,
         date: today,
         startDate: null,
@@ -896,7 +896,7 @@ const handleDaypartChange = (selectedDaypart) => {
     }
   };
 
- const handleSearchWithCustomTime = () => {
+  const handleSearchWithCustomTime = () => {
     const newFilters = {
       startTime: localStartTime ? localStartTime + ':00' : '',
       endTime: localEndTime ? localEndTime + ':00' : '',
@@ -918,7 +918,7 @@ const handleDaypartChange = (selectedDaypart) => {
     handleFilterChange({ ...filters, ...newFilters });
   };
 
- const handleDateRangeSelect = (start, end) => {
+  const handleDateRangeSelect = (start, end) => {
     const newFilters = {
       startDate: start,
       endDate: end,
@@ -929,19 +929,19 @@ const handleDaypartChange = (selectedDaypart) => {
     handleFilterChange({ ...filters, ...newFilters });
   };
 
- const handleResetFilters = () => {
+  const handleResetFilters = () => {
     const today = new Date().toLocaleDateString('en-CA');
     const defaultStartTime = '00:00:00';
     const defaultEndTime = '23:59:59';
-    
+
     const newFilters = {
-      date: today, 
-      startDate: today, 
+      date: today,
+      startDate: today,
       endDate: today,
-      startTime: defaultStartTime, 
-      endTime: defaultEndTime, 
-      daypart: 'none', 
-      status: null, 
+      startTime: defaultStartTime,
+      endTime: defaultEndTime,
+      daypart: 'none',
+      status: null,
       recognition_status: null,
       has_content: null,
       searchText: '',
@@ -950,19 +950,19 @@ const handleDaypartChange = (selectedDaypart) => {
       predefinedFilterId: null,
       duration: null
     };
-    
+
     dispatch(setFilter(newFilters));
     setLocalStartTime('');
     setLocalEndTime('');
     setLocalSearchText('');
     setLocalSearchIn('transcription');
-    setSearchParams({ 
+    setSearchParams({
       date: today,
       startTime: defaultStartTime,
       endTime: defaultEndTime,
       searchIn: 'transcription'
     });
-    
+
     handleFilterChange(newFilters);
   };
 
@@ -1015,27 +1015,27 @@ const handleDaypartChange = (selectedDaypart) => {
 
     setIsMerging(true);
     setMergeError(null);
-    
+
     try {
       const segmentIdsArray = Array.from(selectedSegmentIds);
       const response = await audioManagementApi.mergeSegments(segmentIdsArray);
-      
+
       // Reset selection and merge mode
       setSelectedSegmentIds(new Set());
       setIsMergeMode(false);
       setMergeError(null);
-      
+
       // Check if merge was successful and get the merged segment
       if (response?.data?.success && response?.data?.data?.segments?.length > 0) {
         const mergedSegment = response.data.data.segments[0];
-        
+
         // Open AudioTrimmer with the merged segment
         dispatch(openTrimmer(mergedSegment));
       }
-      
+
       // Refresh segments
-      dispatch(fetchAudioSegments({ 
-        channelId, 
+      dispatch(fetchAudioSegments({
+        channelId,
         date: filters.date,
         startDate: filters.startDate,
         endDate: filters.endDate,
@@ -1055,13 +1055,13 @@ const handleDaypartChange = (selectedDaypart) => {
       }));
     } catch (error) {
       console.error('Error merging segments:', error);
-      
+
       // Extract error message from API response
       let errorMessage = 'Failed to merge segments. Please try again.';
-      
+
       if (error.response?.data) {
         const errorData = error.response.data;
-        
+
         // Check for error message
         if (errorData.error) {
           errorMessage = errorData.error;
@@ -1073,7 +1073,7 @@ const handleDaypartChange = (selectedDaypart) => {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       setMergeError(errorMessage);
     } finally {
       setIsMerging(false);
@@ -1105,13 +1105,13 @@ const handleDaypartChange = (selectedDaypart) => {
     });
   };
 
-if (loading && segments.length === 0) {
+  if (loading && segments.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header 
-          channelInfo={channelInfo} 
+        <Header
+          channelInfo={channelInfo}
           channelName={channelName}
-          filters={filters} 
+          filters={filters}
           formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)}
           localSearchText={localSearchText}
           setLocalSearchText={setLocalSearchText}
@@ -1120,7 +1120,7 @@ if (loading && segments.length === 0) {
           handleSearch={handleSearch}
           handleClearSearch={handleClearSearch}
         />
-        
+
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-24">
           {[...Array(3)].map((_, i) => (
             <SegmentShimmer key={i} />
@@ -1194,8 +1194,8 @@ if (loading && segments.length === 0) {
                 />
                 {showStatusToggleOptions && (
                   <>
-                    <div 
-                      className="fixed inset-0 z-40" 
+                    <div
+                      className="fixed inset-0 z-40"
                       onClick={() => setShowStatusToggleOptions(false)}
                     ></div>
                     <div className="absolute right-16 top-0 bg-white border border-gray-200 rounded-lg shadow-xl z-50 min-w-[200px]">
@@ -1281,30 +1281,30 @@ if (loading && segments.length === 0) {
         </div>
       )}
       {mergeError && (
-        <Toast 
-          message={mergeError} 
+        <Toast
+          message={mergeError}
           onClose={() => setMergeError(null)}
           type="error"
         />
       )}
       {statusMessage && (
-        <Toast 
-          message={statusMessage} 
+        <Toast
+          message={statusMessage}
           onClose={() => setStatusMessage(null)}
           type={statusMessageType}
         />
       )}
       {errorToast && (
-        <Toast 
-          message={errorToast} 
+        <Toast
+          message={errorToast}
           onClose={() => setErrorToast(null)}
           type="error"
         />
       )}
-      <Header 
-        channelInfo={channelInfo} 
+      <Header
+        channelInfo={channelInfo}
         channelName={channelName}
-        filters={filters} 
+        filters={filters}
         formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)}
         localSearchText={localSearchText}
         setLocalSearchText={setLocalSearchText}
@@ -1313,7 +1313,7 @@ if (loading && segments.length === 0) {
         handleSearch={handleSearch}
         handleClearSearch={handleClearSearch}
       />
-      
+
       <div className="flex pt-16">
         {/* Sidebar Toggle - Visible when sidebar is closed */}
         {!isSidebarOpen && (
@@ -1370,7 +1370,7 @@ if (loading && segments.length === 0) {
                       if (filters.status === 'active' || filters.status === 'inactive') {
                         statusParam = filters.status;
                       }
-                      
+
                       dispatch(fetchAudioSegmentsV2({
                         channelId,
                         startDatetime,
@@ -1398,35 +1398,35 @@ if (loading && segments.length === 0) {
             {filterVersion === 'v1' && (
               <div className="border-b border-gray-200 pb-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Status</h3>
-              <div className="space-y-2">
-                {[
-                  { value: null, label: 'All Status' },
-                  { value: 'active', label: 'Active' },
-                  { value: 'inactive', label: 'Inactive' }
-                ].map((option) => {
-                  return (
-                    <label 
-                      key={option.value || 'all'} 
-                      className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer"
-                    >
-                      <input
-                        type="radio"
-                        name="status"
-                        value={option.value || 'all'}
-                        checked={filters.status === option.value}
-                        onChange={(e) => {
-                          const newStatus = e.target.value === 'all' ? null : e.target.value;
-                          const newFilters = { ...filters, status: newStatus };
-                          dispatch(setFilter({ status: newStatus }));
-                          handleFilterChange(newFilters);
-                        }}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                      />
-                      <span className="ml-2">{option.label}</span>
-                    </label>
-                  );
-                })}
-              </div>
+                <div className="space-y-2">
+                  {[
+                    { value: null, label: 'All Status' },
+                    { value: 'active', label: 'Active' },
+                    { value: 'inactive', label: 'Inactive' }
+                  ].map((option) => {
+                    return (
+                      <label
+                        key={option.value || 'all'}
+                        className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer"
+                      >
+                        <input
+                          type="radio"
+                          name="status"
+                          value={option.value || 'all'}
+                          checked={filters.status === option.value}
+                          onChange={(e) => {
+                            const newStatus = e.target.value === 'all' ? null : e.target.value;
+                            const newFilters = { ...filters, status: newStatus };
+                            dispatch(setFilter({ status: newStatus }));
+                            handleFilterChange(newFilters);
+                          }}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                        />
+                        <span className="ml-2">{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -1434,35 +1434,35 @@ if (loading && segments.length === 0) {
             {filterVersion === 'v1' && (
               <div className="border-b border-gray-200 pb-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Recognition</h3>
-              <div className="space-y-2">
-                {[
-                  { value: null, label: 'All Recognition' },
-                  { value: 'recognized', label: 'Recognized' },
-                  { value: 'unrecognized', label: 'Unrecognized' }
-                ].map((option) => {
-                  return (
-                    <label 
-                      key={option.value || 'all'} 
-                      className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer"
-                    >
-                      <input
-                        type="radio"
-                        name="recognition"
-                        value={option.value || 'all'}
-                        checked={filters.recognition_status === option.value}
-                        onChange={(e) => {
-                          const newRecognitionStatus = e.target.value === 'all' ? null : e.target.value;
-                          const newFilters = { ...filters, recognition_status: newRecognitionStatus };
-                          dispatch(setFilter({ recognition_status: newRecognitionStatus }));
-                          handleFilterChange(newFilters);
-                        }}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                      />
-                      <span className="ml-2">{option.label}</span>
-                    </label>
-                  );
-                })}
-              </div>
+                <div className="space-y-2">
+                  {[
+                    { value: null, label: 'All Recognition' },
+                    { value: 'recognized', label: 'Recognized' },
+                    { value: 'unrecognized', label: 'Unrecognized' }
+                  ].map((option) => {
+                    return (
+                      <label
+                        key={option.value || 'all'}
+                        className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer"
+                      >
+                        <input
+                          type="radio"
+                          name="recognition"
+                          value={option.value || 'all'}
+                          checked={filters.recognition_status === option.value}
+                          onChange={(e) => {
+                            const newRecognitionStatus = e.target.value === 'all' ? null : e.target.value;
+                            const newFilters = { ...filters, recognition_status: newRecognitionStatus };
+                            dispatch(setFilter({ recognition_status: newRecognitionStatus }));
+                            handleFilterChange(newFilters);
+                          }}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                        />
+                        <span className="ml-2">{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -1470,35 +1470,35 @@ if (loading && segments.length === 0) {
             {filterVersion === 'v1' && (
               <div className="border-b border-gray-200 pb-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Content</h3>
-              <div className="space-y-2">
-                {[
-                  { value: null, label: 'All Content' },
-                  { value: true, label: 'With Content' },
-                  { value: false, label: 'No Content' }
-                ].map((option) => {
-                  return (
-                    <label 
-                      key={option.value === null ? 'all' : option.value.toString()} 
-                      className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer"
-                    >
-                      <input
-                        type="radio"
-                        name="content"
-                        value={option.value === null ? 'all' : option.value.toString()}
-                        checked={filters.has_content === option.value}
-                        onChange={(e) => {
-                          const newHasContent = e.target.value === 'all' ? null : e.target.value === 'true';
-                          const newFilters = { ...filters, has_content: newHasContent };
-                          dispatch(setFilter({ has_content: newHasContent }));
-                          handleFilterChange(newFilters);
-                        }}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                      />
-                      <span className="ml-2">{option.label}</span>
-                    </label>
-                  );
-                })}
-              </div>
+                <div className="space-y-2">
+                  {[
+                    { value: null, label: 'All Content' },
+                    { value: true, label: 'With Content' },
+                    { value: false, label: 'No Content' }
+                  ].map((option) => {
+                    return (
+                      <label
+                        key={option.value === null ? 'all' : option.value.toString()}
+                        className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer"
+                      >
+                        <input
+                          type="radio"
+                          name="content"
+                          value={option.value === null ? 'all' : option.value.toString()}
+                          checked={filters.has_content === option.value}
+                          onChange={(e) => {
+                            const newHasContent = e.target.value === 'all' ? null : e.target.value === 'true';
+                            const newFilters = { ...filters, has_content: newHasContent };
+                            dispatch(setFilter({ has_content: newHasContent }));
+                            handleFilterChange(newFilters);
+                          }}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                        />
+                        <span className="ml-2">{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -1585,7 +1585,7 @@ if (loading && segments.length === 0) {
                 const pagesWithData = pagination.available_pages?.filter(page => page.has_data) || [];
                 const currentPageIndex = pagesWithData.findIndex(page => page.page === currentPage) + 1;
                 const isShowFlaggedOnly = filters.showFlaggedOnly || false;
-                
+
                 return (
                   <div className="flex items-center space-x-4">
                     {!isShowFlaggedOnly && (
@@ -1610,24 +1610,24 @@ if (loading && segments.length === 0) {
               ))
             ) : (
               filteredSegments.map((segment) => (
-              <SegmentCard
-                key={segment.id}
-                segment={segment}
-                currentPlayingId={currentPlayingId}
-                isPlaying={isPlaying}
-                handlePlayPauseAudio={handlePlayPauseAudio}
-                handleSummaryClick={handleSummaryClick}
-                handleTranscriptionClick={handleTranscriptionClick}
-                handleTrimClick={handleTrimClick}
-                handleCompactEditClick={handleCompactEditClick}
-                isMergeMode={isMergeMode}
-                isSelected={selectedSegmentIds.has(segment.id)}
-                onSelect={() => handleSegmentSelect(segment.id)}
-                isStatusToggleMode={isStatusToggleMode}
-                isStatusSelected={statusSelectedSegmentIds.has(segment.id)}
-                onStatusSelect={() => handleStatusSegmentSelect(segment.id)}
-              />
-            ))
+                <SegmentCard
+                  key={segment.id}
+                  segment={segment}
+                  currentPlayingId={currentPlayingId}
+                  isPlaying={isPlaying}
+                  handlePlayPauseAudio={handlePlayPauseAudio}
+                  handleSummaryClick={handleSummaryClick}
+                  handleTranscriptionClick={handleTranscriptionClick}
+                  handleTrimClick={handleTrimClick}
+                  handleCompactEditClick={handleCompactEditClick}
+                  isMergeMode={isMergeMode}
+                  isSelected={selectedSegmentIds.has(segment.id)}
+                  onSelect={() => handleSegmentSelect(segment.id)}
+                  isStatusToggleMode={isStatusToggleMode}
+                  isStatusSelected={statusSelectedSegmentIds.has(segment.id)}
+                  onStatusSelect={() => handleStatusSegmentSelect(segment.id)}
+                />
+              ))
             )}
           </div>
 
@@ -1648,7 +1648,7 @@ if (loading && segments.length === 0) {
       </div>
 
       {/* Keep all your existing modals and players */}
-      <PieChartModal 
+      <PieChartModal
         isOpen={showPieChartModal}
         onClose={() => setShowPieChartModal(false)}
       />
@@ -1656,14 +1656,14 @@ if (loading && segments.length === 0) {
       {currentPlayingId && (
         <div className={`fixed bottom-0 bg-white shadow-lg border-t border-gray-200 p-4 z-50 transition-all duration-300 ${isSidebarOpen ? 'left-64 right-0' : 'left-0 right-0'}`}>
           {segments.find(s => s.id === currentPlayingId) ? (
-            <AudioPlayer 
-              segment={segments.find(s => s.id === currentPlayingId)} 
+            <AudioPlayer
+              segment={segments.find(s => s.id === currentPlayingId)}
               onClose={() => dispatch(setCurrentPlaying(null))}
             />
           ) : (
             <div className="text-center py-2">
               <p className="text-gray-500">Audio segment no longer available</p>
-              <button 
+              <button
                 onClick={() => dispatch(setCurrentPlaying(null))}
                 className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               >
@@ -1685,15 +1685,15 @@ if (loading && segments.length === 0) {
       )}
 
       {showSummaryModal && selectedSegment && (
-        <SummaryModal 
-          summary={selectedSegment.analysis?.summary} 
+        <SummaryModal
+          summary={selectedSegment.analysis?.summary}
           onClose={() => setShowSummaryModal(false)}
         />
       )}
 
       {showTranscriptionModal && selectedSegment && (
-        <TranscriptionModal 
-          transcription={selectedSegment.transcription?.transcript} 
+        <TranscriptionModal
+          transcription={selectedSegment.transcription?.transcript}
           onClose={() => setShowTranscriptionModal(false)}
         />
       )}
@@ -1722,7 +1722,7 @@ if (loading && segments.length === 0) {
                       </p>
                     </div>
                     <div className="space-y-3 mb-4">
-                      <button 
+                      <button
                         onClick={handleConvertActiveToInactive}
                         disabled={activeSegmentIds.length === 0 || isStatusUpdating}
                         className="w-full px-4 py-3 border-2 border-blue-500 rounded-md text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 text-left"
@@ -1732,7 +1732,7 @@ if (loading && segments.length === 0) {
                           {activeSegmentIds.length} active segment{activeSegmentIds.length !== 1 ? 's' : ''} will become inactive
                         </div>
                       </button>
-                      <button 
+                      <button
                         onClick={handleConvertInactiveToActive}
                         disabled={inactiveSegmentIds.length === 0 || isStatusUpdating}
                         className="w-full px-4 py-3 border-2 border-green-500 rounded-md text-green-700 hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 text-left"
@@ -1744,7 +1744,7 @@ if (loading && segments.length === 0) {
                       </button>
                     </div>
                     <div className="flex justify-end">
-                      <button 
+                      <button
                         onClick={handleCancelToggleAll}
                         disabled={isStatusUpdating}
                         className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1768,14 +1768,14 @@ if (loading && segments.length === 0) {
                       </p>
                     </div>
                     <div className="flex justify-end space-x-3">
-                      <button 
+                      <button
                         onClick={handleCancelToggleAll}
                         disabled={isStatusUpdating}
                         className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Cancel
                       </button>
-                      <button 
+                      <button
                         onClick={async () => {
                           setShowToggleAllConfirm(false);
                           if (activeSegmentIds.length > 0) {
@@ -1804,14 +1804,14 @@ if (loading && segments.length === 0) {
                       </p>
                     </div>
                     <div className="flex justify-end space-x-3">
-                      <button 
+                      <button
                         onClick={handleCancelToggleAll}
                         disabled={isStatusUpdating}
                         className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Cancel
                       </button>
-                      <button 
+                      <button
                         onClick={async () => {
                           setShowToggleAllConfirm(false);
                           if (inactiveSegmentIds.length > 0) {
@@ -1857,14 +1857,14 @@ if (loading && segments.length === 0) {
                       </p>
                     </div>
                     <div className="flex justify-end space-x-3">
-                      <button 
+                      <button
                         onClick={handleCancelConversion}
                         disabled={isStatusUpdating}
                         className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Cancel
                       </button>
-                      <button 
+                      <button
                         onClick={handleConfirmConversion}
                         disabled={isStatusUpdating}
                         className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1887,14 +1887,14 @@ if (loading && segments.length === 0) {
                       </p>
                     </div>
                     <div className="flex justify-end space-x-3">
-                      <button 
+                      <button
                         onClick={handleCancelConversion}
                         disabled={isStatusUpdating}
                         className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Cancel
                       </button>
-                      <button 
+                      <button
                         onClick={handleConfirmConversion}
                         disabled={isStatusUpdating}
                         className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
