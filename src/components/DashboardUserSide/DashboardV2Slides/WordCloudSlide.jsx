@@ -20,45 +20,45 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
       try {
         setLoading(true);
         setError(null);
-        
+
         const channelId = localStorage.getItem('channelId');
         if (!channelId) {
           setError('Channel ID not found. Please select a channel first.');
           setLoading(false);
           return;
         }
-        
+
         if (!dateRange || !dateRange.start || !dateRange.end) {
           setLoading(false);
           return;
         }
-        
+
         const shiftId = currentShiftId ? parseInt(currentShiftId, 10) : null;
-        
+
         console.log('Fetching word counts with params:', {
           startDate: dateRange.start,
           endDate: dateRange.end,
           channelId,
           shiftId
         });
-        
+
         const response = await dashboardApi.getWordCount(
           dateRange.start,
           dateRange.end,
           channelId,
           shiftId
         );
-        
+
         console.log('Word counts response:', response);
-        
+
         setWordCounts(response.word_counts || {});
-        
+
         // Reset and trigger animations with delay
         setIsVisible(false);
         const timer = setTimeout(() => {
           setIsVisible(true);
         }, 100);
-        
+
         return () => clearTimeout(timer);
       } catch (err) {
         console.error('Error fetching word counts:', err);
@@ -101,7 +101,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
 
     // Create grid to track occupied cells
     const grid = Array(GRID_ROWS).fill(null).map(() => Array(GRID_COLS).fill(false));
-    
+
     // Helper function to check if cells are available
     const isAreaAvailable = (row, col, width, height) => {
       if (row + height > GRID_ROWS || col + width > GRID_COLS) {
@@ -131,22 +131,22 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
       // Try center first
       const centerRow = Math.floor(GRID_ROWS / 2);
       const centerCol = Math.floor(GRID_COLS / 2);
-      
+
       // Check center position first
       if (isAreaAvailable(centerRow, centerCol, width, height)) {
         return { row: centerRow, col: centerCol };
       }
-      
+
       // Optimized spiral search with step size for performance
       const step = 2; // Check every 2nd position for speed
       const maxRadius = Math.max(GRID_ROWS, GRID_COLS);
-      
+
       for (let radius = step; radius < maxRadius; radius += step) {
         const minRow = Math.max(0, centerRow - radius);
         const maxRow = Math.min(GRID_ROWS - height, centerRow + radius);
         const minCol = Math.max(0, centerCol - radius);
         const maxCol = Math.min(GRID_COLS - width, centerCol + radius);
-        
+
         // Check perimeter positions first (more likely to find space)
         for (let row = minRow; row <= maxRow; row += step) {
           // Left and right edges
@@ -157,7 +157,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
             return { row, col: maxCol };
           }
         }
-        
+
         for (let col = minCol; col <= maxCol; col += step) {
           // Top and bottom edges
           if (isAreaAvailable(minRow, col, width, height)) {
@@ -168,7 +168,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
           }
         }
       }
-      
+
       // Fallback: linear search with step for remaining positions
       for (let row = 0; row <= GRID_ROWS - height; row += step) {
         for (let col = 0; col <= GRID_COLS - width; col += step) {
@@ -177,7 +177,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
           }
         }
       }
-      
+
       // Last resort: check every position (slower but ensures placement)
       for (let row = 0; row <= GRID_ROWS - height; row++) {
         for (let col = 0; col <= GRID_COLS - width; col++) {
@@ -186,7 +186,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
           }
         }
       }
-      
+
       return null;
     };
 
@@ -198,7 +198,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
       const logMax = Math.log(maxCount + 1);
       const logCount = Math.log(count + 1);
       const normalized = (logCount - logMin) / (logMax - logMin);
-      
+
       // Increased size range with smaller difference between min and max
       const minSize = 16;  // Increased minimum significantly
       const maxSize = 85;  // Increased maximum
@@ -213,21 +213,21 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
       // Bold text typically takes 0.85-0.9x of font size per character
       const charWidth = fontSize * 0.85;  // Increased from 0.7 for bold text
       const charHeight = fontSize * 1.1;  // Increased from 1.0 to account for line-height and bold
-      
+
       if (isVertical) {
         // Vertical words (rotated 90deg): dimensions swap after rotation
         const originalTextWidth = wordLength * charWidth;
         const originalTextHeight = charHeight;
-        
+
         // After 90deg rotation, dimensions swap
         const rotatedWidth = originalTextHeight;
         const rotatedHeight = originalTextWidth;
-        
+
         // Convert to grid cells with adequate buffer to prevent overlap
         // Add 2 cells buffer to account for transform centering and rendering differences
         const width = Math.max(3, Math.ceil(rotatedWidth / CELL_WIDTH) + 2);
         const height = Math.max(3, Math.ceil(rotatedHeight / CELL_HEIGHT) + 2);
-        
+
         return {
           width: Math.min(GRID_COLS, width),
           height: Math.min(GRID_ROWS, height)
@@ -236,12 +236,12 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
         // Horizontal words:
         const textWidth = wordLength * charWidth;
         const textHeight = charHeight;
-        
+
         // Convert to grid cells with adequate buffer to prevent overlap
         // Add 2 cells buffer to account for transform centering and rendering differences
         const width = Math.max(3, Math.ceil(textWidth / CELL_WIDTH) + 2);
         const height = Math.max(3, Math.ceil(textHeight / CELL_HEIGHT) + 2);
-        
+
         return {
           width: Math.min(GRID_COLS, width),
           height: Math.min(GRID_ROWS, height)
@@ -253,7 +253,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
     // Limit to top 100 words by count
     const wordsToPlace = wordsArray.slice(0, 100);
     const totalWords = wordsToPlace.length;
-    
+
     // Decide orientation - mixed distribution to avoid clustering
     // Use a pattern that ensures good mixing across the entire word cloud
     const shouldBeVertical = (index, fontSize) => {
@@ -271,12 +271,12 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
       const fontSize = calculateSize(count);
       let isVertical = shouldBeVertical(i, fontSize);
       let { width, height } = calculateGridDimensions(fontSize, word.length, isVertical);
-      
+
       let position = findPosition(width, height);
       let finalWidth = width;
       let finalHeight = height;
       let finalFontSize = fontSize;
-      
+
       // If can't place, try reducing size progressively
       if (!position) {
         // Try with reduced dimensions - aggressive reduction for tight packing
@@ -292,7 +292,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
           }
         }
       }
-      
+
       // If still can't place, try opposite orientation with size reduction
       if (!position) {
         const oppositeVertical = !isVertical;
@@ -309,7 +309,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
           }
         }
       }
-      
+
       // Last resort: minimal size with safe dimensions - ensure word is placed
       if (!position) {
         // Use minimum safe dimensions to ensure placement
@@ -322,17 +322,17 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
           finalFontSize = 14;
         }
       }
-      
+
       if (position) {
         const { row, col } = position;
         occupyArea(row, col, finalWidth, finalHeight);
-        
+
         // Calculate pixel position - center within allocated grid area
         // Ensure position accounts for the transform origin (center)
         const x = (col + finalWidth / 2) * (100 / GRID_COLS);
         const y = (row + finalHeight / 2) * (100 / GRID_ROWS);
         const color = colors[i % colors.length];
-        
+
         placedWords.push({
           word,
           count,
@@ -375,10 +375,13 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
   }
 
   return (
-    <div className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+    <div
+      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
+    >
       <div className="max-w-7xl mx-auto">
         <h2 className="text-4xl font-bold text-white mb-8 text-center">Word Cloud</h2>
-        
+
         <div className="relative h-[600px] bg-black rounded-2xl overflow-hidden">
           {layoutWords.length === 0 ? (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -396,8 +399,8 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
                   color: item.color,
                   fontWeight: 'bold',
                   opacity: isVisible ? 1 : 0,
-                  transform: isVisible 
-                    ? `translate(-50%, -50%) scale(1) ${item.isVertical ? 'rotate(90deg)' : 'rotate(0deg)'}` 
+                  transform: isVisible
+                    ? `translate(-50%, -50%) scale(1) ${item.isVertical ? 'rotate(90deg)' : 'rotate(0deg)'}`
                     : `translate(-50%, -50%) scale(0) ${item.isVertical ? 'rotate(90deg)' : 'rotate(0deg)'}`,
                   transitionDelay: `${index * 3}ms`,
                   transformOrigin: 'center',
@@ -416,7 +419,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
             ))
           )}
         </div>
-        
+
         {layoutWords.length > 0 && (
           <div className="mt-4 text-center text-white/70 text-sm">
             Showing top {layoutWords.length} words (of {Object.keys(wordCounts).length} unique words)

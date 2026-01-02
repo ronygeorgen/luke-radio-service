@@ -15,41 +15,41 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
       try {
         setLoading(true);
         setError(null);
-        
+
         const channelId = localStorage.getItem('channelId');
         if (!channelId) {
           setError('Channel ID not found. Please select a channel first.');
           setLoading(false);
           return;
         }
-        
+
         if (!dateRange || !dateRange.start || !dateRange.end) {
           setLoading(false);
           return;
         }
-        
+
         const shiftId = currentShiftId ? parseInt(currentShiftId, 10) : null;
-        
+
         // Fetch both datasets in parallel
         const [durationData, countData] = await Promise.all([
           dashboardApi.getTopTopics(
-            dateRange.start, 
-            dateRange.end, 
-            channelId, 
+            dateRange.start,
+            dateRange.end,
+            channelId,
             'duration',
             shiftId,
             showAllTopics
           ),
           dashboardApi.getTopTopics(
-            dateRange.start, 
-            dateRange.end, 
-            channelId, 
+            dateRange.start,
+            dateRange.end,
+            channelId,
             'count',
             shiftId,
             showAllTopics
           )
         ]);
-        
+
         // Process duration data - get top 10 and calculate percentages
         const durationTopics = (durationData.top_topics || []).slice(0, 10);
         const totalDuration = durationTopics.reduce((sum, topic) => sum + (topic.total_duration_seconds || 0), 0);
@@ -60,7 +60,7 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
           durationFormatted: topic.total_duration_formatted,
           percentage: totalDuration > 0 ? Math.round((topic.total_duration_seconds / totalDuration) * 100) : 0
         }));
-        
+
         // Process count data - get top 10
         const countTopics = (countData.top_topics || []).slice(0, 10);
         const processedCount = countTopics.map(topic => ({
@@ -69,17 +69,17 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
           duration: topic.total_duration_seconds,
           durationFormatted: topic.total_duration_formatted
         }));
-        
+
         setTopTopicsByDuration(processedDuration);
         setTopTopicsByCount(processedCount);
-        
+
         // Reset and trigger animations with delay
         setIsVisible(false);
-        
+
         const timer = setTimeout(() => {
           setIsVisible(true);
         }, 100);
-        
+
         return () => clearTimeout(timer);
       } catch (err) {
         console.error('Error fetching top topics:', err);
@@ -97,7 +97,7 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
   };
 
   // Calculate max count for proper scaling
-  const maxTopicCount = topTopicsByCount.length > 0 
+  const maxTopicCount = topTopicsByCount.length > 0
     ? Math.max(...topTopicsByCount.map(topic => topic.count))
     : 1;
 
@@ -155,26 +155,27 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
   }
 
   return (
-    <div className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+    <div
+      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
+    >
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-3xl font-bold text-gray-900">Top Topics Distribution</h2>
-          
+
           {/* Toggle Button for Show All Topics */}
           <div className="flex items-center space-x-3">
             <span className="text-sm text-gray-700 font-medium">Show All Topics</span>
             <button
               onClick={handleToggleShowAllTopics}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                showAllTopics ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${showAllTopics ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
               role="switch"
               aria-checked={showAllTopics}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  showAllTopics ? 'translate-x-6' : 'translate-x-1'
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAllTopics ? 'translate-x-6' : 'translate-x-1'
+                  }`}
               />
             </button>
             <span className="text-xs text-gray-500">
@@ -182,10 +183,10 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
             </span>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Panel - Top 10 Topics (Time) */}
-          <div 
+          <div
             className="bg-gray-700 rounded-2xl p-6 shadow-xl"
             style={{
               opacity: isVisible ? 1 : 0,
@@ -210,9 +211,8 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
                         transitionDelay: `${baseDelay}ms`,
                       }}
                     >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                        index < 3 ? 'bg-pink-500 text-white' : 'bg-white text-gray-700 border-2 border-blue-500'
-                      }`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${index < 3 ? 'bg-pink-500 text-white' : 'bg-white text-gray-700 border-2 border-blue-500'
+                        }`}>
                         {index + 1}
                       </div>
                       <div className="flex-1">
@@ -239,7 +239,7 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
           </div>
 
           {/* Right Panel - Top 10 Topics # */}
-          <div 
+          <div
             className="bg-teal-100 rounded-2xl p-6 shadow-xl"
             style={{
               opacity: isVisible ? 1 : 0,

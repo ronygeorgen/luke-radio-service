@@ -32,37 +32,37 @@ const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false 
       try {
         setLoading(true);
         setError(null);
-        
+
         const channelId = localStorage.getItem('channelId');
         if (!channelId) {
           setError('Channel ID not found. Please select a channel first.');
           setLoading(false);
           return;
         }
-        
+
         if (!dateRange || !dateRange.start || !dateRange.end) {
           setLoading(false);
           return;
         }
-        
+
         const shiftId = currentShiftId ? parseInt(currentShiftId, 10) : null;
-        
+
         const data = await dashboardApi.getCategoryBucketCount(
-          dateRange.start, 
-          dateRange.end, 
-          channelId, 
+          dateRange.start,
+          dateRange.end,
+          channelId,
           'personal',
           shiftId
         );
         setCategoryData(data);
-        
+
         // Reset and trigger animations with delay
         setIsVisible(false);
-        
+
         const timer = setTimeout(() => {
           setIsVisible(true);
         }, 100);
-        
+
         return () => clearTimeout(timer);
       } catch (err) {
         console.error('Error fetching category bucket data:', err);
@@ -87,7 +87,7 @@ const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false 
 
     const buckets = categoryData.buckets;
     const bucketEntries = Object.entries(buckets);
-    
+
     // Sort by percentage (descending)
     const sortedBuckets = bucketEntries.sort((a, b) => (b[1].percentage || 0) - (a[1].percentage || 0));
 
@@ -146,13 +146,16 @@ const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false 
   const total = categoryData?.total || 0;
 
   return (
-    <div className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+    <div
+      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
+    >
       <div className="max-w-7xl mx-auto">
         <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">PERSONAL</h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel - By Content # */}
-          <div 
+          <div
             className="bg-white rounded-2xl p-6 shadow-xl"
             style={{
               opacity: isVisible ? 1 : 0,
@@ -203,7 +206,7 @@ const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false 
           </div>
 
           {/* Middle Panel - By Content Time */}
-          <div 
+          <div
             className="bg-gray-100 rounded-2xl p-6 shadow-xl"
             style={{
               opacity: isVisible ? 1 : 0,
@@ -326,7 +329,7 @@ const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false 
           </div>
 
           {/* Right Panel - Total Time */}
-          <div 
+          <div
             className="bg-gray-100 rounded-2xl p-6 shadow-xl"
             style={{
               opacity: isVisible ? 1 : 0,
@@ -338,209 +341,209 @@ const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false 
             {bucketsData.totalTime.length > 0 ? (
               <>
                 <div className="relative pl-2">
-                {/* Chart area - graph starts from 0 level */}
-                <div className="h-72 relative">
-                  <div className="w-full h-full">
-                    <svg viewBox="0 0 440 260" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
-                      {/* Calculate max value for scaling */}
-                      {(() => {
-                        const maxValue = Math.max(...bucketsData.totalTime.map(item => item.value), 1);
-                        // Round up to nice intervals for minutes
-                        let roundedMax;
-                        if (maxValue <= 10) {
-                          roundedMax = 10;
-                        } else if (maxValue <= 50) {
-                          roundedMax = Math.ceil(maxValue / 10) * 10;
-                        } else if (maxValue <= 100) {
-                          roundedMax = Math.ceil(maxValue / 20) * 20;
-                        } else if (maxValue <= 500) {
-                          roundedMax = Math.ceil(maxValue / 50) * 50;
-                        } else {
-                          roundedMax = Math.ceil(maxValue / 100) * 100;
-                        }
-                        
-                        // Generate Y-axis values
-                        const yAxisValues = [];
-                        const step = roundedMax <= 10 ? 2 : roundedMax <= 50 ? 10 : roundedMax <= 100 ? 20 : roundedMax <= 500 ? 50 : 100;
-                        for (let i = 0; i <= roundedMax; i += step) {
-                          yAxisValues.push(i);
-                        }
-                        if (yAxisValues[yAxisValues.length - 1] < roundedMax) {
-                          yAxisValues.push(roundedMax);
-                        }
+                  {/* Chart area - graph starts from 0 level */}
+                  <div className="h-72 relative">
+                    <div className="w-full h-full">
+                      <svg viewBox="0 0 440 260" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+                        {/* Calculate max value for scaling */}
+                        {(() => {
+                          const maxValue = Math.max(...bucketsData.totalTime.map(item => item.value), 1);
+                          // Round up to nice intervals for minutes
+                          let roundedMax;
+                          if (maxValue <= 10) {
+                            roundedMax = 10;
+                          } else if (maxValue <= 50) {
+                            roundedMax = Math.ceil(maxValue / 10) * 10;
+                          } else if (maxValue <= 100) {
+                            roundedMax = Math.ceil(maxValue / 20) * 20;
+                          } else if (maxValue <= 500) {
+                            roundedMax = Math.ceil(maxValue / 50) * 50;
+                          } else {
+                            roundedMax = Math.ceil(maxValue / 100) * 100;
+                          }
 
-                        return (
-                          <>
-                            {/* Y-axis labels */}
-                            {yAxisValues.map((value, idx) => {
-                              const y = 20 + (roundedMax - value) / roundedMax * 180;
-                              return (
-                                <text
-                                  key={`y-label-${value}`}
-                                  x="32"
-                                  y={y}
-                                  dy="4"
-                                  textAnchor="end"
-                                  className="text-xs fill-gray-500 transition-opacity duration-500"
-                                  style={{
-                                    opacity: isVisible ? 1 : 0,
-                                    transitionDelay: `${idx * 100}ms`,
-                                    fontSize: '12px',
-                                    fontWeight: '500'
-                                  }}
-                                >
-                                  {value}
-                                </text>
-                              );
-                            })}
+                          // Generate Y-axis values
+                          const yAxisValues = [];
+                          const step = roundedMax <= 10 ? 2 : roundedMax <= 50 ? 10 : roundedMax <= 100 ? 20 : roundedMax <= 500 ? 50 : 100;
+                          for (let i = 0; i <= roundedMax; i += step) {
+                            yAxisValues.push(i);
+                          }
+                          if (yAxisValues[yAxisValues.length - 1] < roundedMax) {
+                            yAxisValues.push(roundedMax);
+                          }
 
-                            {/* X-axis / 0% baseline - solid line at bottom */}
-                            <line
-                              x1="40"
-                              y1="200"
-                              x2="420"
-                              y2="200"
-                              stroke="#9ca3af"
-                              strokeWidth="2"
-                              className="transition-opacity duration-500"
-                              style={{
-                                opacity: isVisible ? 1 : 0,
-                                transitionDelay: '0ms',
-                              }}
-                            />
-
-                            {/* Horizontal grid lines for other intervals */}
-                            {yAxisValues.filter(v => v > 0).map((value, idx) => {
-                              const y = 20 + (roundedMax - value) / roundedMax * 180;
-                              return (
-                                <line
-                                  key={`grid-${value}`}
-                                  x1="40"
-                                  y1={y}
-                                  x2="420"
-                                  y2={y}
-                                  stroke="#d1d5db"
-                                  strokeWidth="1"
-                                  strokeDasharray="4,4"
-                                  className="transition-opacity duration-500"
-                                  style={{
-                                    opacity: isVisible ? 1 : 0,
-                                    transitionDelay: `${(idx + 1) * 50}ms`,
-                                  }}
-                                />
-                              );
-                            })}
-
-                            {/* Line chart - waterfall animation from left to right */}
-                            <polyline
-                              points={bucketsData.totalTime.map((item, index) => {
-                                const x = 40 + (index * (380 / Math.max(bucketsData.totalTime.length - 1, 1)));
-                                const y = 20 + (roundedMax - item.value) / roundedMax * 180;
-                                return `${x},${y}`;
-                              }).join(' ')}
-                              fill="none"
-                              stroke="#6366f1"
-                              strokeWidth="3"
-                              strokeDasharray="1000"
-                              strokeDashoffset={isVisible ? "0" : "1000"}
-                              style={{
-                                transition: 'stroke-dashoffset 2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                transitionDelay: '500ms',
-                              }}
-                            />
-
-                            {/* Data points - waterfall animation with tooltips */}
-                            {bucketsData.totalTime.map((item, index) => {
-                              const x = 40 + (index * (380 / Math.max(bucketsData.totalTime.length - 1, 1)));
-                              const y = 20 + (roundedMax - item.value) / roundedMax * 180;
-                              const baseDelay = 500 + (index * 250);
-                              const categoryColor = bucketColors[item.category] || '#3b82f6';
-                              return (
-                                <g key={`point-${index}`}>
-                                  {/* Invisible larger circle for hover area */}
-                                  <circle
-                                    cx={x}
-                                    cy={y}
-                                    r="8"
-                                    fill="transparent"
-                                    style={{ cursor: 'pointer' }}
-                                    onMouseEnter={(e) => {
-                                      setTooltip({
-                                        show: true,
-                                        x: 0,
-                                        y: 0,
-                                        category: item.category,
-                                        value: `${item.value} min`
-                                      });
-                                    }}
-                                    onMouseMove={(e) => {
-                                      setTooltip(prev => ({
-                                        ...prev,
-                                        x: e.clientX,
-                                        y: e.clientY
-                                      }));
-                                    }}
-                                    onMouseLeave={() => setTooltip({ show: false, x: 0, y: 0, category: '', value: '' })}
-                                  />
-                                  {/* Visible data point */}
-                                  <circle
-                                    cx={x}
-                                    cy={y}
-                                    r={isVisible ? "4" : "0"}
-                                    fill={categoryColor}
+                          return (
+                            <>
+                              {/* Y-axis labels */}
+                              {yAxisValues.map((value, idx) => {
+                                const y = 20 + (roundedMax - value) / roundedMax * 180;
+                                return (
+                                  <text
+                                    key={`y-label-${value}`}
+                                    x="32"
+                                    y={y}
+                                    dy="4"
+                                    textAnchor="end"
+                                    className="text-xs fill-gray-500 transition-opacity duration-500"
                                     style={{
                                       opacity: isVisible ? 1 : 0,
-                                      transition: `opacity 0.3s ease-out ${baseDelay}ms, r 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${baseDelay}ms`,
+                                      transitionDelay: `${idx * 100}ms`,
+                                      fontSize: '12px',
+                                      fontWeight: '500'
+                                    }}
+                                  >
+                                    {value}
+                                  </text>
+                                );
+                              })}
+
+                              {/* X-axis / 0% baseline - solid line at bottom */}
+                              <line
+                                x1="40"
+                                y1="200"
+                                x2="420"
+                                y2="200"
+                                stroke="#9ca3af"
+                                strokeWidth="2"
+                                className="transition-opacity duration-500"
+                                style={{
+                                  opacity: isVisible ? 1 : 0,
+                                  transitionDelay: '0ms',
+                                }}
+                              />
+
+                              {/* Horizontal grid lines for other intervals */}
+                              {yAxisValues.filter(v => v > 0).map((value, idx) => {
+                                const y = 20 + (roundedMax - value) / roundedMax * 180;
+                                return (
+                                  <line
+                                    key={`grid-${value}`}
+                                    x1="40"
+                                    y1={y}
+                                    x2="420"
+                                    y2={y}
+                                    stroke="#d1d5db"
+                                    strokeWidth="1"
+                                    strokeDasharray="4,4"
+                                    className="transition-opacity duration-500"
+                                    style={{
+                                      opacity: isVisible ? 1 : 0,
+                                      transitionDelay: `${(idx + 1) * 50}ms`,
                                     }}
                                   />
-                                </g>
-                              );
-                            })}
+                                );
+                              })}
 
-                            {/* X-axis colored spots */}
-                            {bucketsData.totalTime.map((item, index) => {
-                              const x = 40 + (index * (380 / Math.max(bucketsData.totalTime.length - 1, 1)));
-                              const baseDelay = 500 + (index * 250);
-                              const categoryColor = bucketColors[item.category] || '#3b82f6';
-                              return (
-                                <circle
-                                  key={`x-spot-${index}`}
-                                  cx={x}
-                                  cy="200"
-                                  r="3"
-                                  fill={categoryColor}
-                                  className="transition-all duration-500"
-                                  style={{
-                                    opacity: isVisible ? 1 : 0,
-                                    transitionDelay: `${baseDelay + 200}ms`,
-                                  }}
-                                />
-                              );
-                            })}
-                          </>
-                        );
-                      })()}
-                    </svg>
+                              {/* Line chart - waterfall animation from left to right */}
+                              <polyline
+                                points={bucketsData.totalTime.map((item, index) => {
+                                  const x = 40 + (index * (380 / Math.max(bucketsData.totalTime.length - 1, 1)));
+                                  const y = 20 + (roundedMax - item.value) / roundedMax * 180;
+                                  return `${x},${y}`;
+                                }).join(' ')}
+                                fill="none"
+                                stroke="#6366f1"
+                                strokeWidth="3"
+                                strokeDasharray="1000"
+                                strokeDashoffset={isVisible ? "0" : "1000"}
+                                style={{
+                                  transition: 'stroke-dashoffset 2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                  transitionDelay: '500ms',
+                                }}
+                              />
+
+                              {/* Data points - waterfall animation with tooltips */}
+                              {bucketsData.totalTime.map((item, index) => {
+                                const x = 40 + (index * (380 / Math.max(bucketsData.totalTime.length - 1, 1)));
+                                const y = 20 + (roundedMax - item.value) / roundedMax * 180;
+                                const baseDelay = 500 + (index * 250);
+                                const categoryColor = bucketColors[item.category] || '#3b82f6';
+                                return (
+                                  <g key={`point-${index}`}>
+                                    {/* Invisible larger circle for hover area */}
+                                    <circle
+                                      cx={x}
+                                      cy={y}
+                                      r="8"
+                                      fill="transparent"
+                                      style={{ cursor: 'pointer' }}
+                                      onMouseEnter={(e) => {
+                                        setTooltip({
+                                          show: true,
+                                          x: 0,
+                                          y: 0,
+                                          category: item.category,
+                                          value: `${item.value} min`
+                                        });
+                                      }}
+                                      onMouseMove={(e) => {
+                                        setTooltip(prev => ({
+                                          ...prev,
+                                          x: e.clientX,
+                                          y: e.clientY
+                                        }));
+                                      }}
+                                      onMouseLeave={() => setTooltip({ show: false, x: 0, y: 0, category: '', value: '' })}
+                                    />
+                                    {/* Visible data point */}
+                                    <circle
+                                      cx={x}
+                                      cy={y}
+                                      r={isVisible ? "4" : "0"}
+                                      fill={categoryColor}
+                                      style={{
+                                        opacity: isVisible ? 1 : 0,
+                                        transition: `opacity 0.3s ease-out ${baseDelay}ms, r 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${baseDelay}ms`,
+                                      }}
+                                    />
+                                  </g>
+                                );
+                              })}
+
+                              {/* X-axis colored spots */}
+                              {bucketsData.totalTime.map((item, index) => {
+                                const x = 40 + (index * (380 / Math.max(bucketsData.totalTime.length - 1, 1)));
+                                const baseDelay = 500 + (index * 250);
+                                const categoryColor = bucketColors[item.category] || '#3b82f6';
+                                return (
+                                  <circle
+                                    key={`x-spot-${index}`}
+                                    cx={x}
+                                    cy="200"
+                                    r="3"
+                                    fill={categoryColor}
+                                    className="transition-all duration-500"
+                                    style={{
+                                      opacity: isVisible ? 1 : 0,
+                                      transitionDelay: `${baseDelay + 200}ms`,
+                                    }}
+                                  />
+                                );
+                              })}
+                            </>
+                          );
+                        })()}
+                      </svg>
+                    </div>
                   </div>
                 </div>
-              </div>
-              {/* Category legend */}
-              <div className="mt-4 pt-4 border-t border-gray-300">
-                <div className="flex flex-wrap items-center gap-3 justify-center">
-                  {bucketsData.totalTime.map((item, index) => {
-                    const categoryColor = bucketColors[item.category] || '#3b82f6';
-                    return (
-                      <div key={index} className="flex items-center space-x-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: categoryColor }}
-                        />
-                        <span className="text-xs text-gray-600">{item.category}</span>
-                      </div>
-                    );
-                  })}
+                {/* Category legend */}
+                <div className="mt-4 pt-4 border-t border-gray-300">
+                  <div className="flex flex-wrap items-center gap-3 justify-center">
+                    {bucketsData.totalTime.map((item, index) => {
+                      const categoryColor = bucketColors[item.category] || '#3b82f6';
+                      return (
+                        <div key={index} className="flex items-center space-x-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: categoryColor }}
+                          />
+                          <span className="text-xs text-gray-600">{item.category}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
               </>
             ) : (
               <div className="text-center text-gray-500 py-8">No data available</div>
@@ -553,7 +556,7 @@ const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false 
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Total Duration</span>
                 <span className="text-xl font-bold text-gray-900 bg-purple-200 rounded-lg px-4 py-2">
-                  {categoryData?.total_filtered_duration_hours 
+                  {categoryData?.total_filtered_duration_hours
                     ? `${Math.round(categoryData.total_filtered_duration_hours * 100) / 100} hours`
                     : '0 hours'}
                 </span>

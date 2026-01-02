@@ -32,37 +32,37 @@ const SpiritualSlide = ({ dateRange = { start: null, end: null, selecting: false
       try {
         setLoading(true);
         setError(null);
-        
+
         const channelId = localStorage.getItem('channelId');
         if (!channelId) {
           setError('Channel ID not found. Please select a channel first.');
           setLoading(false);
           return;
         }
-        
+
         if (!dateRange || !dateRange.start || !dateRange.end) {
           setLoading(false);
           return;
         }
-        
+
         const shiftId = currentShiftId ? parseInt(currentShiftId, 10) : null;
-        
+
         const data = await dashboardApi.getCategoryBucketCount(
-          dateRange.start, 
-          dateRange.end, 
-          channelId, 
+          dateRange.start,
+          dateRange.end,
+          channelId,
           'spiritual',
           shiftId
         );
         setCategoryData(data);
-        
+
         // Reset and trigger animations with delay
         setIsVisible(false);
-        
+
         const timer = setTimeout(() => {
           setIsVisible(true);
         }, 100);
-        
+
         return () => clearTimeout(timer);
       } catch (err) {
         console.error('Error fetching category bucket data:', err);
@@ -87,7 +87,7 @@ const SpiritualSlide = ({ dateRange = { start: null, end: null, selecting: false
 
     const buckets = categoryData.buckets;
     const bucketEntries = Object.entries(buckets);
-    
+
     // Sort by percentage (descending)
     const sortedBuckets = bucketEntries.sort((a, b) => (b[1].percentage || 0) - (a[1].percentage || 0));
 
@@ -146,13 +146,16 @@ const SpiritualSlide = ({ dateRange = { start: null, end: null, selecting: false
   const total = categoryData?.total || 0;
 
   return (
-    <div className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+    <div
+      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
+    >
       <div className="max-w-7xl mx-auto">
         <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">SPIRITUAL</h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel - By Content # */}
-          <div 
+          <div
             className="bg-amber-100 rounded-2xl p-6 shadow-xl"
             style={{
               opacity: isVisible ? 1 : 0,
@@ -203,7 +206,7 @@ const SpiritualSlide = ({ dateRange = { start: null, end: null, selecting: false
           </div>
 
           {/* Middle Panel - By Content Time */}
-          <div 
+          <div
             className="bg-amber-100 rounded-2xl p-6 shadow-xl"
             style={{
               opacity: isVisible ? 1 : 0,
@@ -326,7 +329,7 @@ const SpiritualSlide = ({ dateRange = { start: null, end: null, selecting: false
           </div>
 
           {/* Right Panel - Total Time */}
-          <div 
+          <div
             className="bg-amber-100 rounded-2xl p-6 shadow-xl"
             style={{
               opacity: isVisible ? 1 : 0,
@@ -358,7 +361,7 @@ const SpiritualSlide = ({ dateRange = { start: null, end: null, selecting: false
                           } else {
                             roundedMax = Math.ceil(maxValue / 100) * 100;
                           }
-                          
+
                           // Generate Y-axis values
                           const yAxisValues = [];
                           const step = roundedMax <= 10 ? 2 : roundedMax <= 50 ? 10 : roundedMax <= 100 ? 20 : roundedMax <= 500 ? 50 : 100;
@@ -553,7 +556,7 @@ const SpiritualSlide = ({ dateRange = { start: null, end: null, selecting: false
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Total Duration</span>
                 <span className="text-xl font-bold text-gray-900 bg-purple-200 rounded-lg px-4 py-2">
-                  {categoryData?.total_filtered_duration_hours 
+                  {categoryData?.total_filtered_duration_hours
                     ? `${Math.round(categoryData.total_filtered_duration_hours * 100) / 100} hours`
                     : '0 hours'}
                 </span>

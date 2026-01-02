@@ -15,14 +15,14 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
       try {
         setLoading(true);
         setError(null);
-        
+
         const channelId = localStorage.getItem('channelId');
         if (!channelId) {
           setError('Channel ID not found. Please select a channel first.');
           setLoading(false);
           return;
         }
-        
+
         if (!dateRange || !dateRange.start || !dateRange.end) {
           setLoading(false);
           return;
@@ -42,14 +42,14 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
         } else {
           setShifts([]);
         }
-        
+
         // Reset and trigger animations with delay
         setIsVisible(false);
-        
+
         const timer = setTimeout(() => {
           setIsVisible(true);
         }, 100);
-        
+
         return () => clearTimeout(timer);
       } catch (err) {
         console.error('Error fetching entity comparison data:', err);
@@ -67,7 +67,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
   };
 
   // Calculate max values for proper scaling
-  const maxContentNumber = shifts.length > 0 
+  const maxContentNumber = shifts.length > 0
     ? Math.max(...shifts.map(shift => shift.total_count || 0))
     : 1;
   const maxAvgSentiment = shifts.length > 0
@@ -135,26 +135,27 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
   }
 
   return (
-    <div className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+    <div
+      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
+    >
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-3xl font-bold text-gray-900">Entity Comparison</h2>
-          
+
           {/* Toggle Button for Show All Topics */}
           <div className="flex items-center space-x-3">
             <span className="text-sm text-gray-700 font-medium">Show All Topics</span>
             <button
               onClick={handleToggleShowAllTopics}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                showAllTopics ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${showAllTopics ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
               role="switch"
               aria-checked={showAllTopics}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  showAllTopics ? 'translate-x-6' : 'translate-x-1'
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAllTopics ? 'translate-x-6' : 'translate-x-1'
+                  }`}
               />
             </button>
             <span className="text-xs text-gray-500">
@@ -162,14 +163,14 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
             </span>
           </div>
         </div>
-        
+
         {/* Top Section - Shift Cards with Topics */}
         {shifts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {shifts.map((shift, shiftIndex) => {
               const shiftTopics = shift.topics || [];
               const shiftTotalCount = shift.total_count || 0;
-              
+
               return (
                 <div
                   key={shift.shift_id || shiftIndex}
@@ -184,7 +185,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
                     <Radio className="w-5 h-5 text-green-500" />
                     <h3 className="text-lg font-bold text-gray-900">{shift.shift_name || `Shift ${shiftIndex + 1}`}</h3>
                   </div>
-                  
+
                   {/* Shift Stats */}
                   <div className="grid grid-cols-3 gap-2 mb-4 pb-4 border-b border-gray-200">
                     <div className="text-center">
@@ -202,7 +203,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2 max-h-96 overflow-y-auto">
                     {shiftTopics.length === 0 ? (
                       <p className="text-sm text-gray-500 text-center py-4">No topics available</p>
@@ -215,9 +216,8 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
                             className="flex items-center justify-between"
                           >
                             <div className="flex items-center space-x-2 flex-1 min-w-0">
-                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                                topicIndex < 3 ? 'bg-pink-500 text-white' : 'bg-white text-gray-700 border-2 border-blue-500'
-                              }`}>
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${topicIndex < 3 ? 'bg-pink-500 text-white' : 'bg-white text-gray-700 border-2 border-blue-500'
+                                }`}>
                                 {topicIndex + 1}
                               </span>
                               <span className="text-sm text-gray-700 truncate" title={topic.topic_name}>
@@ -227,12 +227,12 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
                             <div className="flex items-center space-x-2 flex-shrink-0">
                               <span className="text-sm text-gray-600">({topic.count})</span>
                               <div className="w-16 bg-gray-200 rounded-full h-2">
-                                <div 
-                                  className="bg-blue-600 h-2 rounded-full transition-all duration-1000" 
-                                  style={{ 
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full transition-all duration-1000"
+                                  style={{
                                     width: isVisible ? `${percentage}%` : '0%',
                                     transitionDelay: `${(shiftIndex * 100) + (topicIndex * 50)}ms`
-                                  }} 
+                                  }}
                                 />
                               </div>
                               <span className="text-xs text-gray-500 w-8">{percentage}%</span>
@@ -256,7 +256,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
         {shifts.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* By Content # */}
-            <div 
+            <div
               className="bg-white rounded-2xl p-6 shadow-xl"
               style={{
                 opacity: isVisible ? 1 : 0,
@@ -295,7 +295,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
                               transition: `height 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${baseDelay + 200}ms, min-height 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${baseDelay + 200}ms`,
                             }}
                           />
-                          <span 
+                          <span
                             className="text-xs text-gray-600 mt-2 text-center transition-opacity duration-300 truncate w-full"
                             style={{
                               opacity: isVisible ? 1 : 0,
@@ -305,7 +305,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
                           >
                             {shift.shift_name}
                           </span>
-                          <span 
+                          <span
                             className="text-xs font-bold text-gray-900 mt-1 transition-opacity duration-300"
                             style={{
                               opacity: isVisible ? 1 : 0,
@@ -323,7 +323,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
             </div>
 
             {/* By Avg Sentiment */}
-            <div 
+            <div
               className="bg-white rounded-2xl p-6 shadow-xl"
               style={{
                 opacity: isVisible ? 1 : 0,
@@ -362,7 +362,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
                               transition: `height 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${baseDelay + 200}ms, min-height 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${baseDelay + 200}ms`,
                             }}
                           />
-                          <span 
+                          <span
                             className="text-xs text-gray-600 mt-2 text-center transition-opacity duration-300 truncate w-full"
                             style={{
                               opacity: isVisible ? 1 : 0,
@@ -372,7 +372,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
                           >
                             {shift.shift_name}
                           </span>
-                          <span 
+                          <span
                             className="text-xs font-bold text-gray-900 mt-1 transition-opacity duration-300"
                             style={{
                               opacity: isVisible ? 1 : 0,

@@ -14,53 +14,53 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
       try {
         setLoading(true);
         setError(null);
-        
+
         const channelId = localStorage.getItem('channelId');
         if (!channelId) {
           setError('Channel ID not found. Please select a channel first.');
           setLoading(false);
           return;
         }
-        
+
         if (!dateRange || !dateRange.start || !dateRange.end) {
           setLoading(false);
           return;
         }
-        
+
         const shiftId = currentShiftId ? parseInt(currentShiftId, 10) : null;
-        
+
         const data = await dashboardApi.getBucketCount(
-          dateRange.start, 
-          dateRange.end, 
-          channelId, 
+          dateRange.start,
+          dateRange.end,
+          channelId,
           shiftId
         );
         setBucketData(data);
-        
+
         // Reset and trigger animations with delay
         setIsVisible(false);
         setRevealProgress(0);
-        
+
         const timer = setTimeout(() => {
           setIsVisible(true);
-          
+
           // Animate reveal progress from 0 to 100 over 2 seconds
           const startTime = Date.now();
           const duration = 2000;
-          
+
           const animate = () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min((elapsed / duration) * 100, 100);
             setRevealProgress(progress);
-            
+
             if (progress < 100) {
               requestAnimationFrame(animate);
             }
           };
-          
+
           requestAnimationFrame(animate);
         }, 100);
-        
+
         return () => clearTimeout(timer);
       } catch (err) {
         console.error('Error fetching bucket count data:', err);
@@ -113,7 +113,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
 
     const monthlyData = bucketData.monthly_breakdown;
     const categories = getCategories();
-    
+
     // Get all months from monthly_breakdown and filter only those with data
     // The API already returns monthly_breakdown filtered for the selected period
     const monthsWithData = Object.keys(monthlyData).filter((monthKey) => {
@@ -123,10 +123,10 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
 
     // Sort months chronologically (oldest to newest)
     const sortedMonths = monthsWithData.sort();
-    
+
     const months = [];
     const categoryData = {};
-    
+
     // Initialize category data arrays
     categories.forEach(cat => {
       categoryData[cat.key] = [];
@@ -134,14 +134,14 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
 
     sortedMonths.forEach((monthKey) => {
       const monthData = monthlyData[monthKey];
-      
+
       // Format month for display (e.g., "2025-10" -> "Oct")
       const [year, month] = monthKey.split('-');
       const date = new Date(parseInt(year), parseInt(month) - 1, 1);
       const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-      
+
       months.push(monthName);
-      
+
       // Add data for each category
       categories.forEach(cat => {
         categoryData[cat.key].push(monthData[cat.key]?.percentage || 0);
@@ -158,7 +158,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
   // Get circles data from API (using dynamic categories)
   const getCirclesData = () => {
     const categories = getCategories();
-    
+
     if (categories.length === 0) {
       return [
         { name: 'PERSONAL', value: 0, color: '#14b8a6' },
@@ -188,14 +188,14 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
 
     if (total > 0 && categories.length > 0) {
       // Find top category
-      const topCategory = categories.reduce((max, cat) => 
+      const topCategory = categories.reduce((max, cat) =>
         cat.percentage > max.percentage ? cat : max
       );
-      
+
       insights.push(
         `Total of ${total.toLocaleString()} segments analyzed across all impact categories.`
       );
-      
+
       insights.push(
         `${topCategory.name} impact represents the largest share at ${Math.round(topCategory.percentage)}% of total segments.`
       );
@@ -204,7 +204,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
       const otherCategories = categories
         .filter(cat => cat.key !== topCategory.key && cat.percentage > 0)
         .sort((a, b) => b.percentage - a.percentage);
-      
+
       if (otherCategories.length > 0) {
         const secondCategory = otherCategories[0];
         insights.push(
@@ -225,7 +225,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
       <div className="min-h-screen p-8">
         <div className="max-w-7xl mx-auto">
           <div className="h-10 w-64 bg-gray-700/50 rounded-lg mx-auto mb-8 animate-pulse"></div>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {[1, 2, 3].map((i) => (
               <div key={i} className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20">
@@ -252,13 +252,16 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
   const insights = generateInsights();
 
   return (
-    <div className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+    <div
+      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
+    >
       <div className="max-w-7xl mx-auto">
         <h2 className="text-4xl font-bold text-white mb-12 text-center">Impact Index</h2>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Panel - Circles of Wellbeing */}
-          <div 
+          <div
             className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20"
             style={{
               opacity: isVisible ? 1 : 0,
@@ -288,7 +291,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
                         d={`M 128 128 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`}
                         fill={circle.color}
                         className="transition-all duration-1000"
-                        style={{ 
+                        style={{
                           opacity: isVisible ? 1 : 0,
                           transitionDelay: `${index * 200}ms`
                         }}
@@ -300,7 +303,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
                         dominantBaseline="middle"
                         className="text-2xl font-bold fill-white transition-opacity duration-1000"
                         transform={`rotate(90 ${128 + (radius * 0.7) * Math.cos(midAngle)} ${128 + (radius * 0.7) * Math.sin(midAngle)})`}
-                        style={{ 
+                        style={{
                           opacity: isVisible ? 1 : 0,
                           transitionDelay: `${index * 200 + 300}ms`
                         }}
@@ -314,8 +317,8 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
             </div>
             <div className="mt-6 space-y-3">
               {circlesData.map((circle, index) => (
-                <div 
-                  key={circle.name} 
+                <div
+                  key={circle.name}
                   className="flex items-center justify-between transition-all duration-700"
                   style={{
                     opacity: isVisible ? 1 : 0,
@@ -334,7 +337,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
           </div>
 
           {/* Middle Panel - Circle Trends */}
-          <div 
+          <div
             className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20"
             style={{
               opacity: isVisible ? 1 : 0,
@@ -350,7 +353,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
                   <line x1="40" y1="20" x2="40" y2="280" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
                   {/* X-axis */}
                   <line x1="40" y1="280" x2="380" y2="280" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
-                  
+
                   {/* Grid lines */}
                   {[0, 25, 50, 75, 100].map((val) => (
                     <line
@@ -368,11 +371,11 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
                   {(() => {
                     const points = trendsData.months.map((month, monthIndex) => {
                       const x = 40 + (monthIndex * (340 / Math.max(trendsData.months.length - 1, 1)));
-                      
+
                       // Calculate cumulative Y positions for stacked areas (from bottom to top)
                       let cumulativeY = 280;
                       const categoryYs = {};
-                      
+
                       // Process categories in order to build cumulative stack
                       trendsData.categories.forEach(cat => {
                         const value = trendsData.data[cat.key][monthIndex] || 0;
@@ -380,7 +383,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
                         categoryYs[cat.key] = { y, value, cumulativeY };
                         cumulativeY = y; // Update cumulative for next category
                       });
-                      
+
                       return { x, month, categoryYs };
                     });
 
@@ -400,7 +403,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
                     });
 
                     const revealWidth = (revealProgress / 100) * 400;
-                    
+
                     return (
                       <g>
                         {/* Clip path for left-to-right reveal animation */}
@@ -414,7 +417,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
                             />
                           </clipPath>
                         </defs>
-                        
+
                         {/* Render categories from bottom to top */}
                         {trendsData.categories.map((cat, index) => (
                           <g key={cat.key} clipPath="url(#chartReveal)">
@@ -425,7 +428,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
                             />
                           </g>
                         ))}
-                        
+
                         {/* Month labels - appear as wave passes */}
                         {points.map((point, index) => {
                           const labelProgress = ((point.x - 40) / 340) * 100;
@@ -455,14 +458,14 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
                   No trend data available
                 </div>
               )}
-              
+
               {/* Legend for categories */}
               {trendsData.categories.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-white/20">
                   <div className="flex flex-wrap items-center gap-4 justify-center">
                     {trendsData.categories.map((cat, index) => (
-                      <div 
-                        key={cat.key} 
+                      <div
+                        key={cat.key}
                         className="flex items-center space-x-2 transition-all duration-700"
                         style={{
                           opacity: isVisible ? 1 : 0,
@@ -484,7 +487,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
           </div>
 
           {/* Right Panel - Key Insight */}
-          <div 
+          <div
             className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20"
             style={{
               opacity: isVisible ? 1 : 0,

@@ -19,40 +19,40 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
       try {
         setLoading(true);
         setError(null);
-        
+
         const channelId = localStorage.getItem('channelId');
         if (!channelId) {
           setError('Channel ID not found. Please select a channel first.');
           setLoading(false);
           return;
         }
-        
+
         if (!dateRange || !dateRange.start || !dateRange.end) {
           setLoading(false);
           return;
         }
-        
+
         const shiftId = currentShiftId ? parseInt(currentShiftId, 10) : null;
-        
+
         // API will handle UTC conversion internally
         const data = await dashboardApi.getSummary(
-          dateRange.start, 
-          dateRange.end, 
-          channelId, 
+          dateRange.start,
+          dateRange.end,
+          channelId,
           shiftId
         );
         setSummaryData(data);
-        
+
         // Reset and trigger animations with delay
         setIsVisible(false);
         setAverageSentimentProgress(0);
         setTargetSentimentProgress(0);
         setLowSentimentProgress(0);
         setHighSentimentProgress(0);
-        
+
         const timer = setTimeout(() => {
           setIsVisible(true);
-          
+
           // Animate progress bars from 0 to target values
           const animateProgress = (setter, target, duration = 1500) => {
             const startTime = Date.now();
@@ -60,7 +60,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
               const elapsed = Date.now() - startTime;
               const progress = Math.min((elapsed / duration) * 100, 100);
               setter((target / 100) * progress);
-              
+
               if (progress < 100) {
                 requestAnimationFrame(animate);
               } else {
@@ -69,19 +69,19 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
             };
             requestAnimationFrame(animate);
           };
-          
+
           // Start animations with slight delays using real data
           const avgSentiment = data.average_sentiment || 0;
           const targetSentiment = data.target_sentiment_score || 0;
           const lowSentiment = data.low_sentiment || 0;
           const highSentiment = data.high_sentiment || 0;
-          
+
           setTimeout(() => animateProgress(setAverageSentimentProgress, avgSentiment), 300);
           setTimeout(() => animateProgress(setTargetSentimentProgress, targetSentiment), 500);
           setTimeout(() => animateProgress(setLowSentimentProgress, lowSentiment), 700);
           setTimeout(() => animateProgress(setHighSentimentProgress, highSentiment), 900);
         }, 100);
-        
+
         return () => clearTimeout(timer);
       } catch (err) {
         console.error('Error fetching summary data:', err);
@@ -99,7 +99,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
     if (!summaryData?.per_day_average_sentiments) {
       return [];
     }
-    
+
     // Color palette for months
     const monthColors = [
       '#3b82f6', // Blue
@@ -115,7 +115,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
       '#14b8a6', // Teal
       '#a855f7', // Violet
     ];
-    
+
     // Convert dates from DD/MM/YYYY to local timezone and format for display
     const processedData = summaryData.per_day_average_sentiments.map((item) => {
       const localDate = convertUTCDateStringToLocal(item.date);
@@ -125,7 +125,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
         const dateObj = new Date(year, month - 1, day);
         const monthName = dateObj.toLocaleDateString('en-US', { month: 'short' });
         const monthIndex = dateObj.getMonth();
-        
+
         return {
           month: monthName,
           monthIndex: monthIndex,
@@ -135,13 +135,13 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
           color: monthColors[monthIndex]
         };
       }
-      
+
       // Parse the local date and format for display
       const [year, month, day] = localDate.split('-').map(Number);
       const dateObj = new Date(year, month - 1, day);
       const monthName = dateObj.toLocaleDateString('en-US', { month: 'short' });
       const monthIndex = dateObj.getMonth();
-      
+
       return {
         month: monthName,
         monthIndex: monthIndex,
@@ -151,7 +151,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
         color: monthColors[monthIndex]
       };
     });
-    
+
     // Sort by date
     return processedData.sort((a, b) => {
       if (a.date && b.date) {
@@ -160,12 +160,12 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
       return 0;
     });
   };
-  
+
   // Get unique months with their colors for legend
   const getMonthLegend = () => {
     const sentimentData = processSentimentData();
     const monthMap = new Map();
-    
+
     sentimentData.forEach((item) => {
       if (!monthMap.has(item.monthFull)) {
         monthMap.set(item.monthFull, {
@@ -175,7 +175,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
         });
       }
     });
-    
+
     return Array.from(monthMap.values());
   };
 
@@ -184,7 +184,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
     <div className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
         <div className="h-10 w-64 bg-gray-700/50 rounded-lg mx-auto mb-8 animate-pulse"></div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column Skeleton */}
           <div className="space-y-6">
@@ -201,7 +201,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
                 </div>
               </div>
             </div>
-            
+
             {/* Target Skeleton */}
             <div className="rounded-2xl p-6 shadow-xl backdrop-blur-sm border border-gray-300/20" style={{ background: 'linear-gradient(135deg, rgba(31, 41, 55, 0.7) 0%, rgba(17, 24, 39, 0.7) 100%)' }}>
               <div className="flex items-center space-x-2 mb-4">
@@ -248,7 +248,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
                 </svg>
               </div>
             </div>
-            
+
             {/* Low/High Sentiment Skeleton */}
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-2xl p-6 shadow-xl backdrop-blur-sm border border-gray-300/20" style={{ background: 'linear-gradient(135deg, rgba(31, 41, 55, 0.7) 0%, rgba(17, 24, 39, 0.7) 100%)' }}>
@@ -260,7 +260,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
                   </div>
                 </div>
               </div>
-              
+
               <div className="rounded-2xl p-6 shadow-xl backdrop-blur-sm border border-gray-300/20" style={{ background: 'linear-gradient(135deg, rgba(31, 41, 55, 0.7) 0%, rgba(17, 24, 39, 0.7) 100%)' }}>
                 <div className="h-5 w-36 bg-gray-600/50 rounded mb-2 animate-pulse"></div>
                 <div className="relative w-32 h-32 mx-auto">
@@ -287,7 +287,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
                 <div className="h-2 w-3/4 bg-gray-600/50 rounded-full animate-pulse"></div>
               </div>
             </div>
-            
+
             {/* Segment Count Skeleton */}
             <div className="rounded-2xl p-6 shadow-xl backdrop-blur-sm border border-gray-300/20" style={{ background: 'linear-gradient(135deg, rgba(31, 41, 55, 0.7) 0%, rgba(17, 24, 39, 0.7) 100%)' }}>
               <div className="flex items-center space-x-2 mb-4">
@@ -330,13 +330,16 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
 
 
   return (
-    <div className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+    <div
+      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      data-loaded={!loading && !error && summaryData && isVisible ? 'true' : 'false'}
+    >
       <div className="max-w-7xl mx-auto">
         <h2 className="text-3xl font-bold text-white mb-8 text-center">Overall Summary</h2>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Sentiment Overview */}
-          <div 
+          <div
             className="space-y-6"
             style={{
               opacity: isVisible ? 1 : 0,
@@ -369,7 +372,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
                     strokeDasharray={`${(averageSentimentProgress / 100) * 502.4} 502.4`}
                     strokeDashoffset={0}
                     strokeLinecap="round"
-                    style={{ 
+                    style={{
                       opacity: isVisible ? 1 : 0,
                     }}
                   />
@@ -405,7 +408,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
                     strokeDasharray={`${(targetSentimentProgress / 100) * 502.4} 502.4`}
                     strokeDashoffset={0}
                     strokeLinecap="round"
-                    style={{ 
+                    style={{
                       opacity: isVisible ? 1 : 0,
                     }}
                   />
@@ -418,7 +421,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
           </div>
 
           {/* Middle Column - Sentiment Analysis */}
-          <div 
+          <div
             className="space-y-6"
             style={{
               opacity: isVisible ? 1 : 0,
@@ -457,28 +460,28 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
                   {/* Animated Line chart */}
                   {sentimentData.length > 0 && (
                     <>
-                  <polyline
+                      <polyline
                         points={sentimentData.map((item, index) => {
                           const x = 40 + (index * (340 / Math.max(sentimentData.length - 1, 1)));
-                      const y = 180 - (item.value * 1.6);
-                      return `${x},${y}`;
-                    }).join(' ')}
-                    fill="none"
+                          const y = 180 - (item.value * 1.6);
+                          return `${x},${y}`;
+                        }).join(' ')}
+                        fill="none"
                         stroke="#ffffff"
-                    strokeWidth="3"
-                    strokeDasharray={isVisible ? "1000" : "0"}
-                    strokeDashoffset={isVisible ? "0" : "1000"}
-                    className="transition-all duration-1500 ease-out"
-                    style={{ opacity: isVisible ? 1 : 0 }}
-                  />
+                        strokeWidth="3"
+                        strokeDasharray={isVisible ? "1000" : "0"}
+                        strokeDashoffset={isVisible ? "0" : "1000"}
+                        className="transition-all duration-1500 ease-out"
+                        style={{ opacity: isVisible ? 1 : 0 }}
+                      />
                       {/* Data points with animation */}
                       {sentimentData.map((item, index) => {
                         const x = 40 + (index * (340 / Math.max(sentimentData.length - 1, 1)));
                         const y = 180 - (item.value * 1.6);
                         // Check if date range is more than 7 days
-                        const isMoreThan7Days = dateRange.start && dateRange.end && 
+                        const isMoreThan7Days = dateRange.start && dateRange.end &&
                           (new Date(dateRange.end) - new Date(dateRange.start)) / (1000 * 60 * 60 * 24) > 7;
-                        
+
                         return (
                           <g key={index}>
                             <circle
@@ -529,23 +532,23 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
                 </svg>
               </div>
               {/* Month legend - only show when date range is more than 7 days */}
-              {dateRange.start && dateRange.end && 
-               (new Date(dateRange.end) - new Date(dateRange.start)) / (1000 * 60 * 60 * 24) > 7 &&
-               sentimentData.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-600">
-                  <div className="flex flex-wrap items-center gap-3 justify-center">
-                    {getMonthLegend().map((month, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: month.color }}
-                        />
-                        <span className="text-xs text-gray-300">{month.name}</span>
-                      </div>
-                    ))}
+              {dateRange.start && dateRange.end &&
+                (new Date(dateRange.end) - new Date(dateRange.start)) / (1000 * 60 * 60 * 24) > 7 &&
+                sentimentData.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-600">
+                    <div className="flex flex-wrap items-center gap-3 justify-center">
+                      {getMonthLegend().map((month, index) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: month.color }}
+                          />
+                          <span className="text-xs text-gray-300">{month.name}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -571,7 +574,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
                       strokeDasharray={`${(lowSentimentProgress / 100) * 351.86} 351.86`}
                       strokeDashoffset={0}
                       strokeLinecap="round"
-                      style={{ 
+                      style={{
                         opacity: isVisible ? 1 : 0,
                       }}
                     />
@@ -604,7 +607,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
                       strokeDasharray={`${(highSentimentProgress / 100) * 351.86} 351.86`}
                       strokeDashoffset={0}
                       strokeLinecap="round"
-                      style={{ 
+                      style={{
                         opacity: isVisible ? 1 : 0,
                       }}
                     />
@@ -618,7 +621,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
           </div>
 
           {/* Right Column - KPIs */}
-          <div 
+          <div
             className="space-y-6"
             style={{
               opacity: isVisible ? 1 : 0,
@@ -636,7 +639,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
               <div className="w-full rounded-full h-2 overflow-hidden" style={{ backgroundColor: 'rgba(55, 65, 81, 0.5)' }}>
                 <div
                   className="bg-white h-2 rounded-full transition-all duration-1000 ease-out origin-left"
-                  style={{ 
+                  style={{
                     width: isVisible ? `${Math.min((summaryData.total_talk_break || 0) / 10, 100)}%` : '0%',
                     opacity: isVisible ? 1 : 0,
                     transitionDelay: '800ms',
@@ -655,7 +658,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
               <div className="w-full rounded-full h-2 overflow-hidden" style={{ backgroundColor: 'rgba(55, 65, 81, 0.5)' }}>
                 <div
                   className="bg-blue-500 h-2 rounded-full transition-all duration-1000 ease-out origin-left"
-                  style={{ 
+                  style={{
                     width: isVisible ? `${Math.min((summaryData.segment_count || 0) / 10, 100)}%` : '0%',
                     opacity: isVisible ? 1 : 0,
                     transitionDelay: '1000ms',
