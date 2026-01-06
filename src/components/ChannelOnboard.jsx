@@ -2,11 +2,12 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom'; // Add this import
-import { Users, Plus, RefreshCw, UserCog } from 'lucide-react';
+import { Users, Plus, RefreshCw, UserCog, FileText } from 'lucide-react';
 import { fetchChannels } from '../store/slices/channelSlice';
 import ChannelCard from './ChannelCard';
 import OnboardModal from './OnboardModal';
 import CreateUserModal from '../pages/admin/CreateUserModal';
+import TranscriptionLogModal from './TranscriptionLogModal';
 
 const ChannelOnboard = () => {
   const dispatch = useDispatch();
@@ -15,6 +16,7 @@ const ChannelOnboard = () => {
   const { user } = useSelector(state => state.auth);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false); 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTranscriptionLogModalOpen, setIsTranscriptionLogModalOpen] = useState(false);
   const [channelToEdit, setChannelToEdit] = useState(null);
 
   useEffect(() => {
@@ -68,7 +70,14 @@ const ChannelOnboard = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div className="w-full flex justify-end">
+        <div className="w-full flex justify-end gap-3">
+          <button
+            onClick={() => setIsTranscriptionLogModalOpen(true)}
+            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+          >
+            <FileText className="h-4 w-4" />
+            <span>View Transcription Log</span>
+          </button>
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
@@ -113,6 +122,11 @@ const ChannelOnboard = () => {
       <CreateUserModal
         isOpen={isUserModalOpen}
         onClose={handleCloseUserModal}
+      />
+
+      <TranscriptionLogModal
+        isOpen={isTranscriptionLogModalOpen}
+        onClose={() => setIsTranscriptionLogModalOpen(false)}
       />
     </div>
   );
