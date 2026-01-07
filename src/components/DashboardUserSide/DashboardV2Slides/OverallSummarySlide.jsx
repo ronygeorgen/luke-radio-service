@@ -553,7 +553,13 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
 
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-2xl p-6 shadow-xl backdrop-blur-sm border border-gray-300/20" style={{ background: 'linear-gradient(135deg, rgba(31, 41, 55, 0.7) 0%, rgba(17, 24, 39, 0.7) 100%)' }}>
-                <h4 className="text-white font-semibold mb-2">Low Sentiment (&lt;70)</h4>
+                <h4 className="text-white font-semibold mb-1">Low Sentiment</h4>
+                <p className="text-gray-400 text-sm mb-2">
+                  {summaryData?.thresholds?.low_sentiment_range 
+                    ? `${summaryData.thresholds.low_sentiment_range.min_lower}-${summaryData.thresholds.low_sentiment_range.min_upper}`
+                    : '<70'
+                  }
+                </p>
                 <div className="relative w-32 h-32 mx-auto">
                   <svg className="transform -rotate-90 w-32 h-32">
                     <circle
@@ -586,7 +592,13 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
               </div>
 
               <div className="rounded-2xl p-6 shadow-xl backdrop-blur-sm border border-gray-300/20" style={{ background: 'linear-gradient(135deg, rgba(31, 41, 55, 0.7) 0%, rgba(17, 24, 39, 0.7) 100%)' }}>
-                <h4 className="text-white font-semibold mb-2">High Sentiment (95+)</h4>
+                <h4 className="text-white font-semibold mb-1">High Sentiment</h4>
+                <p className="text-gray-400 text-sm mb-2">
+                  {summaryData?.thresholds?.high_sentiment_range 
+                    ? `${summaryData.thresholds.high_sentiment_range.max_lower}-${summaryData.thresholds.high_sentiment_range.max_upper}`
+                    : '95+'
+                  }
+                </p>
                 <div className="relative w-32 h-32 mx-auto">
                   <svg className="transform -rotate-90 w-32 h-32">
                     <circle

@@ -6,6 +6,7 @@ import { logout } from '../../store/slices/authSlice';
 import { axiosInstance } from '../../services/api';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 import OverallSummarySlide from './DashboardV2Slides/OverallSummarySlide';
 import ImpactIndexSlide from './DashboardV2Slides/ImpactIndexSlide';
 import PersonalSlide from './DashboardV2Slides/PersonalSlide';
@@ -552,11 +553,25 @@ function DashboardV2() {
         return;
       }
 
-      // Format dates: convert YYYY-MM-DD to ISO format with time
+      // Format dates: convert YYYY-MM-DD to ISO format with time using channel timezone
       const formatDateTime = (dateString, isEnd = false) => {
         if (!dateString) return '';
         // If it's the end date, use 23:59:59, otherwise use 00:00:00
         const time = isEnd ? '23:59:59' : '00:00:00';
+        
+        // Get channel timezone from localStorage
+        const channelTimezone = localStorage.getItem('channelTimezone') || 'UTC';
+        
+        // Use convertLocalToUTC to convert the date/time in channel timezone to UTC ISO string
+        const utcISOString = convertLocalToUTC(dateString, time);
+        
+        // Return in the format expected by the API (YYYY-MM-DDTHH:mm:ss)
+        // Remove the 'Z' and milliseconds if present
+        if (utcISOString) {
+          return utcISOString.replace(/\.\d{3}Z?$/, '').replace('Z', '');
+        }
+        
+        // Fallback to simple format if conversion fails
         return `${dateString}T${time}`;
       };
 
