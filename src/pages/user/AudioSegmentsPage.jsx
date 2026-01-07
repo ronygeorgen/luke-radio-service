@@ -69,8 +69,29 @@ const AudioSegmentsPage = () => {
   const [showConversionConfirm, setShowConversionConfirm] = useState(false);
   const [pendingConversion, setPendingConversion] = useState(null); // 'activeToInactive' or 'inactiveToActive'
 
-  // Filter version state - default to V1
-  const [filterVersion, setFilterVersion] = useState('v1'); // 'v1' or 'v2'
+  // Filter version state - persist in localStorage
+  // Load from localStorage on mount, then auto-detect from Redux filters in useEffect
+  const getInitialFilterVersion = () => {
+    // Check localStorage for saved version
+    const stored = localStorage.getItem('filterVersion');
+    if (stored === 'v1' || stored === 'v2') {
+      console.log('📂 Loaded filterVersion from localStorage:', stored);
+      return stored;
+    }
+
+    // Default to v1
+    console.log('📂 No saved filterVersion, defaulting to v1');
+    return 'v1';
+  };
+
+  const [filterVersion, setFilterVersion] = useState(getInitialFilterVersion);
+
+  // Persist filterVersion to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('filterVersion', filterVersion);
+    console.log('💾 Saved filterVersion to localStorage:', filterVersion);
+  }, [filterVersion]);
+
 
   const handleTrimClick = (segment) => {
     dispatch(openTrimmer(segment));
@@ -100,6 +121,7 @@ const AudioSegmentsPage = () => {
     }
   }, [channelName, channelId]);
 
+
   const dispatch = useDispatch();
   useTranscriptionPolling();
 
@@ -114,6 +136,23 @@ const AudioSegmentsPage = () => {
     pagination,
     availablePages
   } = useSelector((state) => state.audioSegments);
+
+  // Auto-switch to V2 when V2-specific filters are applied
+  useEffect(() => {
+    const hasV2Filters = (
+      (filters.contentTypes && filters.contentTypes.length > 0) ||
+      filters.onlyAnnouncers === true ||
+      filters.onlyActive === true
+    );
+
+    // Only auto-switch to V2, never auto-switch back to V1
+    // User can manually switch back to V1 if they want
+    if (hasV2Filters && filterVersion === 'v1') {
+      console.log('🔄 Auto-switching filterVersion to V2 due to V2 filters being applied');
+      setFilterVersion('v2');
+    }
+  }, [filters.contentTypes, filters.onlyAnnouncers, filters.onlyActive, filterVersion]);
+
 
   // Track the current channel ID from localStorage to detect changes
   // This ensures we always use the most up-to-date channel ID, even when switching channels
@@ -336,6 +375,52 @@ const AudioSegmentsPage = () => {
         has_content: filtersToUse.has_content,
         page: 1
       }));
+    } else if (filterVersion === 'v2') {
+      // Handle V2 API calls
+      console.log('Making V2 API call with filters:', filtersToUse);
+
+      let startDatetime = null;
+      let endDatetime = null;
+      if (filtersToUse.startDate && filtersToUse.endDate) {
+        const startTime = filtersToUse.startTime || '00:00:00';
+        const endTime = filtersToUse.endTime || '23:59:59';
+        startDatetime = convertLocalToUTC(filtersToUse.startDate, startTime);
+        endDatetime = convertLocalToUTC(filtersToUse.endDate, endTime);
+      } else if (filtersToUse.date) {
+        const startTime = filtersToUse.startTime || '00:00:00';
+        const endTime = filtersToUse.endTime || '23:59:59';
+        startDatetime = convertLocalToUTC(filtersToUse.date, startTime);
+        endDatetime = convertLocalToUTC(filtersToUse.date, endTime);
+      }
+
+      if (startDatetime && endDatetime) {
+        // Status param
+        let statusParam = null;
+        if (filtersToUse.status === 'active' || filtersToUse.status === 'inactive') {
+          statusParam = filtersToUse.status;
+        }
+
+        // Content Types logic match V2
+        let contentTypesToUse = [];
+        if (filtersToUse.onlyAnnouncers) {
+          contentTypesToUse = ['Announcer'];
+        } else if (filtersToUse.contentTypes && filtersToUse.contentTypes.length > 0) {
+          contentTypesToUse = filtersToUse.contentTypes;
+        }
+
+        dispatch(fetchAudioSegmentsV2({
+          channelId,
+          startDatetime,
+          endDatetime,
+          page: 1, // Always reset to page 1 for new filters
+          shiftId: filtersToUse.shiftId || null,
+          predefinedFilterId: filtersToUse.predefinedFilterId || null,
+          contentTypes: contentTypesToUse,
+          status: statusParam,
+          searchText: filtersToUse.searchText || null,
+          searchIn: filtersToUse.searchIn || null
+        }));
+      }
     }
   };
 
@@ -434,13 +519,31 @@ const AudioSegmentsPage = () => {
   }, [segments.length, pagination, currentPage, loading, channelId, filters, dispatch, filterVersion]);
 
   const handlePageChange = (pageNumber) => {
-    console.log('Page change requested to:', pageNumber);
+    console.log('📄 Page change requested to:', pageNumber);
+    console.log('🔍 Current filters state:', filters);
+    console.log('🎯 filters.contentTypes:', filters.contentTypes);
+    console.log('🎯 filters.status:', filters.status);
+    console.log('🎯 filterVersion:', filterVersion);
 
     // Reset auto-switch flag when user manually changes page
     hasAutoSwitchedPage.current = false;
 
-    // Use the appropriate API based on filter version
-    if (filterVersion === 'v1') {
+    // Auto-detect which API version to use based on filter state
+    // Use V2 API if any V2-specific filters are active:
+    // - contentTypes array has items
+    // - onlyAnnouncers is true
+    // - onlyActive is true (V2-specific toggle)
+    const hasV2Filters = (
+      (filters.contentTypes && filters.contentTypes.length > 0) ||
+      filters.onlyAnnouncers === true ||
+      filters.onlyActive === true
+    );
+
+    const apiVersionToUse = hasV2Filters ? 'v2' : filterVersion;
+    console.log('🔧 Auto-detected API version:', apiVersionToUse, '(hasV2Filters:', hasV2Filters, ')');
+
+    // Use the appropriate API based on filter version or auto-detection
+    if (apiVersionToUse === 'v1') {
       // Use the unified fetchAudioSegments with page parameter
       dispatch(fetchAudioSegments({
         channelId,
@@ -483,6 +586,20 @@ const AudioSegmentsPage = () => {
           statusParam = filters.status;
         }
 
+        // Determine content types based on V2 logic (matching FilterPanelV2)
+        let contentTypesToUse = [];
+        if (filters.onlyAnnouncers) {
+          contentTypesToUse = ['Announcer'];
+          console.log('📢 Pagination: Only Announcers active - setting contentTypes to ["Announcer"]');
+        } else if (filters.contentTypes && filters.contentTypes.length > 0) {
+          contentTypesToUse = filters.contentTypes;
+          console.log('📋 Pagination: Using selected content types:', contentTypesToUse);
+        } else {
+          console.log('🌐 Pagination: No specific content types (All)');
+        }
+
+        console.log('🚀 V2 API - Calling with contentTypes:', contentTypesToUse);
+
         dispatch(fetchAudioSegmentsV2({
           channelId,
           startDatetime,
@@ -490,7 +607,7 @@ const AudioSegmentsPage = () => {
           page: pageNumber,
           shiftId: filters.shiftId || null,
           predefinedFilterId: filters.predefinedFilterId || null,
-          contentTypes: filters.contentTypes || [], // Use content types from Redux state
+          contentTypes: contentTypesToUse, // Use content types from Redux state
           status: statusParam,
           searchText: filters.searchText || null,
           searchIn: filters.searchIn || null
@@ -984,7 +1101,7 @@ const AudioSegmentsPage = () => {
       // V2 API call
       const startDatetime = convertLocalToUTC(today, defaultStartTime);
       const endDatetime = convertLocalToUTC(today, defaultEndTime);
-      
+
       dispatch(fetchAudioSegmentsV2({
         channelId,
         startDatetime,

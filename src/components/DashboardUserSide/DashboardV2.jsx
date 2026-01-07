@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, BarChart3, TrendingUp, Users, Heart, Sparkles, Target, Activity, Menu, X, Filter, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, BarChart3, TrendingUp, Users, Heart, Sparkles, Target, Activity, Menu, X, Filter, Download, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
@@ -17,6 +17,7 @@ import EntityComparisonSlide from './DashboardV2Slides/EntityComparisonSlide';
 import WordCloudSlide from './DashboardV2Slides/WordCloudSlide';
 import DashboardV2Filters from './DashboardV2Filters';
 import ChannelSwitcher from '../ChannelSwitcher';
+import UploadCustomAudioModal from '../UploadCustomAudioModal';
 
 const slides = [
   {
@@ -124,6 +125,7 @@ function DashboardV2() {
   const [showFilters, setShowFilters] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfProgress, setPdfProgress] = useState(0); // 0 to 100
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const dropdownRef = useRef(null);
   const isNavigatingRef = useRef(false);
   const slideContentRef = useRef(null);
@@ -558,19 +560,19 @@ function DashboardV2() {
         if (!dateString) return '';
         // If it's the end date, use 23:59:59, otherwise use 00:00:00
         const time = isEnd ? '23:59:59' : '00:00:00';
-        
+
         // Get channel timezone from localStorage
         const channelTimezone = localStorage.getItem('channelTimezone') || 'UTC';
-        
+
         // Use convertLocalToUTC to convert the date/time in channel timezone to UTC ISO string
         const utcISOString = convertLocalToUTC(dateString, time);
-        
+
         // Return in the format expected by the API (YYYY-MM-DDTHH:mm:ss)
         // Remove the 'Z' and milliseconds if present
         if (utcISOString) {
           return utcISOString.replace(/\.\d{3}Z?$/, '').replace('Z', '');
         }
-        
+
         // Fallback to simple format if conversion fails
         return `${dateString}T${time}`;
       };
@@ -762,6 +764,16 @@ function DashboardV2() {
                       {user?.isAdmin && (
                         <div>
                           <div className={`px-2 pb-1 text-xs font-semibold ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'} uppercase`}>Settings</div>
+                          <button
+                            onClick={() => {
+                              setIsUploadModalOpen(true);
+                              setIsDropdownOpen(false);
+                            }}
+                            className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}
+                          >
+                            <Upload className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} />
+                            Upload Custom Audio
+                          </button>
                           <button onClick={() => handleNavigation('/dashboard/settings')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
                             <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -991,6 +1003,12 @@ function DashboardV2() {
           </div>
         </div>
       )}
+
+      {/* Upload Custom Audio Modal */}
+      <UploadCustomAudioModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+      />
     </div>
   );
 }

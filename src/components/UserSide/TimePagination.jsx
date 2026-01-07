@@ -1,9 +1,9 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Clock } from 'lucide-react';
 
-const TimePagination = ({ 
-  currentPage, 
-  totalPages, 
+const TimePagination = ({
+  currentPage,
+  totalPages,
   onPageChange,
   availablePages = []
 }) => {
@@ -98,7 +98,7 @@ const TimePagination = ({
     checkHourScroll();
     const dateScroll = dateScrollRef.current;
     const hourScroll = hourScrollRef.current;
-    
+
     if (dateScroll) {
       dateScroll.addEventListener('scroll', checkDateScroll);
       window.addEventListener('resize', checkDateScroll);
@@ -156,13 +156,13 @@ const TimePagination = ({
     if (!selectedDate) return;
     const dateData = uniqueDates.find(d => d.dateKey === selectedDate);
     if (!dateData) return;
-    
+
     // Find page with matching hour
     const matchingPage = dateData.pages.find(page => {
       const dt = parseDateTime(page.start_time);
       return dt && dt.hour === hour;
     });
-    
+
     if (matchingPage) {
       onPageChange(matchingPage.page);
     }
@@ -181,6 +181,7 @@ const TimePagination = ({
           {/* Left Arrow */}
           {canScrollLeft && (
             <button
+              type="button"
               onClick={() => scrollDateRow('left')}
               className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
               aria-label="Scroll dates left"
@@ -188,9 +189,9 @@ const TimePagination = ({
               <ChevronLeft className="w-4 h-4 text-gray-600" />
             </button>
           )}
-          
+
           {/* Date Buttons Container */}
-          <div 
+          <div
             ref={dateScrollRef}
             className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-thin"
           >
@@ -200,6 +201,7 @@ const TimePagination = ({
 
               return (
                 <button
+                  type="button"
                   key={date.dateKey}
                   onClick={() => handleDateClick(date.dateKey)}
                   className={`
@@ -238,6 +240,7 @@ const TimePagination = ({
           {/* Right Arrow */}
           {canScrollRight && (
             <button
+              type="button"
               onClick={() => scrollDateRow('right')}
               className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
               aria-label="Scroll dates right"
@@ -254,6 +257,7 @@ const TimePagination = ({
           {/* Left Arrow */}
           {canScrollHourLeft && (
             <button
+              type="button"
               onClick={() => scrollHourRow('left')}
               className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
               aria-label="Scroll hours left"
@@ -261,9 +265,9 @@ const TimePagination = ({
               <ChevronLeft className="w-3.5 h-3.5 text-gray-600" />
             </button>
           )}
-          
+
           {/* Hour Buttons Container */}
-          <div 
+          <div
             ref={hourScrollRef}
             className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar"
           >
@@ -274,6 +278,7 @@ const TimePagination = ({
 
               return (
                 <button
+                  type="button"
                   key={hour}
                   onClick={() => !isUnavailable && handleHourClick(hour)}
                   disabled={isUnavailable}
@@ -283,8 +288,8 @@ const TimePagination = ({
                     ${isSelected
                       ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md scale-105'
                       : isUnavailable
-                      ? 'bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed opacity-50'
-                      : 'bg-blue-600 border border-blue-700 text-white hover:bg-blue-700 shadow-sm'
+                        ? 'bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed opacity-50'
+                        : 'bg-blue-600 border border-blue-700 text-white hover:bg-blue-700 shadow-sm'
                     }
                   `}
                 >
@@ -300,6 +305,7 @@ const TimePagination = ({
           {/* Right Arrow */}
           {canScrollHourRight && (
             <button
+              type="button"
               onClick={() => scrollHourRow('right')}
               className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
               aria-label="Scroll hours right"

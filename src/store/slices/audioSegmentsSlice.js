@@ -211,6 +211,19 @@ export const fetchAudioSegmentsV2 = createAsyncThunk(
     searchIn = null
   }, { rejectWithValue }) => {
     try {
+      console.log('📥 fetchAudioSegmentsV2 - Received parameters:', {
+        channelId,
+        startDatetime,
+        endDatetime,
+        page,
+        shiftId,
+        predefinedFilterId,
+        contentTypes,
+        status,
+        searchText,
+        searchIn
+      });
+
       const params = {
         channel_id: channelId
       };
