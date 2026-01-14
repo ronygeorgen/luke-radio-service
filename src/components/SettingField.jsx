@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { Save } from 'lucide-react';
-import { updateSetting } from '../store/slices/settingsSlice';
+import { updateSetting, clearError } from '../store/slices/settingsSlice';
 import Toast from './UserSide/Toast';
 
 const SettingField = ({ label, settingKey, value, isTextarea = false }) => {
@@ -14,17 +14,23 @@ const SettingField = ({ label, settingKey, value, isTextarea = false }) => {
   const handleSave = async () => {
     setIsSaving(true);
     setErrorToast(null);
+    // Clear any existing error in Redux state to prevent duplicate toasts
+    dispatch(clearError());
     try {
       const result = await dispatch(updateSetting({ key: settingKey, value: localValue }));
       if (updateSetting.rejected.match(result)) {
         const errorMessage = result.payload || result.error?.message || 'Failed to update setting';
         setErrorToast(errorMessage);
+        // Clear the error from Redux state after handling it locally
+        dispatch(clearError());
       } else {
         setIsEditing(false);
       }
     } catch (error) {
       const errorMessage = error?.message || 'Failed to update setting';
       setErrorToast(errorMessage);
+      // Clear the error from Redux state after handling it locally
+      dispatch(clearError());
     } finally {
       setIsSaving(false);
     }

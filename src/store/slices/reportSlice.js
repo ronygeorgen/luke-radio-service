@@ -127,7 +127,9 @@ export const createInsight = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to create insight');
+      // Handle both 'error' and 'message' fields from backend response
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to create insight';
+      return rejectWithValue(errorMessage);
     }
   }
 );

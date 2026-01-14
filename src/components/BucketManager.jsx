@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Plus, Edit3, Save, X, Trash2 } from 'lucide-react';
-import { addBucket, updateBucket, deleteBucket } from '../store/slices/settingsSlice';
+import { addBucket, updateBucket, deleteBucket, clearError } from '../store/slices/settingsSlice';
+import Toast from './UserSide/Toast';
 
 const BucketManager = () => {
   const dispatch = useDispatch();
@@ -10,31 +11,46 @@ const BucketManager = () => {
   const [editingBucket, setEditingBucket] = useState(null);
   const [newBucket, setNewBucket] = useState({ name: '', value: '', category: '' });
   const [editValues, setEditValues] = useState({});
+  const [toastMessage, setToastMessage] = useState(null);
+  const [toastType, setToastType] = useState('error');
 
   const handleAddBucket = async () => {
       if (!newBucket.name.trim() || !newBucket.value.trim()) {
-        alert('Please fill in both bucket name and value');
+        setToastMessage('Please fill in both bucket name and value');
+        setToastType('error');
         return;
       }
 
       if (!newBucket.category) {
-        alert('Please select a category');
+        setToastMessage('Please select a category');
+        setToastType('error');
         return;
       }
 
       if (buckets.length >= 20) {
-        alert('Maximum of 20 buckets allowed');
+        setToastMessage('Maximum of 20 buckets allowed');
+        setToastType('error');
         return;
       }
 
-      await dispatch(addBucket({
+      dispatch(clearError()); // Clear any existing errors
+      const result = await dispatch(addBucket({
         name: newBucket.name,
         value: newBucket.value,
         category: newBucket.category,
         prompt: newBucket.prompt || ''
       }));
-      setNewBucket({ name: '', value: '', category: '', prompt: '' });
-      setIsAddingBucket(false);
+
+      if (addBucket.fulfilled.match(result)) {
+        setNewBucket({ name: '', value: '', category: '', prompt: '' });
+        setIsAddingBucket(false);
+        setToastMessage(null);
+      } else if (addBucket.rejected.match(result)) {
+        const errorMessage = result.payload || result.error?.message || 'Failed to create bucket';
+        setToastMessage(errorMessage);
+        setToastType('error');
+        dispatch(clearError());
+      }
     };
 
   const handleEditBucket = (bucket) => {
@@ -49,24 +65,36 @@ const BucketManager = () => {
 
   const handleSaveEdit = async (bucketId) => {
       if (!editValues.name.trim() || !editValues.value.trim()) {
-        alert('Please fill in both bucket name and value');
+        setToastMessage('Please fill in both bucket name and value');
+        setToastType('error');
         return;
       }
 
       if (!editValues.category) {
-        alert('Please select a category');
+        setToastMessage('Please select a category');
+        setToastType('error');
         return;
       }
 
-      await dispatch(updateBucket({
+      dispatch(clearError()); // Clear any existing errors
+      const result = await dispatch(updateBucket({
         id: bucketId,
         name: editValues.name,
         value: editValues.value,
         category: editValues.category,
         prompt: editValues.prompt
       }));
-      setEditingBucket(null);
-      setEditValues({});
+
+      if (updateBucket.fulfilled.match(result)) {
+        setEditingBucket(null);
+        setEditValues({});
+        setToastMessage(null);
+      } else if (updateBucket.rejected.match(result)) {
+        const errorMessage = result.payload || result.error?.message || 'Failed to update bucket';
+        setToastMessage(errorMessage);
+        setToastType('error');
+        dispatch(clearError());
+      }
     };
 
   const handleCancelEdit = () => {
@@ -76,7 +104,16 @@ const BucketManager = () => {
 
   const handleDeleteBucket = async (bucketId) => {
     if (window.confirm('Are you sure you want to delete this bucket?')) {
-      await dispatch(deleteBucket(bucketId));
+      dispatch(clearError()); // Clear any existing errors
+      const result = await dispatch(deleteBucket(bucketId));
+      if (deleteBucket.fulfilled.match(result)) {
+        setToastMessage(null);
+      } else if (deleteBucket.rejected.match(result)) {
+        const errorMessage = result.payload || result.error?.message || 'Failed to delete bucket';
+        setToastMessage(errorMessage);
+        setToastType('error');
+        dispatch(clearError());
+      }
     }
   };
 
@@ -296,6 +333,14 @@ const BucketManager = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          onClose={() => setToastMessage(null)}
+          type={toastType}
+        />
       )}
     </div>
   );

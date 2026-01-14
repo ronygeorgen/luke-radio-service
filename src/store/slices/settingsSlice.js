@@ -91,7 +91,7 @@ export const updateSetting = createAsyncThunk(
     }
 
     try {
-      const response = await axiosInstance.put('/settings', {
+      const response = await axiosInstance.post('/settings', {
         settings: {
           ...updatedSettings,
           id: settingsId   
@@ -155,7 +155,7 @@ export const updateSetting = createAsyncThunk(
 
 export const addBucket = createAsyncThunk(
   'settings/addBucket',
-  async (bucketData, { getState }) => {
+  async (bucketData, { getState, rejectWithValue }) => {
     const { settings, settingsId, buckets } = getState().settings;
     
     const newBucket = {
@@ -165,84 +165,110 @@ export const addBucket = createAsyncThunk(
       prompt: bucketData.prompt || ''
     };
 
-    const response = await axiosInstance.put('/settings', {
-      settings: {
-        ...settings,
-        id: settingsId
-      },
-      buckets: [
-        ...buckets.map(bucket => ({
-          bucket_id: bucket.id,
-          title: bucket.name,
-          description: bucket.value,
-          category: bucket.category || '',
-          prompt: bucket.prompt
-        })),
-        newBucket
-      ]
-    });
+    try {
+      const response = await axiosInstance.post('/settings', {
+        settings: {
+          ...settings,
+          id: settingsId
+        },
+        buckets: [
+          ...buckets.map(bucket => ({
+            bucket_id: bucket.id,
+            title: bucket.name,
+            description: bucket.value,
+            category: bucket.category || '',
+            prompt: bucket.prompt
+          })),
+          newBucket
+        ]
+      });
 
-    // Find the newly created bucket in the response
-    const newBucketId = response.data.bucket_ids.find(
-      id => !buckets.some(b => b.id === id)
-    );
+      // Find the newly created bucket in the response
+      const newBucketId = response.data.bucket_ids.find(
+        id => !buckets.some(b => b.id === id)
+      );
 
-    return {
-      id: newBucketId,
-      name: bucketData.name,
-      value: bucketData.value,
-      category: bucketData.category || '',
-      prompt: bucketData.prompt || '',
-      createdAt: new Date().toISOString()
-    };
+      return {
+        id: newBucketId,
+        name: bucketData.name,
+        value: bucketData.value,
+        category: bucketData.category || '',
+        prompt: bucketData.prompt || '',
+        createdAt: new Date().toISOString()
+      };
+    } catch (error) {
+      // Handle both 'error' and 'message' fields from backend response
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to create bucket';
+      return rejectWithValue(errorMessage);
+    }
   }
 );
 
 export const updateBucket = createAsyncThunk(
   'settings/updateBucket',
-  async ({ id, name, value, category, prompt }, { getState }) => {
+  async ({ id, name, value, category, prompt }, { getState, rejectWithValue }) => {
     const { settings, settingsId, buckets } = getState().settings;
     
-    await axiosInstance.put('/settings', {
-      settings: {
-        ...settings,
-        id: settingsId
-      },
-      buckets: buckets.map(bucket => ({
-        bucket_id: bucket.id,
-        title: bucket.id === id ? name : bucket.name,
-        description: bucket.id === id ? value : bucket.value,
-        category: bucket.id === id ? (category || bucket.category || '') : (bucket.category || ''),
-        prompt: bucket.id === id ? (prompt || bucket.prompt) : bucket.prompt
-      }))
-    });
+    try {
+      await axiosInstance.post('/settings', {
+        settings: {
+          ...settings,
+          id: settingsId
+        },
+        buckets: buckets.map(bucket => ({
+          bucket_id: bucket.id,
+          title: bucket.id === id ? name : bucket.name,
+          description: bucket.id === id ? value : bucket.value,
+          category: bucket.id === id ? (category || bucket.category || '') : (bucket.category || ''),
+          prompt: bucket.id === id ? (prompt || bucket.prompt) : bucket.prompt
+        }))
+      });
 
-    return { id, name, value, category: category || '', prompt };
+      return { id, name, value, category: category || '', prompt };
+    } catch (error) {
+      // Handle both 'error' and 'message' fields from backend response
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to update bucket';
+      return rejectWithValue(errorMessage);
+    }
   }
 );
 
 export const deleteBucket = createAsyncThunk(
   'settings/deleteBucket',
-  async (bucketId, { getState }) => {
+  async (bucketId, { getState, rejectWithValue }) => {
     const { settings, settingsId, buckets } = getState().settings;
     
-    await axiosInstance.put('/settings', {
-      settings: {
-        ...settings,
-        id: settingsId
-      },
-      buckets: buckets
-        .filter(bucket => bucket.id !== bucketId)
-        .map(bucket => ({
-          id: bucket.id,
-          title: bucket.name,
-          description: bucket.value,
-          category: bucket.category || '',
-          prompt: bucket.prompt
-        }))
-    });
+    try {
+      await axiosInstance.post('/settings', {
+        settings: {
+          ...settings,
+          id: settingsId
+        },
+        buckets: buckets.map(bucket => {
+          // For deleted bucket, only send id and is_deleted
+          if (bucket.id === bucketId) {
+            return {
+              id: bucket.id,
+              is_deleted: true
+            };
+          }
+          // For other buckets, send full data
+          return {
+            id: bucket.id,
+            title: bucket.name,
+            description: bucket.value,
+            category: bucket.category || '',
+            prompt: bucket.prompt
+          };
+        })
+      });
 
-    return bucketId;
+      return bucketId;
+    } catch (error) {
+      // Handle both 'error' and 'message' fields from backend response
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to delete bucket';
+      return rejectWithValue(errorMessage);
+    }
   }
 );
 
@@ -302,7 +328,7 @@ const settingsSlice = createSlice({
       })
       .addCase(addBucket.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload || action.error?.message || 'Failed to create bucket';
       })
       // Update bucket
       .addCase(updateBucket.pending, (state) => {
@@ -326,7 +352,7 @@ const settingsSlice = createSlice({
       })
       .addCase(updateBucket.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload || action.error?.message || 'Failed to update bucket';
       })
       // Delete bucket
       .addCase(deleteBucket.pending, (state) => {
@@ -339,7 +365,7 @@ const settingsSlice = createSlice({
       })
       .addCase(deleteBucket.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload || action.error?.message || 'Failed to delete bucket';
       });
   },
 });

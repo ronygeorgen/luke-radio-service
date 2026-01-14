@@ -1,8 +1,9 @@
 // components/UserSide/AddInsightModal.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X } from 'lucide-react';
 import { createInsight, clearInsightsError } from '../../store/slices/reportSlice';
+import Toast from './Toast';
 
 const AddInsightModal = ({ isOpen, onClose, savedSegmentId }) => {
   const dispatch = useDispatch();
@@ -11,23 +12,48 @@ const AddInsightModal = ({ isOpen, onClose, savedSegmentId }) => {
     title: '',
     description: ''
   });
+  const [toastMessage, setToastMessage] = useState(null);
+  const [toastType, setToastType] = useState('error');
+
+  // Show toast when error occurs
+  useEffect(() => {
+    if (insightsError) {
+      setToastMessage(insightsError);
+      setToastType('error');
+      dispatch(clearInsightsError());
+    }
+  }, [insightsError, dispatch]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (formData.title.trim()) {
-      dispatch(createInsight({
-        savedSegmentId,
-        insightData: {
-          title: formData.title.trim(),
-          description: formData.description.trim()
-        }
-      }))
-        .unwrap()
-        .then(() => {
-          onClose();
-          setFormData({ title: '', description: '' });
-        });
+    // Validate that both title and description are provided
+    if (!formData.title.trim()) {
+      setToastMessage('Title is required');
+      setToastType('error');
+      return;
     }
+    if (!formData.description.trim()) {
+      setToastMessage('Description is required');
+      setToastType('error');
+      return;
+    }
+    
+    dispatch(createInsight({
+      savedSegmentId,
+      insightData: {
+        title: formData.title.trim(),
+        description: formData.description.trim()
+      }
+    }))
+      .unwrap()
+      .then(() => {
+        onClose();
+        setFormData({ title: '', description: '' });
+        setToastMessage(null);
+      })
+      .catch((error) => {
+        // Error is already handled by the useEffect above
+      });
   };
 
   const handleChange = (e) => {
@@ -49,12 +75,6 @@ const AddInsightModal = ({ isOpen, onClose, savedSegmentId }) => {
           </button>
         </div>
 
-        {insightsError && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded mb-4 text-sm">
-            {insightsError}
-          </div>
-        )}
-
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -73,12 +93,13 @@ const AddInsightModal = ({ isOpen, onClose, savedSegmentId }) => {
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
+              Description *
             </label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
+              required
               rows={4}
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter insight description"
@@ -95,13 +116,21 @@ const AddInsightModal = ({ isOpen, onClose, savedSegmentId }) => {
             </button>
             <button
               type="submit"
-              disabled={insightCreating || !formData.title.trim()}
+              disabled={insightCreating || !formData.title.trim() || !formData.description.trim()}
               className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {insightCreating ? 'Saving...' : 'Save Insight'}
             </button>
           </div>
         </form>
+
+        {toastMessage && (
+          <Toast
+            message={toastMessage}
+            onClose={() => setToastMessage(null)}
+            type={toastType}
+          />
+        )}
       </div>
     </div>
   );

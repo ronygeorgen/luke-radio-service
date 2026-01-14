@@ -6,7 +6,7 @@ import BucketManager from './BucketManager';
 
 const GeneralSettings = () => {
   const dispatch = useDispatch();
-  const { settings, loading, error } = useSelector(state => state.settings);
+  const { settings, loading } = useSelector(state => state.settings);
 
   useEffect(() => {
     dispatch(fetchSettings());
@@ -65,12 +65,8 @@ const GeneralSettings = () => {
 
   return (
     <div className="space-y-8">
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-sm text-red-600">{error}</p>
-        </div>
-      )}
+      {/* Error display removed - errors from updateSetting are handled by SettingField component */}
+      {/* Errors from fetchSettings are rare and can be handled separately if needed */}
 
       {settingGroups.map(group => (
         <div key={group.title} className="space-y-4">
