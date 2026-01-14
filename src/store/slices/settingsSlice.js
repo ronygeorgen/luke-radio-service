@@ -2,6 +2,73 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { axiosInstance } from '../../services/api';
 
+// Helper function to convert frontend settings keys to backend API keys
+const convertSettingsToApiFormat = (frontendSettings) => {
+  const keyMapping = {
+    openAiTranscriptionApi: 'openai_api_key',
+    openAiOrganisationalId: 'openai_org_id',
+    googleCloudClientId: 'google_client_id',
+    googleCloudClientSecret: 'google_client_secret',
+    acrCloudApi: 'acr_cloud_api_key',
+    revAiAccessToken: 'revai_access_token',
+    revAiAuthorization: 'revai_authorization',
+    summariseTranscript: 'summarize_transcript_prompt',
+    sentimentAnalysis: 'sentiment_analysis_prompt',
+    generalTopicsPrompt: 'general_topics_prompt',
+    iabTopicsPrompt: 'iab_topics_prompt',
+    bucketPrompt: 'bucket_prompt',
+    determineRadioContentType: 'determine_radio_content_type_prompt',
+    bucketDefinitionErrorRate: 'bucket_definition_error_rate',
+    chatGptModel: 'chatgpt_model',
+    chatGptMaxTokens: 'chatgpt_max_tokens',
+    chatGptTemperature: 'chatgpt_temperature',
+    chatGptTopP: 'chatgpt_top_p',
+    chatGptFrequencyPenalty: 'chatgpt_frequency_penalty',
+    chatGptPresencePenalty: 'chatgpt_presence_penalty',
+    radioSegmentContent: 'radio_segment_content',
+    radioSegmentErrorRate: 'radio_segment_error_rate',
+  };
+
+  const apiSettings = {};
+  Object.keys(frontendSettings).forEach(frontendKey => {
+    const apiKey = keyMapping[frontendKey] || frontendKey;
+    apiSettings[apiKey] = frontendSettings[frontendKey];
+  });
+
+  // Add content_type_prompt if determineRadioContentType exists
+  if (frontendSettings.determineRadioContentType !== undefined) {
+    apiSettings.content_type_prompt = frontendSettings.determineRadioContentType;
+  }
+
+  return apiSettings;
+};
+
+// Helper function to convert buckets to API format
+const convertBucketsToApiFormat = (buckets) => {
+  return buckets.map(bucket => {
+    // For deleted buckets, only send id and is_deleted
+    if (bucket.is_deleted) {
+      return {
+        id: bucket.id,
+        is_deleted: true
+      };
+    }
+    // For regular buckets, send all fields
+    const apiBucket = {
+      id: bucket.id,
+      title: bucket.name,
+      description: bucket.value,
+      category: bucket.category || '',
+      is_deleted: false
+    };
+    // Only include prompt if it exists
+    if (bucket.prompt) {
+      apiBucket.prompt = bucket.prompt;
+    }
+    return apiBucket;
+  });
+};
+
 // Async thunks
 export const fetchSettings = createAsyncThunk(
   'settings/fetchSettings',
@@ -26,7 +93,7 @@ export const fetchSettings = createAsyncThunk(
         iabTopicsPrompt: response.data.settings.iab_topics_prompt || '',
         bucketPrompt: response.data.settings.bucket_prompt || '',
         determineRadioContentType: response.data.settings.content_type_prompt || '',
-        bucketDefinitionErrorRate: response.data.settings.bucket_error_rate || '',
+        bucketDefinitionErrorRate: response.data.settings.bucket_definition_error_rate || response.data.settings.bucket_error_rate || '',
         chatGptModel: response.data.settings.chatgpt_model || '',
         chatGptMaxTokens: response.data.settings.chatgpt_max_tokens || '',
         chatGptTemperature: response.data.settings.chatgpt_temperature || '',
@@ -36,14 +103,16 @@ export const fetchSettings = createAsyncThunk(
         radioSegmentContent: response.data.settings.radio_segment_content || '',
         radioSegmentErrorRate: response.data.settings.radio_segment_error_rate || '',
       },
-      buckets: response.data.buckets.map(bucket => ({
-        id: bucket.id,
-        name: bucket.title,
-        value: bucket.description,
-        category: bucket.category || '',
-        prompt: bucket.prompt,
-        createdAt: bucket.created_at || new Date().toISOString()
-      }))
+      buckets: response.data.buckets
+        .filter(bucket => !bucket.is_deleted) // Filter out deleted buckets from frontend state
+        .map(bucket => ({
+          id: bucket.id,
+          name: bucket.title,
+          value: bucket.description,
+          category: bucket.category || '',
+          prompt: bucket.prompt,
+          createdAt: bucket.created_at || new Date().toISOString()
+        }))
     };
   }
 );
@@ -53,56 +122,22 @@ export const updateSetting = createAsyncThunk(
   async ({ key, value }, { getState, rejectWithValue }) => {
     const { settings, settingsId, buckets } = getState().settings;
     
-    // Map frontend keys to API keys
-    const keyMapping = {
-      openAiTranscriptionApi: 'openai_api_key',
-      openAiOrganisationalId: 'openai_org_id',
-      googleCloudClientId: 'google_client_id',
-      googleCloudClientSecret: 'google_client_secret',
-      // assemblyAiUser: 'assemblyai_user',
-      // assemblyAiPassword: 'assemblyai_password',
-      // assemblyAiApi: 'assemblyai_api_key',
-      acrCloudApi: 'acr_cloud_api_key',
-      revAiAccessToken: 'revai_access_token',
-      revAiAuthorization: 'revai_authorization',
-      summariseTranscript: 'summarize_transcript_prompt',
-      sentimentAnalysis: 'sentiment_analysis_prompt',
-      generalTopicsPrompt: 'general_topics_prompt',
-      iabTopicsPrompt: 'iab_topics_prompt',
-      bucketPrompt: 'bucket_prompt',
-      determineRadioContentType: 'determine_radio_content_type_prompt',
-      bucketDefinitionErrorRate: 'bucket_definition_error_rate',
-      chatGptModel: 'chatgpt_model',
-      chatGptMaxTokens: 'chatgpt_max_tokens',
-      chatGptTemperature: 'chatgpt_temperature',
-      chatGptTopP: 'chatgpt_top_p',
-      chatGptFrequencyPenalty: 'chatgpt_frequency_penalty',
-      chatGptPresencePenalty: 'chatgpt_presence_penalty',
-      radioSegmentContent: 'radio_segment_content',
-      radioSegmentErrorRate: 'radio_segment_error_rate',
-    };
+    // Update the setting in frontend format
+    const updatedFrontendSettings = { ...settings, [key]: value };
 
-    const apiKey = keyMapping[key] || key;
-    const updatedSettings = { ...settings, [apiKey]: value };
-
-    // If updating determineRadioContentType, also add content_type_prompt with the same value
-    if (key === 'determineRadioContentType') {
-      updatedSettings.content_type_prompt = value;
-    }
+    // Convert all settings to API format
+    const apiSettings = convertSettingsToApiFormat(updatedFrontendSettings);
+    
+    // Convert buckets to API format
+    const apiBuckets = convertBucketsToApiFormat(buckets);
 
     try {
       const response = await axiosInstance.post('/settings', {
         settings: {
-          ...updatedSettings,
+          ...apiSettings,
           id: settingsId   
         },
-        buckets: buckets.map(bucket => ({
-          id: bucket.id,
-          title: bucket.name,
-          description: bucket.value,
-          category: bucket.category || '',
-          prompt: bucket.prompt
-        }))
+        buckets: apiBuckets
       });
 
       return { key, value };
@@ -165,21 +200,32 @@ export const addBucket = createAsyncThunk(
       prompt: bucketData.prompt || ''
     };
 
+    // Convert all settings to API format
+    const apiSettings = convertSettingsToApiFormat(settings);
+    
+    // Convert existing buckets to API format
+    const existingApiBuckets = convertBucketsToApiFormat(buckets);
+    
+    // Add the new bucket (without id, backend will assign it)
+    const newApiBucket = {
+      title: bucketData.name,
+      description: bucketData.value,
+      category: bucketData.category || '',
+      is_deleted: false
+    };
+    if (bucketData.prompt) {
+      newApiBucket.prompt = bucketData.prompt;
+    }
+
     try {
       const response = await axiosInstance.post('/settings', {
         settings: {
-          ...settings,
+          ...apiSettings,
           id: settingsId
         },
         buckets: [
-          ...buckets.map(bucket => ({
-            id: bucket.id,
-            title: bucket.name,
-            description: bucket.value,
-            category: bucket.category || '',
-            prompt: bucket.prompt
-          })),
-          newBucket
+          ...existingApiBuckets,
+          newApiBucket
         ]
       });
 
@@ -209,19 +255,33 @@ export const updateBucket = createAsyncThunk(
   async ({ id, name, value, category, prompt }, { getState, rejectWithValue }) => {
     const { settings, settingsId, buckets } = getState().settings;
     
+    // Convert all settings to API format
+    const apiSettings = convertSettingsToApiFormat(settings);
+    
+    // Update the bucket in frontend format first
+    const updatedBuckets = buckets.map(bucket => {
+      if (bucket.id === id) {
+        return {
+          ...bucket,
+          name,
+          value,
+          category: category || bucket.category || '',
+          prompt: prompt !== undefined ? prompt : bucket.prompt
+        };
+      }
+      return bucket;
+    });
+    
+    // Convert buckets to API format
+    const apiBuckets = convertBucketsToApiFormat(updatedBuckets);
+    
     try {
       await axiosInstance.post('/settings', {
         settings: {
-          ...settings,
+          ...apiSettings,
           id: settingsId
         },
-        buckets: buckets.map(bucket => ({
-          id: bucket.id,
-          title: bucket.id === id ? name : bucket.name,
-          description: bucket.id === id ? value : bucket.value,
-          category: bucket.id === id ? (category || bucket.category || '') : (bucket.category || ''),
-          prompt: bucket.id === id ? (prompt || bucket.prompt) : bucket.prompt
-        }))
+        buckets: apiBuckets
       });
 
       return { id, name, value, category: category || '', prompt };
@@ -238,29 +298,30 @@ export const deleteBucket = createAsyncThunk(
   async (bucketId, { getState, rejectWithValue }) => {
     const { settings, settingsId, buckets } = getState().settings;
     
+    // Convert all settings to API format
+    const apiSettings = convertSettingsToApiFormat(settings);
+    
+    // Mark the bucket as deleted in frontend format
+    const updatedBuckets = buckets.map(bucket => {
+      if (bucket.id === bucketId) {
+        return {
+          ...bucket,
+          is_deleted: true
+        };
+      }
+      return bucket;
+    });
+    
+    // Convert buckets to API format (will handle is_deleted properly)
+    const apiBuckets = convertBucketsToApiFormat(updatedBuckets);
+    
     try {
       await axiosInstance.post('/settings', {
         settings: {
-          ...settings,
+          ...apiSettings,
           id: settingsId
         },
-        buckets: buckets.map(bucket => {
-          // For deleted bucket, only send id and is_deleted
-          if (bucket.id === bucketId) {
-            return {
-              id: bucket.id,
-              is_deleted: true
-            };
-          }
-          // For other buckets, send full data
-          return {
-            id: bucket.id,
-            title: bucket.name,
-            description: bucket.value,
-            category: bucket.category || '',
-            prompt: bucket.prompt
-          };
-        })
+        buckets: apiBuckets
       });
 
       return bucketId;
