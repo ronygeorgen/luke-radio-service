@@ -70,8 +70,8 @@ export const updateSetting = createAsyncThunk(
       generalTopicsPrompt: 'general_topics_prompt',
       iabTopicsPrompt: 'iab_topics_prompt',
       bucketPrompt: 'bucket_prompt',
-      determineRadioContentType: 'radio_content_type_prompt',
-      bucketDefinitionErrorRate: 'bucket_error_rate',
+      determineRadioContentType: 'determine_radio_content_type_prompt',
+      bucketDefinitionErrorRate: 'bucket_definition_error_rate',
       chatGptModel: 'chatgpt_model',
       chatGptMaxTokens: 'chatgpt_max_tokens',
       chatGptTemperature: 'chatgpt_temperature',
@@ -97,7 +97,7 @@ export const updateSetting = createAsyncThunk(
           id: settingsId   
         },
         buckets: buckets.map(bucket => ({
-          bucket_id: bucket.id,
+          id: bucket.id,
           title: bucket.name,
           description: bucket.value,
           category: bucket.category || '',
@@ -173,7 +173,7 @@ export const addBucket = createAsyncThunk(
         },
         buckets: [
           ...buckets.map(bucket => ({
-            bucket_id: bucket.id,
+            id: bucket.id,
             title: bucket.name,
             description: bucket.value,
             category: bucket.category || '',
@@ -216,7 +216,7 @@ export const updateBucket = createAsyncThunk(
           id: settingsId
         },
         buckets: buckets.map(bucket => ({
-          bucket_id: bucket.id,
+          id: bucket.id,
           title: bucket.id === id ? name : bucket.name,
           description: bucket.id === id ? value : bucket.value,
           category: bucket.id === id ? (category || bucket.category || '') : (bucket.category || ''),
