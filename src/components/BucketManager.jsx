@@ -6,13 +6,15 @@ import Toast from './UserSide/Toast';
 
 const BucketManager = () => {
   const dispatch = useDispatch();
-  const { buckets } = useSelector(state => state.settings);
+  const { buckets, loading } = useSelector(state => state.settings);
   const [isAddingBucket, setIsAddingBucket] = useState(false);
   const [editingBucket, setEditingBucket] = useState(null);
   const [newBucket, setNewBucket] = useState({ name: '', value: '', category: '' });
   const [editValues, setEditValues] = useState({});
   const [toastMessage, setToastMessage] = useState(null);
   const [toastType, setToastType] = useState('error');
+  const [deletingBucketId, setDeletingBucketId] = useState(null);
+  const [isCreatingBucket, setIsCreatingBucket] = useState(false);
 
   const handleAddBucket = async () => {
       if (!newBucket.name.trim() || !newBucket.value.trim()) {
@@ -33,6 +35,7 @@ const BucketManager = () => {
         return;
       }
 
+      setIsCreatingBucket(true);
       dispatch(clearError()); // Clear any existing errors
       const result = await dispatch(addBucket({
         name: newBucket.name,
@@ -51,6 +54,7 @@ const BucketManager = () => {
         setToastType('error');
         dispatch(clearError());
       }
+      setIsCreatingBucket(false);
     };
 
   const handleEditBucket = (bucket) => {
@@ -104,6 +108,7 @@ const BucketManager = () => {
 
   const handleDeleteBucket = async (bucketId) => {
     if (window.confirm('Are you sure you want to delete this bucket?')) {
+      setDeletingBucketId(bucketId);
       dispatch(clearError()); // Clear any existing errors
       const result = await dispatch(deleteBucket(bucketId));
       if (deleteBucket.fulfilled.match(result)) {
@@ -114,6 +119,7 @@ const BucketManager = () => {
         setToastType('error');
         dispatch(clearError());
       }
+      setDeletingBucketId(null);
     }
   };
 
@@ -126,7 +132,8 @@ const BucketManager = () => {
         {!isAddingBucket && buckets.length < 20 && (
           <button
             onClick={() => setIsAddingBucket(true)}
-            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+            disabled={isCreatingBucket || loading}
+            className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus className="h-4 w-4" />
             <span>Add Bucket</span>
@@ -202,10 +209,20 @@ const BucketManager = () => {
               </button>
               <button
                 onClick={handleAddBucket}
-                className="flex items-center space-x-1 px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"
+                disabled={isCreatingBucket || loading}
+                className="flex items-center space-x-1 px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Plus className="h-3 w-3" />
-                <span>Add Bucket</span>
+                {isCreatingBucket || loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                    <span>Creating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-3 w-3" />
+                    <span>Add Bucket</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -296,15 +313,22 @@ const BucketManager = () => {
                   <div className="flex space-x-1">
                     <button
                       onClick={() => handleEditBucket(bucket)}
-                      className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                      disabled={isCreatingBucket || deletingBucketId !== null || loading}
+                      className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Edit3 className="h-3 w-3" />
                     </button>
                     <button
                       onClick={() => handleDeleteBucket(bucket.id)}
-                      className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                      disabled={deletingBucketId === bucket.id || isCreatingBucket || loading}
+                      className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed relative"
+                      title={deletingBucketId === bucket.id ? 'Deleting...' : 'Delete bucket'}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      {deletingBucketId === bucket.id ? (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -326,7 +350,8 @@ const BucketManager = () => {
             <p className="text-gray-600 mb-4">Create custom buckets to organize your content</p>
             <button
               onClick={() => setIsAddingBucket(true)}
-              className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+              disabled={isCreatingBucket || loading}
+              className="inline-flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="h-4 w-4" />
               <span>Add First Bucket</span>

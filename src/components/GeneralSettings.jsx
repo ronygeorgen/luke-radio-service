@@ -52,12 +52,8 @@ const GeneralSettings = () => {
       settings: [
         { key: 'bucketDefinitionErrorRate', label: 'Bucket Definition Error Rate' },
         { key: 'chatGptModel', label: 'ChatGPT Model' },
-        { key: 'chatGptMaxTokens', label: 'ChatGPT Max Tokens' },
         { key: 'chatGptTemperature', label: 'ChatGPT Temperature' },
         { key: 'chatGptTopP', label: 'ChatGPT Top P' },
-        { key: 'chatGptFrequencyPenalty', label: 'ChatGPT Frequency Penalty' },
-        { key: 'chatGptPresencePenalty', label: 'ChatGPT Presence Penalty' },
-        { key: 'radioSegmentContent', label: 'Radio Segment/Content (Comma Separated)' },
         { key: 'radioSegmentErrorRate', label: 'Radio Segment Error Rate' },
       ]
     }
