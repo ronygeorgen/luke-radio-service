@@ -137,19 +137,42 @@ const AudioSegmentsPage = () => {
     availablePages
   } = useSelector((state) => state.audioSegments);
 
-  // Auto-switch to V2 when V2-specific filters are applied
+  // Track if user has manually changed filter version (to prevent auto-switch)
+  const hasManuallyChangedVersion = useRef(false);
+  // Track if we've done the initial auto-switch check
+  const hasDoneInitialAutoSwitch = useRef(false);
+
+  // Auto-switch to V2 when V2-specific filters are applied (only once on initial load)
   useEffect(() => {
+    // Don't auto-switch if user has manually changed the version
+    if (hasManuallyChangedVersion.current) {
+      return;
+    }
+
+    // Only do auto-switch check once after initial filters are set
+    if (hasDoneInitialAutoSwitch.current) {
+      return;
+    }
+
+    // Wait for initial filters to be set
+    if (!hasInitialFiltersSet.current) {
+      return;
+    }
+
     const hasV2Filters = (
       (filters.contentTypes && filters.contentTypes.length > 0) ||
       filters.onlyAnnouncers === true ||
       filters.onlyActive === true
     );
 
-    // Only auto-switch to V2, never auto-switch back to V1
-    // User can manually switch back to V1 if they want
+    // Only auto-switch to V2 once on initial load when V2 filters are detected
     if (hasV2Filters && filterVersion === 'v1') {
-      console.log('🔄 Auto-switching filterVersion to V2 due to V2 filters being applied');
+      console.log('🔄 Auto-switching filterVersion to V2 due to V2 filters being applied (initial load only)');
       setFilterVersion('v2');
+      hasDoneInitialAutoSwitch.current = true;
+    } else {
+      // Mark as done even if we don't switch, so we don't check again
+      hasDoneInitialAutoSwitch.current = true;
     }
   }, [filters.contentTypes, filters.onlyAnnouncers, filters.onlyActive, filterVersion]);
 
@@ -519,10 +542,10 @@ const AudioSegmentsPage = () => {
     }
   }, [filters.searchText, filters.searchIn, channelId, filterVersion]);
 
-  // Auto-switch to a page with data if current page has no segments - only for V1
+  // Auto-switch to a page with data if current page has no segments - works for both V1 and V2
   useEffect(() => {
-    // Only check after initial load and when not loading, and only for V1
-    if (!hasInitialFiltersSet.current || loading || filterVersion !== 'v1') {
+    // Only check after initial load and when not loading
+    if (!hasInitialFiltersSet.current || loading) {
       return;
     }
 
@@ -542,25 +565,81 @@ const AudioSegmentsPage = () => {
 
           hasAutoSwitchedPage.current = true;
 
-          dispatch(fetchAudioSegments({
-            channelId,
-            date: filters.date,
-            startDate: filters.startDate,
-            endDate: filters.endDate,
-            startTime: filters.startTime,
-            endTime: filters.endTime,
-            daypart: filters.daypart,
-            searchText: filters.searchText,
-            searchIn: filters.searchIn,
-            shiftId: filters.shiftId,
-            predefinedFilterId: filters.predefinedFilterId,
-            duration: filters.duration,
-            showFlaggedOnly: filters.showFlaggedOnly || false,
-            status: filters.status,
-            recognition_status: filters.recognition_status,
-            has_content: filters.has_content,
-            page: firstPageWithData
-          }));
+          // Determine which API to use based on filter version or V2 filters
+          const hasV2Filters = (
+            (filters.contentTypes && filters.contentTypes.length > 0) ||
+            filters.onlyAnnouncers === true ||
+            filters.onlyActive === true
+          );
+          const apiVersionToUse = hasV2Filters ? 'v2' : filterVersion;
+
+          if (apiVersionToUse === 'v1') {
+            dispatch(fetchAudioSegments({
+              channelId,
+              date: filters.date,
+              startDate: filters.startDate,
+              endDate: filters.endDate,
+              startTime: filters.startTime,
+              endTime: filters.endTime,
+              daypart: filters.daypart,
+              searchText: filters.searchText,
+              searchIn: filters.searchIn,
+              shiftId: filters.shiftId,
+              predefinedFilterId: filters.predefinedFilterId,
+              duration: filters.duration,
+              showFlaggedOnly: filters.showFlaggedOnly || false,
+              status: filters.status,
+              recognition_status: filters.recognition_status,
+              has_content: filters.has_content,
+              page: firstPageWithData
+            }));
+          } else {
+            // V2 API
+            let startDatetime = null;
+            let endDatetime = null;
+            if (filters.startDate && filters.endDate) {
+              const startTime = filters.startTime || '00:00:00';
+              const endTime = filters.endTime || '23:59:59';
+              startDatetime = convertLocalToUTC(filters.startDate, startTime);
+              endDatetime = convertLocalToUTC(filters.endDate, endTime);
+            } else if (filters.date) {
+              const startTime = filters.startTime || '00:00:00';
+              const endTime = filters.endTime || '23:59:59';
+              startDatetime = convertLocalToUTC(filters.date, startTime);
+              endDatetime = convertLocalToUTC(filters.date, endTime);
+            }
+
+            if (startDatetime && endDatetime) {
+              // Determine status parameter
+              let statusParam = null;
+              if (filters.onlyActive === true) {
+                statusParam = 'active';
+              } else if (filters.status === 'active' || filters.status === 'inactive') {
+                statusParam = filters.status;
+              }
+
+              // Determine content types
+              let contentTypesToUse = [];
+              if (filters.onlyAnnouncers === true) {
+                contentTypesToUse = ['Announcer'];
+              } else if (filters.contentTypes && filters.contentTypes.length > 0) {
+                contentTypesToUse = filters.contentTypes;
+              }
+
+              dispatch(fetchAudioSegmentsV2({
+                channelId,
+                startDatetime,
+                endDatetime,
+                page: firstPageWithData,
+                shiftId: filters.shiftId || null,
+                predefinedFilterId: filters.predefinedFilterId || null,
+                contentTypes: contentTypesToUse,
+                status: statusParam,
+                searchText: filters.searchText || null,
+                searchIn: filters.searchIn || null
+              }));
+            }
+          }
         }
       }
     } else if (segments.length > 0) {
@@ -1557,53 +1636,78 @@ const AudioSegmentsPage = () => {
               <button
                 onClick={() => {
                   const newVersion = filterVersion === 'v1' ? 'v2' : 'v1';
+                  // Mark that user has manually changed the version
+                  hasManuallyChangedVersion.current = true;
                   setFilterVersion(newVersion);
                   // Trigger API call when switching versions
-                  if (newVersion === 'v2' && hasInitialFiltersSet.current) {
-                    // Calculate datetime for V2 API
-                    let startDatetime = null;
-                    let endDatetime = null;
-                    if (filters.startDate && filters.endDate) {
-                      const startTime = filters.startTime || '00:00:00';
-                      const endTime = filters.endTime || '23:59:59';
-                      startDatetime = convertLocalToUTC(filters.startDate, startTime);
-                      endDatetime = convertLocalToUTC(filters.endDate, endTime);
-                    } else if (filters.date) {
-                      const startTime = filters.startTime || '00:00:00';
-                      const endTime = filters.endTime || '23:59:59';
-                      startDatetime = convertLocalToUTC(filters.date, startTime);
-                      endDatetime = convertLocalToUTC(filters.date, endTime);
-                    }
-                    if (startDatetime && endDatetime) {
-                      // Determine status parameter from Redux filters
-                      // If onlyActive is true (default), use 'active' status
-                      let statusParam = null;
-                      if (filters.onlyActive === true) {
-                        statusParam = 'active';
-                      } else if (filters.status === 'active' || filters.status === 'inactive') {
-                        statusParam = filters.status;
+                  if (hasInitialFiltersSet.current) {
+                    if (newVersion === 'v2') {
+                      // Calculate datetime for V2 API
+                      let startDatetime = null;
+                      let endDatetime = null;
+                      if (filters.startDate && filters.endDate) {
+                        const startTime = filters.startTime || '00:00:00';
+                        const endTime = filters.endTime || '23:59:59';
+                        startDatetime = convertLocalToUTC(filters.startDate, startTime);
+                        endDatetime = convertLocalToUTC(filters.endDate, endTime);
+                      } else if (filters.date) {
+                        const startTime = filters.startTime || '00:00:00';
+                        const endTime = filters.endTime || '23:59:59';
+                        startDatetime = convertLocalToUTC(filters.date, startTime);
+                        endDatetime = convertLocalToUTC(filters.date, endTime);
                       }
+                      if (startDatetime && endDatetime) {
+                        // Determine status parameter from Redux filters
+                        // If onlyActive is true (default), use 'active' status
+                        let statusParam = null;
+                        if (filters.onlyActive === true) {
+                          statusParam = 'active';
+                        } else if (filters.status === 'active' || filters.status === 'inactive') {
+                          statusParam = filters.status;
+                        }
 
-                      // Determine content types
-                      // If onlyAnnouncers is true (default), use ['Announcer']
-                      let contentTypesToUse = [];
-                      if (filters.onlyAnnouncers === true) {
-                        contentTypesToUse = ['Announcer'];
-                      } else if (filters.contentTypes && filters.contentTypes.length > 0) {
-                        contentTypesToUse = filters.contentTypes;
+                        // Determine content types
+                        // If onlyAnnouncers is true (default), use ['Announcer']
+                        let contentTypesToUse = [];
+                        if (filters.onlyAnnouncers === true) {
+                          contentTypesToUse = ['Announcer'];
+                        } else if (filters.contentTypes && filters.contentTypes.length > 0) {
+                          contentTypesToUse = filters.contentTypes;
+                        }
+
+                        dispatch(fetchAudioSegmentsV2({
+                          channelId,
+                          startDatetime,
+                          endDatetime,
+                          page: 1,
+                          shiftId: filters.shiftId || null,
+                          predefinedFilterId: filters.predefinedFilterId || null,
+                          contentTypes: contentTypesToUse,
+                          status: statusParam,
+                          searchText: filters.searchText || null,
+                          searchIn: filters.searchIn || null
+                        }));
                       }
-
-                      dispatch(fetchAudioSegmentsV2({
+                    } else {
+                      // Switching to V1 - use V1 API
+                      dispatch(fetchAudioSegments({
                         channelId,
-                        startDatetime,
-                        endDatetime,
-                        page: 1,
-                        shiftId: filters.shiftId || null,
-                        predefinedFilterId: filters.predefinedFilterId || null,
-                        contentTypes: contentTypesToUse,
-                        status: statusParam,
-                        searchText: filters.searchText || null,
-                        searchIn: filters.searchIn || null
+                        date: filters.date,
+                        startDate: filters.startDate,
+                        endDate: filters.endDate,
+                        startTime: filters.startTime,
+                        endTime: filters.endTime,
+                        daypart: filters.daypart,
+                        searchText: filters.searchText,
+                        searchIn: filters.searchIn,
+                        shiftId: filters.shiftId,
+                        predefinedFilterId: filters.predefinedFilterId,
+                        duration: filters.duration,
+                        showFlaggedOnly: filters.showFlaggedOnly || false,
+                        status: filters.status,
+                        recognition_status: filters.recognition_status,
+                        has_content: filters.has_content,
+                        page: 1
                       }));
                     }
                   }
