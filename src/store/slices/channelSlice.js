@@ -24,23 +24,33 @@ export const addChannel = createAsyncThunk(
   'channels/addChannel',
   async (channelData, { rejectWithValue }) => {
     try {
-      // Ensure channelId and projectId are valid integers
-      const channelId = channelData.channelId != null ? parseInt(channelData.channelId, 10) : null;
-      const projectId = channelData.projectId != null ? parseInt(channelData.projectId, 10) : null;
-      
-      if (isNaN(channelId) || channelId === null) {
-        return rejectWithValue('Channel ID must be a valid number');
-      }
-      if (isNaN(projectId) || projectId === null) {
-        return rejectWithValue('Project ID must be a valid number');
-      }
-      
-      const response = await axiosInstance.post('/channels', {
-        channel_id: channelId,
-        project_id: projectId,
+      const channelType = channelData.channelType || 'broadcast';
+      let payload = {
+        channel_type: channelType,
         name: channelData.name || '',
         timezone: channelData.timezone
-      });
+      };
+
+      if (channelType === 'broadcast') {
+        // Ensure channelId and projectId are valid integers
+        const channelId = channelData.channelId != null ? parseInt(channelData.channelId, 10) : null;
+        const projectId = channelData.projectId != null ? parseInt(channelData.projectId, 10) : null;
+        
+        if (isNaN(channelId) || channelId === null) {
+          return rejectWithValue('Channel ID must be a valid number');
+        }
+        if (isNaN(projectId) || projectId === null) {
+          return rejectWithValue('Project ID must be a valid number');
+        }
+        
+        payload.channel_id = channelId;
+        payload.project_id = projectId;
+      } else if (channelType === 'podcast') {
+        payload.rss_url = channelData.rssUrl || '';
+        payload.rss_start_date = channelData.rssStartDate || '';
+      }
+      
+      const response = await axiosInstance.post('/channels', payload);
       return response.data.channel;
     } catch (err) {
       if (err.response && err.response.data && err.response.data.error) {
@@ -54,13 +64,23 @@ export const addChannel = createAsyncThunk(
 export const updateChannel = createAsyncThunk(
   'channels/updateChannel',
   async (channelData) => {
-    const response = await axiosInstance.put('/channels', {
+    const channelType = channelData.channelType || 'broadcast';
+    let payload = {
       id: channelData.id,
-      channel_id: channelData.channelId,
-      project_id: channelData.projectId,
+      channel_type: channelType,
       name: channelData.name || '',
       timezone: channelData.timezone
-    });
+    };
+
+    if (channelType === 'broadcast') {
+      payload.channel_id = channelData.channelId;
+      payload.project_id = channelData.projectId;
+    } else if (channelType === 'podcast') {
+      payload.rss_url = channelData.rssUrl || '';
+      payload.rss_start_date = channelData.rssStartDate || '';
+    }
+
+    const response = await axiosInstance.put('/channels', payload);
     return response.data.channel;
   }
 );
@@ -115,10 +135,13 @@ const channelSlice = createSlice({
         state.loading = false;
         state.channels = action.payload.map(channel => ({
           id: channel.id.toString(),
+          channelType: channel.channel_type || 'broadcast',
           channelId: channel.channel_id,
           projectId: channel.project_id,
           name: channel.name,
           timezone: channel.timezone,
+          rssUrl: channel.rss_url || '',
+          rssStartDate: channel.rss_start_date || '',
           createdAt: channel.created_at,
           isActive: !channel.is_deleted
         }));
@@ -140,10 +163,13 @@ const channelSlice = createSlice({
         
         state.userChannels = channels.map(channel => ({
           id: channel.id.toString(),
+          channelType: channel.channel_type || 'broadcast',
           channelId: channel.channel_id,
           projectId: channel.project_id,
           name: channel.name,
           timezone: channel.timezone || 'Australia/Melbourne',
+          rssUrl: channel.rss_url || '',
+          rssStartDate: channel.rss_start_date || '',
           assignedAt: channel.assigned_at || null
         }));
       })
@@ -160,10 +186,13 @@ const channelSlice = createSlice({
         state.loading = false;
         state.channels.push({
           id: action.payload.id.toString(),
+          channelType: action.payload.channel_type || 'broadcast',
           channelId: action.payload.channel_id,
           projectId: action.payload.project_id,
           name: action.payload.name || '',
           timezone: action.payload.timezone,
+          rssUrl: action.payload.rss_url || '',
+          rssStartDate: action.payload.rss_start_date || '',
           createdAt: action.payload.created_at,
           isActive: !action.payload.is_deleted
         });
@@ -185,10 +214,13 @@ const channelSlice = createSlice({
         if (index !== -1) {
           state.channels[index] = {
             id: action.payload.id.toString(),
+            channelType: action.payload.channel_type || 'broadcast',
             channelId: action.payload.channel_id,
             projectId: action.payload.project_id,
             name: action.payload.name || '',
             timezone: action.payload.timezone,
+            rssUrl: action.payload.rss_url || '',
+            rssStartDate: action.payload.rss_start_date || '',
             createdAt: action.payload.created_at,
             isActive: !action.payload.is_deleted
           };
