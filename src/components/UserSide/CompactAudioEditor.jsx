@@ -2,14 +2,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { trimAudioSegment } from '../../store/slices/audioTrimmerSlice';
-import { fetchAudioSegments } from '../../store/slices/audioSegmentsSlice';
+import { fetchAudioSegments, fetchAudioSegmentsV2 } from '../../store/slices/audioSegmentsSlice';
 import { useParams } from 'react-router-dom';
+import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 
 const CompactAudioEditor = ({ isOpen, onClose, segment }) => {
   const dispatch = useDispatch();
   const { channelId: channelIdFromParams } = useParams();
   const channelId = channelIdFromParams || localStorage.getItem('channelId');
-  const { filters } = useSelector((state) => state.audioSegments);
+  const { filters, pagination } = useSelector((state) => state.audioSegments);
 
   const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -268,8 +269,63 @@ const CompactAudioEditor = ({ isOpen, onClose, segment }) => {
         trimAudioSegment({ segment, split_segments, is_active: isSegmentActive })
       );
       if (result.meta.requestStatus === 'fulfilled') {
-        dispatch(
-          fetchAudioSegments({
+        // Preserve current page instead of resetting to 1
+        const currentPage = pagination?.current_page || 1;
+        
+        // Check if V2 filters are active
+        const hasV2Filters = (
+          (filters.contentTypes && filters.contentTypes.length > 0) ||
+          filters.onlyAnnouncers === true ||
+          filters.onlyActive === true
+        );
+
+        if (hasV2Filters) {
+          // Use V2 API with all current filters
+          let startDatetime = null;
+          let endDatetime = null;
+          if (filters.startDate && filters.endDate) {
+            const startTime = filters.startTime || '00:00:00';
+            const endTime = filters.endTime || '23:59:59';
+            startDatetime = convertLocalToUTC(filters.startDate, startTime);
+            endDatetime = convertLocalToUTC(filters.endDate, endTime);
+          } else if (filters.date) {
+            const startTime = filters.startTime || '00:00:00';
+            const endTime = filters.endTime || '23:59:59';
+            startDatetime = convertLocalToUTC(filters.date, startTime);
+            endDatetime = convertLocalToUTC(filters.date, endTime);
+          }
+
+          if (startDatetime && endDatetime) {
+            // Determine status parameter
+            let statusParam = null;
+            if (filters.status === 'active' || filters.status === 'inactive') {
+              statusParam = filters.status;
+            }
+
+            // Determine content types
+            let contentTypesToUse = [];
+            if (filters.onlyAnnouncers) {
+              contentTypesToUse = ['Announcer'];
+            } else if (filters.contentTypes && filters.contentTypes.length > 0) {
+              contentTypesToUse = filters.contentTypes;
+            }
+
+            dispatch(fetchAudioSegmentsV2({
+              channelId,
+              startDatetime,
+              endDatetime,
+              page: currentPage,
+              shiftId: filters.shiftId || null,
+              predefinedFilterId: filters.predefinedFilterId || null,
+              contentTypes: contentTypesToUse,
+              status: statusParam,
+              searchText: filters.searchText || null,
+              searchIn: filters.searchIn || null
+            }));
+          }
+        } else {
+          // Use V1 API with all current filters
+          dispatch(fetchAudioSegments({
             channelId: channelId,
             date: filters.date,
             startDate: filters.startDate,
@@ -280,9 +336,15 @@ const CompactAudioEditor = ({ isOpen, onClose, segment }) => {
             searchText: filters.searchText,
             searchIn: filters.searchIn,
             shiftId: filters.shiftId,
-            page: 1,
-          })
-        );
+            predefinedFilterId: filters.predefinedFilterId,
+            duration: filters.duration,
+            showFlaggedOnly: filters.showFlaggedOnly || false,
+            status: filters.status,
+            recognition_status: filters.recognition_status,
+            has_content: filters.has_content,
+            page: currentPage,
+          }));
+        }
         setTimeout(() => onClose && onClose(), 800);
       }
     } finally {

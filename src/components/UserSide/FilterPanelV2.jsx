@@ -52,13 +52,17 @@ const FilterPanelV2 = ({
   const originalTimesRef = useRef({ startTime: null, endTime: null });
 
   // V2 specific filter states
-  // Initialize from Redux filters.status if available
+  // Initialize from Redux filters.status if available, otherwise default to true for onlyActive
   const getInitialStatus = () => {
     // Check if filters.status is set (from Redux)
     if (filters.status === 'active') return { onlyActive: false, activeStatus: 'active' };
     if (filters.status === 'inactive') return { onlyActive: false, activeStatus: 'inactive' };
-    // Check if there's a special marker for "only active" (we'll use a different approach)
-    return { onlyActive: false, activeStatus: 'all' };
+    // Check if filters.onlyActive is explicitly set in Redux
+    if (filters.onlyActive !== undefined) {
+      return { onlyActive: filters.onlyActive, activeStatus: 'all' };
+    }
+    // Default to true for "Only Active" on initial load
+    return { onlyActive: true, activeStatus: 'all' };
   };
 
   const [onlyActive, setOnlyActive] = useState(getInitialStatus().onlyActive);
@@ -71,15 +75,23 @@ const FilterPanelV2 = ({
       if (stored) {
         const parsed = JSON.parse(stored);
         return {
-          onlyAnnouncers: parsed.onlyAnnouncers || false,
+          onlyAnnouncers: parsed.onlyAnnouncers !== undefined ? parsed.onlyAnnouncers : true,
           selectedContentTypes: parsed.selectedContentTypes || []
         };
       }
     } catch (err) {
       console.error('Error loading filter state from localStorage:', err);
     }
+    // Default to true for "Only Announcers" on initial load if no stored value
+    // Check if Redux has a value first
+    if (filters.onlyAnnouncers !== undefined) {
+      return {
+        onlyAnnouncers: filters.onlyAnnouncers,
+        selectedContentTypes: []
+      };
+    }
     return {
-      onlyAnnouncers: false,
+      onlyAnnouncers: true,
       selectedContentTypes: []
     };
   };
@@ -142,6 +154,43 @@ const FilterPanelV2 = ({
       reduxDispatch(fetchPredefinedFilters());
     }
   }, [reduxDispatch, channelId, trackedChannelId]);
+
+  // Initialize defaults on mount - set onlyActive and onlyAnnouncers to true if not already set
+  const hasInitializedDefaults = useRef(false);
+  useEffect(() => {
+    if (hasInitializedDefaults.current) return;
+    
+    // Check if this is the first load (no stored values in localStorage)
+    const stored = localStorage.getItem('filterV2_contentTypes');
+    let hasStoredValue = false;
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        hasStoredValue = parsed.onlyAnnouncers !== undefined;
+      } catch (e) {
+        // Invalid stored value, treat as no stored value
+      }
+    }
+    
+    // Only set defaults if there's no stored value (first time load)
+    // We respect Redux state if it exists, but if localStorage has no value, we set defaults
+    if (!hasStoredValue) {
+      console.log('🎯 Initializing V2 filter defaults: onlyActive=true, onlyAnnouncers=true');
+      
+      // Update local state (already set in useState, but ensure Redux matches)
+      // Update Redux state with defaults only if not already set
+      if (filters.onlyActive === undefined) {
+        dispatch(setFilter({ onlyActive: true, status: 'active' }));
+      }
+      if (filters.onlyAnnouncers === undefined) {
+        dispatch(setFilter({ onlyAnnouncers: true }));
+      }
+      
+      hasInitializedDefaults.current = true;
+    } else {
+      hasInitializedDefaults.current = true;
+    }
+  }, []); // Run only once on mount
 
   // Listen for channel changes and refetch shifts/predefined filters
   useEffect(() => {

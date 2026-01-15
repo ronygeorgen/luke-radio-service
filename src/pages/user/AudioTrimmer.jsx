@@ -3,7 +3,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { trimAudioSegment, closeTrimmer, clearError } from '../../store/slices/audioTrimmerSlice';
-import { fetchAudioSegments } from '../../store/slices/audioSegmentsSlice';
+import { fetchAudioSegments, fetchAudioSegmentsV2 } from '../../store/slices/audioSegmentsSlice';
+import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 
 const AudioTrimmer = () => {
     
@@ -13,7 +14,7 @@ const AudioTrimmer = () => {
   const audioRef = useRef(null);
   const [isSegmentActive, setIsSegmentActive] = useState(true);
   const { isOpen, currentSegment, isLoading, error } = useSelector((state) => state.audioTrimmer);
-  const { filters } = useSelector((state) => state.audioSegments);
+  const { filters, pagination } = useSelector((state) => state.audioSegments);
   
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -373,20 +374,82 @@ const AudioTrimmer = () => {
       is_active: isSegmentActive
     })).then((result) => {
       if (result.meta.requestStatus === 'fulfilled') {
-        // Refresh segments list after successful trim - include all active filters
-        dispatch(fetchAudioSegments({ 
-          channelId: channelId,
-          date: filters.date,
-          startDate: filters.startDate,
-          endDate: filters.endDate,
-          startTime: filters.startTime,
-          endTime: filters.endTime,
-          daypart: filters.daypart,
-          searchText: filters.searchText,
-          searchIn: filters.searchIn,
-          shiftId: filters.shiftId,
-          page: 1
-        }));
+        // Preserve current page instead of resetting to 1
+        const currentPage = pagination?.current_page || 1;
+        
+        // Check if V2 filters are active
+        const hasV2Filters = (
+          (filters.contentTypes && filters.contentTypes.length > 0) ||
+          filters.onlyAnnouncers === true ||
+          filters.onlyActive === true
+        );
+
+        if (hasV2Filters) {
+          // Use V2 API with all current filters
+          let startDatetime = null;
+          let endDatetime = null;
+          if (filters.startDate && filters.endDate) {
+            const startTime = filters.startTime || '00:00:00';
+            const endTime = filters.endTime || '23:59:59';
+            startDatetime = convertLocalToUTC(filters.startDate, startTime);
+            endDatetime = convertLocalToUTC(filters.endDate, endTime);
+          } else if (filters.date) {
+            const startTime = filters.startTime || '00:00:00';
+            const endTime = filters.endTime || '23:59:59';
+            startDatetime = convertLocalToUTC(filters.date, startTime);
+            endDatetime = convertLocalToUTC(filters.date, endTime);
+          }
+
+          if (startDatetime && endDatetime) {
+            // Determine status parameter
+            let statusParam = null;
+            if (filters.status === 'active' || filters.status === 'inactive') {
+              statusParam = filters.status;
+            }
+
+            // Determine content types
+            let contentTypesToUse = [];
+            if (filters.onlyAnnouncers) {
+              contentTypesToUse = ['Announcer'];
+            } else if (filters.contentTypes && filters.contentTypes.length > 0) {
+              contentTypesToUse = filters.contentTypes;
+            }
+
+            dispatch(fetchAudioSegmentsV2({
+              channelId,
+              startDatetime,
+              endDatetime,
+              page: currentPage,
+              shiftId: filters.shiftId || null,
+              predefinedFilterId: filters.predefinedFilterId || null,
+              contentTypes: contentTypesToUse,
+              status: statusParam,
+              searchText: filters.searchText || null,
+              searchIn: filters.searchIn || null
+            }));
+          }
+        } else {
+          // Use V1 API with all current filters
+          dispatch(fetchAudioSegments({ 
+            channelId: channelId,
+            date: filters.date,
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            startTime: filters.startTime,
+            endTime: filters.endTime,
+            daypart: filters.daypart,
+            searchText: filters.searchText,
+            searchIn: filters.searchIn,
+            shiftId: filters.shiftId,
+            predefinedFilterId: filters.predefinedFilterId,
+            duration: filters.duration,
+            showFlaggedOnly: filters.showFlaggedOnly || false,
+            status: filters.status,
+            recognition_status: filters.recognition_status,
+            has_content: filters.has_content,
+            page: currentPage
+          }));
+        }
         
         // Close trimmer after a short delay to show success
         setTimeout(() => {

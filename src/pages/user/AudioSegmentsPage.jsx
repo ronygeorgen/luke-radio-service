@@ -291,7 +291,14 @@ const AudioSegmentsPage = () => {
         predefinedFilterId: null
       };
 
-      dispatch(setFilter(lastFilters.current));
+      // Set default V2 filter values if not already set
+      const defaultV2Filters = {
+        ...lastFilters.current,
+        onlyActive: filters.onlyActive !== undefined ? filters.onlyActive : true, // Default to true
+        onlyAnnouncers: filters.onlyAnnouncers !== undefined ? filters.onlyAnnouncers : true, // Default to true
+      };
+      
+      dispatch(setFilter(defaultV2Filters));
 
       setLocalStartTime('');
       setLocalEndTime('');
@@ -301,22 +308,60 @@ const AudioSegmentsPage = () => {
       // Set hasInitialFiltersSet to true after initial setup
       hasInitialFiltersSet.current = true;
 
-      // Make only ONE API call on initial load
-      dispatch(fetchAudioSegments({
-        channelId,
-        date: today,
-        startTime: '00:00:00',
-        endTime: '23:59:59',
-        daypart: 'none',
-        shiftId: null,
-        predefinedFilterId: null,
-        duration: null,
-        showFlaggedOnly: false,
-        status: filters.status,
-        recognition_status: filters.recognition_status,
-        has_content: filters.has_content,
-        page: 1
-      }));
+      // Check if we should use V2 API based on filterVersion or default V2 filters
+      const shouldUseV2 = filterVersion === 'v2' || defaultV2Filters.onlyActive === true || defaultV2Filters.onlyAnnouncers === true;
+
+      if (shouldUseV2) {
+        // Use V2 API with default filter values
+        const startDatetime = convertLocalToUTC(today, '00:00:00');
+        const endDatetime = convertLocalToUTC(today, '23:59:59');
+
+        // Determine status parameter - use 'active' if onlyActive is true (default)
+        let statusParam = null;
+        if (defaultV2Filters.onlyActive === true) {
+          statusParam = 'active';
+        } else if (filters.status === 'active' || filters.status === 'inactive') {
+          statusParam = filters.status;
+        }
+
+        // Determine content types - use ['Announcer'] if onlyAnnouncers is true (default)
+        let contentTypesToUse = [];
+        if (defaultV2Filters.onlyAnnouncers === true) {
+          contentTypesToUse = ['Announcer'];
+        } else if (filters.contentTypes && filters.contentTypes.length > 0) {
+          contentTypesToUse = filters.contentTypes;
+        }
+
+        dispatch(fetchAudioSegmentsV2({
+          channelId,
+          startDatetime,
+          endDatetime,
+          page: 1,
+          shiftId: null,
+          predefinedFilterId: null,
+          contentTypes: contentTypesToUse,
+          status: statusParam,
+          searchText: null,
+          searchIn: null
+        }));
+      } else {
+        // Use V1 API
+        dispatch(fetchAudioSegments({
+          channelId,
+          date: today,
+          startTime: '00:00:00',
+          endTime: '23:59:59',
+          daypart: 'none',
+          shiftId: null,
+          predefinedFilterId: null,
+          duration: null,
+          showFlaggedOnly: false,
+          status: filters.status,
+          recognition_status: filters.recognition_status,
+          has_content: filters.has_content,
+          page: 1
+        }));
+      }
     }
   }, [channelId]);
 
@@ -394,15 +439,21 @@ const AudioSegmentsPage = () => {
       }
 
       if (startDatetime && endDatetime) {
-        // Status param
+        // Determine status parameter
+        // If onlyActive is true (default), use 'active' status
+        // Otherwise, use the explicit status if set
         let statusParam = null;
-        if (filtersToUse.status === 'active' || filtersToUse.status === 'inactive') {
+        if (filtersToUse.onlyActive === true) {
+          statusParam = 'active';
+        } else if (filtersToUse.status === 'active' || filtersToUse.status === 'inactive') {
           statusParam = filtersToUse.status;
         }
 
-        // Content Types logic match V2
+        // Determine content types based on V2 logic
+        // If onlyAnnouncers is true (default), use ['Announcer']
+        // Otherwise, use selected content types if any
         let contentTypesToUse = [];
-        if (filtersToUse.onlyAnnouncers) {
+        if (filtersToUse.onlyAnnouncers === true) {
           contentTypesToUse = ['Announcer'];
         } else if (filtersToUse.contentTypes && filtersToUse.contentTypes.length > 0) {
           contentTypesToUse = filtersToUse.contentTypes;
@@ -581,16 +632,24 @@ const AudioSegmentsPage = () => {
       }
       if (startDatetime && endDatetime) {
         // Determine status parameter from Redux filters
+        // If onlyActive is true (default), use 'active' status
+        // Otherwise, use the explicit status if set
         let statusParam = null;
-        if (filters.status === 'active' || filters.status === 'inactive') {
+        if (filters.onlyActive === true) {
+          statusParam = 'active';
+          console.log('✅ Pagination: Only Active is true - setting status to "active"');
+        } else if (filters.status === 'active' || filters.status === 'inactive') {
           statusParam = filters.status;
+          console.log('📊 Pagination: Using explicit status:', statusParam);
         }
 
         // Determine content types based on V2 logic (matching FilterPanelV2)
+        // If onlyAnnouncers is true (default), use ['Announcer']
+        // Otherwise, use selected content types if any
         let contentTypesToUse = [];
-        if (filters.onlyAnnouncers) {
+        if (filters.onlyAnnouncers === true) {
           contentTypesToUse = ['Announcer'];
-          console.log('📢 Pagination: Only Announcers active - setting contentTypes to ["Announcer"]');
+          console.log('📢 Pagination: Only Announcers is true - setting contentTypes to ["Announcer"]');
         } else if (filters.contentTypes && filters.contentTypes.length > 0) {
           contentTypesToUse = filters.contentTypes;
           console.log('📋 Pagination: Using selected content types:', contentTypesToUse);
@@ -598,7 +657,7 @@ const AudioSegmentsPage = () => {
           console.log('🌐 Pagination: No specific content types (All)');
         }
 
-        console.log('🚀 V2 API - Calling with contentTypes:', contentTypesToUse);
+        console.log('🚀 V2 API - Calling with contentTypes:', contentTypesToUse, 'status:', statusParam);
 
         dispatch(fetchAudioSegmentsV2({
           channelId,
@@ -1066,8 +1125,8 @@ const AudioSegmentsPage = () => {
       shiftId: null,
       predefinedFilterId: null,
       duration: null,
-      onlyActive: false,
-      onlyAnnouncers: false,
+      onlyActive: true, // Reset to default: true
+      onlyAnnouncers: true, // Reset to default: true
       contentTypes: [],
       showFlaggedOnly: false
     };
@@ -1109,8 +1168,8 @@ const AudioSegmentsPage = () => {
         page: 1,
         shiftId: null,
         predefinedFilterId: null,
-        contentTypes: [], // Reset to empty array
-        status: null, // Reset status
+        contentTypes: ['Announcer'], // Reset to default: Only Announcers (true)
+        status: 'active', // Reset to default: Only Active (true)
         searchText: null,
         searchIn: null
       }));
@@ -1517,9 +1576,21 @@ const AudioSegmentsPage = () => {
                     }
                     if (startDatetime && endDatetime) {
                       // Determine status parameter from Redux filters
+                      // If onlyActive is true (default), use 'active' status
                       let statusParam = null;
-                      if (filters.status === 'active' || filters.status === 'inactive') {
+                      if (filters.onlyActive === true) {
+                        statusParam = 'active';
+                      } else if (filters.status === 'active' || filters.status === 'inactive') {
                         statusParam = filters.status;
+                      }
+
+                      // Determine content types
+                      // If onlyAnnouncers is true (default), use ['Announcer']
+                      let contentTypesToUse = [];
+                      if (filters.onlyAnnouncers === true) {
+                        contentTypesToUse = ['Announcer'];
+                      } else if (filters.contentTypes && filters.contentTypes.length > 0) {
+                        contentTypesToUse = filters.contentTypes;
                       }
 
                       dispatch(fetchAudioSegmentsV2({
@@ -1529,7 +1600,7 @@ const AudioSegmentsPage = () => {
                         page: 1,
                         shiftId: filters.shiftId || null,
                         predefinedFilterId: filters.predefinedFilterId || null,
-                        contentTypes: [],
+                        contentTypes: contentTypesToUse,
                         status: statusParam,
                         searchText: filters.searchText || null,
                         searchIn: filters.searchIn || null
