@@ -145,10 +145,19 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
     const MIN_Y = MARGIN;
     const MAX_Y = CONTAINER_HEIGHT - MARGIN;
 
-    // Calculate size - all words same size for testing
+    // Calculate size with more dramatic differences - less compression
     const calculateSize = (count) => {
-      // Return constant size for all words - reduced for tighter packing
-      return 18; // Same size for all words (reduced from 24)
+      // Use less compressed scaling for more dramatic size differences
+      const normalized = (count - minCount) / (maxCount - minCount || 1);
+      
+      // Much wider size range - larger words should be MUCH bigger
+      const minSize = 10;   // Smallest words
+      const maxSize = 80;  // Largest words - much bigger than before
+      
+      // Use power function to make size differences more dramatic
+      // Higher frequency = exponentially larger
+      const powerNormalized = Math.pow(normalized, 0.7); // Less compression than sqrt
+      return minSize + (powerNormalized * (maxSize - minSize));
     };
 
     // Collision detection using bounding boxes with improved accuracy
@@ -198,7 +207,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
       // Calculate actual text width - add small buffer for character width variations
       const textWidth = word.length * avgCharWidth;
       const textHeight = charHeight;
-
+      
       if (isVertical) {
         // After 90deg rotation, dimensions swap
         return {
@@ -217,11 +226,10 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
       }
     };
 
-    // Archimedean spiral for organic cloud shape - concentrated towards center
+    // Archimedean spiral for organic cloud shape
     const getSpiralPosition = (angle, radius) => {
       // Archimedean spiral: r = a * θ
-      // Reduced multiplier to keep words more concentrated towards center
-      const spiralRadius = radius * 0.25; // Much tighter spiral to concentrate words in center
+      const spiralRadius = radius * 0.35; // Very tight spiral for maximum density
       const x = CENTER_X + spiralRadius * Math.cos(angle);
       const y = CENTER_Y + spiralRadius * Math.sin(angle);
       return { x, y };
@@ -257,12 +265,12 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
       let spiralRadius = 0;
       
       for (let attempt = 0; attempt < maxAttempts && !placed; attempt++) {
-        // Increase spiral radius gradually - slower expansion to concentrate words in center
-        spiralRadius = Math.sqrt(attempt) * 1.0; // Reduced from 1.4 to keep words closer to center
-        spiralAngle = attempt * 0.15; // Reduced angle increment for tighter center packing
+        // Increase spiral radius gradually - very tight for maximum density
+        spiralRadius = Math.sqrt(attempt) * 1.4; // Even tighter for closer spacing
+        spiralAngle = attempt * 0.18; // Tighter angle increment
         
         // Add minimal randomness to spiral for organic shape
-        const randomOffset = (Math.random() - 0.5) * 4; // Reduced further for center concentration
+        const randomOffset = (Math.random() - 0.5) * 6; // Reduced for tighter packing
         const angle = spiralAngle + randomOffset;
         
         const { x, y } = getSpiralPosition(angle, spiralRadius);
@@ -376,11 +384,11 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
             const xPercent = (x / CONTAINER_WIDTH) * 100;
             const yPercent = (y / CONTAINER_HEIGHT) * 100;
             
-        const color = colors[i % colors.length];
+            const color = colors[i % colors.length];
 
-        placedWords.push({
-          word,
-          count,
+            placedWords.push({
+              word,
+              count,
               fontSize: reducedFontSize,
               x: xPercent,
               y: yPercent,
@@ -535,10 +543,10 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
             y,
             halfWidth: dims.halfWidth,
             halfHeight: dims.halfHeight
-        });
+          });
+        }
       }
-    }
-
+      
       return wordsToKeep;
     };
     
