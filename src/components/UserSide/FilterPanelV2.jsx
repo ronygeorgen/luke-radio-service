@@ -1109,17 +1109,16 @@ const FilterPanelV2 = ({
   // Toggle component for switches - matches the image design
   const ToggleSwitch = ({ checked, onChange, label }) => {
     return (
-      <div className={`flex items-center justify-between py-2 px-3 rounded transition-colors ${checked ? 'bg-blue-600' : 'hover:bg-gray-50'
-        }`}>
-        <span className={`text-sm ${checked ? 'text-white font-medium' : 'text-gray-700'}`}>{label}</span>
+      <div className={`flex items-center justify-between py-2 px-3 rounded transition-colors hover:bg-gray-50`}>
+        <span className={`text-sm text-gray-700`}>{label}</span>
         <button
           type="button"
           onClick={() => onChange(!checked)}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${checked ? 'bg-white' : 'bg-gray-300'
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${checked ? 'bg-blue-600' : 'bg-gray-300'
             }`}
         >
           <span
-            className={`inline-block h-4 w-4 transform rounded-full transition-transform ${checked ? 'translate-x-6 bg-blue-600' : 'translate-x-1 bg-white'
+            className={`inline-block h-4 w-4 transform rounded-full transition-transform ${checked ? 'translate-x-6 bg-white' : 'translate-x-1 bg-white'
               }`}
           />
         </button>
