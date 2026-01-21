@@ -104,14 +104,30 @@ function formatDateTime(dateTimeString) {
       </h1>
 
       {/* Existing title */}
-      <h2 className="text-lg font-bold text-gray-900 flex items-center">
+      <h2 className="text-lg font-bold flex items-center">
         {segment.title ? (
-          segment.title
+          <span className="text-gray-900">{segment.title}</span>
         ) : (
-          `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
-            segment.title_before && segment.title_after ? " - " : ""
-          }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() || 
-          "Untitled Report Item"
+          <span>
+            {segment.title_before && (
+              <>
+                <span className="text-gray-900">Audio Before: </span>
+                <span className="text-gray-500">{segment.title_before}</span>
+              </>
+            )}
+            {segment.title_before && segment.title_after && (
+              <span className="text-gray-900"> - </span>
+            )}
+            {segment.title_after && (
+              <>
+                <span className="text-gray-900">Audio After: </span>
+                <span className="text-gray-500">{segment.title_after}</span>
+              </>
+            )}
+            {!segment.title_before && !segment.title_after && (
+              <span className="text-gray-900">Untitled Report Item</span>
+            )}
+          </span>
         )}
       </h2>
     </div>
