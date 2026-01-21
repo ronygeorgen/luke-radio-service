@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AlertCircle } from 'lucide-react';
 import { dashboardApi } from '../../../services/dashboardApi';
 
 const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '' }) => {
@@ -8,6 +9,9 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
   const [showAllTopics, setShowAllTopics] = useState(false);
   const [topTopicsByDuration, setTopTopicsByDuration] = useState([]);
   const [topTopicsByCount, setTopTopicsByCount] = useState([]);
+  const [blockingTopic, setBlockingTopic] = useState(null);
+  const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Fetch top topics data
   useEffect(() => {
@@ -90,7 +94,42 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
     };
 
     fetchTopTopics();
-  }, [dateRange?.start, dateRange?.end, currentShiftId, showAllTopics]);
+  }, [dateRange?.start, dateRange?.end, currentShiftId, showAllTopics, refreshKey]);
+
+  const handleTopicClick = (topic, event) => {
+    // Get the bounding rectangle of the clicked element
+    const rect = event.currentTarget.getBoundingClientRect();
+
+    // Calculate position: absolute based on scroll + element position
+    // We want it "just above", so subtract modal height (approx) + offset
+    setModalPosition({
+      top: rect.top + window.scrollY - 10, // 10px gap above the element
+      left: rect.left + window.scrollX + (rect.width / 2), // Center horizontally relative to element
+    });
+    setBlockingTopic(topic);
+  };
+
+  const handleBlockConfirm = async () => {
+    if (!blockingTopic) return;
+
+    try {
+      const channelId = localStorage.getItem('channelId');
+      if (!channelId) return;
+
+      const payload = [{
+        topic_name: blockingTopic.name,
+        is_active: false,
+        channel_id: parseInt(channelId, 10)
+      }];
+
+      await dashboardApi.updateGeneralTopics(payload);
+      setBlockingTopic(null);
+      setRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('Error blocking topic:', error);
+      alert('Failed to block topic');
+    }
+  };
 
   const handleToggleShowAllTopics = () => {
     setShowAllTopics(!showAllTopics);
@@ -204,12 +243,13 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
                   return (
                     <div
                       key={topic.name}
-                      className="flex items-center space-x-4 transition-all duration-700"
+                      className="flex items-center space-x-4 transition-all duration-700 cursor-pointer hover:bg-white/10 p-2 rounded-lg"
                       style={{
                         opacity: isVisible ? 1 : 0,
                         transform: isVisible ? 'translateX(0)' : 'translateX(-20px)',
                         transitionDelay: `${baseDelay}ms`,
                       }}
+                      onClick={(e) => handleTopicClick(topic, e)}
                     >
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${index < 3 ? 'bg-pink-500 text-white' : 'bg-white text-gray-700 border-2 border-blue-500'
                         }`}>
@@ -260,12 +300,13 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
                     return (
                       <div
                         key={topic.name}
-                        className="flex items-center space-x-4 transition-all duration-700"
+                        className="flex items-center space-x-4 transition-all duration-700 cursor-pointer hover:bg-teal-200 p-2 rounded-lg"
                         style={{
                           opacity: isVisible ? 1 : 0,
                           transform: isVisible ? 'translateX(0)' : 'translateX(20px)',
                           transitionDelay: `${baseDelay}ms`,
                         }}
+                        onClick={(e) => handleTopicClick(topic, e)}
                       >
                         <span className="text-sm font-medium text-gray-700 w-32 truncate" title={topic.name}>
                           {topic.name}
@@ -289,6 +330,52 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
           </div>
         </div>
       </div>
+
+      {/* Block Topic Confirmation Modal */}
+      {blockingTopic && (
+        <>
+          {/* Transparent backdrop to catch clicks outside */}
+          <div
+            className="fixed inset-0 z-40 bg-transparent"
+            onClick={() => setBlockingTopic(null)}
+          />
+
+          {/* Popover Modal */}
+          <div
+            className="absolute z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-4 w-64 transform -translate-x-1/2 -translate-y-full"
+            style={{
+              top: modalPosition.top,
+              left: modalPosition.left,
+            }}
+          >
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-bold text-gray-900 mb-1">Block Topic?</h4>
+                <p className="text-xs text-gray-600 mb-3">
+                  Block <span className="font-semibold">{blockingTopic.name}</span>?
+                </p>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setBlockingTopic(null)}
+                    className="flex-1 px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleBlockConfirm}
+                    className="flex-1 px-2 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded transition-colors"
+                  >
+                    Block
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
