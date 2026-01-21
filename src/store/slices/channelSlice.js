@@ -102,6 +102,23 @@ export const toggleChannel = createAsyncThunk(
   }
 );
 
+export const reanalyzeRSS = createAsyncThunk(
+  'channels/reanalyzeRSS',
+  async (channelId, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post('/channels/rss/reanalyze', {
+        channel_id: channelId
+      });
+      return response.data;
+    } catch (err) {
+      if (err.response && err.response.data && err.response.data.error) {
+        return rejectWithValue(err.response.data.error);
+      }
+      return rejectWithValue(err.message || 'Failed to reanalyze RSS feed');
+    }
+  }
+);
+
 const channelSlice = createSlice({
   name: 'channels',
   initialState: {

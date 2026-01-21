@@ -1,13 +1,17 @@
 // ChannelCard.jsx
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Trash2, Power, PowerOff, Edit } from 'lucide-react';
-import { deleteChannel, toggleChannel } from '../store/slices/channelSlice';
+import { Trash2, Power, PowerOff, Edit, RefreshCw } from 'lucide-react';
+import { deleteChannel, toggleChannel, reanalyzeRSS } from '../store/slices/channelSlice';
+import Toast from './UserSide/Toast';
 
 const ChannelCard = ({ channel, onEdit }) => {
   const dispatch = useDispatch();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [toastType, setToastType] = useState('success');
 
   const formatCreatedDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -33,22 +37,43 @@ const ChannelCard = ({ channel, onEdit }) => {
     setIsToggling(false);
   };
 
+  const handleReanalyze = async () => {
+    setIsReanalyzing(true);
+    try {
+      const result = await dispatch(reanalyzeRSS(parseInt(channel.id, 10)));
+      if (reanalyzeRSS.fulfilled.match(result)) {
+        const message = result.payload?.message || result.payload?.error || 'RSS feed reanalysis has been queued successfully';
+        setToastMessage(message);
+        setToastType('success');
+      } else {
+        const errorMessage = result.payload || result.error?.message || 'Failed to reanalyze RSS feed';
+        setToastMessage(errorMessage);
+        setToastType('error');
+      }
+    } catch (error) {
+      setToastMessage('Failed to reanalyze RSS feed. Please try again.');
+      setToastType('error');
+    } finally {
+      setIsReanalyzing(false);
+    }
+  };
+
   return (
-    <div className="sw-card p-6 hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5">
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+    <div className="sw-card p-4 sm:p-6 hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 break-words">
             {channel.name ? channel.name : (channel.channelType === 'podcast' ? 'Podcast Channel' : `Channel: ${channel.channelId}`)}
           </h3>
           {channel.channelType === 'podcast' ? (
             <>
               {channel.rssUrl && (
-                <p className="text-sm text-gray-600 mb-1">
-                  <span className="font-medium">RSS URL:</span> {channel.rssUrl}
+                <p className="text-xs sm:text-sm text-gray-600 mb-1 break-words">
+                  <span className="font-medium">RSS URL:</span> <span className="break-all">{channel.rssUrl}</span>
                 </p>
               )}
               {channel.rssStartDate && (
-                <p className="text-sm text-gray-600 mb-1">
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">
                   <span className="font-medium">RSS Start Date:</span> {new Date(channel.rssStartDate).toLocaleString()}
                 </p>
               )}
@@ -56,19 +81,19 @@ const ChannelCard = ({ channel, onEdit }) => {
           ) : (
             <>
               {channel.name && channel.channelId && (
-                <p className="text-sm text-gray-600 mb-1">
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">
                   <span className="font-medium">Channel ID:</span> {channel.channelId}
                 </p>
               )}
               {channel.projectId && (
-                <p className="text-sm text-gray-600 mb-1">
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">
                   <span className="font-medium">Project ID:</span> {channel.projectId}
                 </p>
               )}
             </>
           )}
           {channel.timezone && (
-            <p className="text-sm text-gray-600 mb-1">
+            <p className="text-xs sm:text-sm text-gray-600 mb-1">
               <span className="font-medium">Timezone:</span> {channel.timezone}
             </p>
           )}
@@ -76,10 +101,25 @@ const ChannelCard = ({ channel, onEdit }) => {
             Created: { formatCreatedDate(channel.createdAt) }
           </p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center justify-end sm:justify-start flex-wrap gap-2 sm:space-x-2 sm:gap-0 flex-shrink-0">
+          {channel.channelType === 'podcast' && (
+            <button
+              onClick={handleReanalyze}
+              disabled={isReanalyzing}
+              className={`sw-icon-btn text-purple-600 ${isReanalyzing ? 'opacity-50 cursor-not-allowed' : ''}`}
+              title="Reanalyze RSS Feed"
+            >
+              {isReanalyzing ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </button>
+          )}
           <button
             onClick={() => onEdit(channel)}
             className="sw-icon-btn text-blue-600"
+            title="Edit Channel"
           >
             <Edit className="h-4 w-4" />
           </button>
@@ -91,6 +131,7 @@ const ChannelCard = ({ channel, onEdit }) => {
                 ? 'bg-green-50 border-green-200 text-green-600 hover:bg-green-100'
                 : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
             } ${isToggling ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title={channel.isActive ? 'Deactivate Channel' : 'Activate Channel'}
           >
             {channel.isActive ? (
               <Power className="h-4 w-4" />
@@ -102,6 +143,7 @@ const ChannelCard = ({ channel, onEdit }) => {
             onClick={handleDelete}
             disabled={isDeleting}
             className={`sw-icon-btn text-red-600 ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title="Delete Channel"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -121,6 +163,15 @@ const ChannelCard = ({ channel, onEdit }) => {
           </span>
         </div>
       </div>
+      
+      {/* Toast Notification */}
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          onClose={() => setToastMessage(null)}
+          type={toastType}
+        />
+      )}
     </div>
   );
 };
