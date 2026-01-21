@@ -143,36 +143,39 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
   // Loading skeleton
   if (loading) {
     return (
-      <div className="min-h-screen p-8">
+      <div className="min-h-screen p-4">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <div className="h-10 w-64 bg-gray-300/50 rounded-lg animate-pulse mx-auto"></div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="h-8 w-64 bg-gray-300/50 rounded-lg animate-pulse mx-auto"></div>
             <div className="h-6 w-40 bg-gray-300/50 rounded-lg animate-pulse"></div>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Panel Skeleton */}
-            <div className="bg-gray-700 rounded-2xl p-6 shadow-xl">
-              <div className="h-6 w-48 bg-gray-600/50 rounded mb-6 animate-pulse"></div>
-              <div className="space-y-3">
+            <div className="bg-teal-100 rounded-2xl p-4 shadow-xl">
+              <div className="h-5 w-48 bg-teal-200/50 rounded mb-3 animate-pulse"></div>
+              <div className="space-y-1.5">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
-                  <div key={i} className="flex items-center space-x-4">
-                    <div className="w-8 h-8 bg-gray-600/50 rounded-full animate-pulse"></div>
+                  <div key={i} className="flex items-center space-x-3">
+                    <div className="w-7 h-7 bg-teal-200/50 rounded-full animate-pulse"></div>
                     <div className="flex-1">
-                      <div className="h-4 w-32 bg-gray-600/50 rounded mb-2 animate-pulse"></div>
-                      <div className="w-full bg-gray-600/50 rounded-full h-2 animate-pulse"></div>
+                      <div className="h-3.5 w-32 bg-teal-200/50 rounded mb-1 animate-pulse"></div>
+                      <div className="w-full bg-teal-200/50 rounded-full h-1.5 animate-pulse"></div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
             {/* Right Panel Skeleton */}
-            <div className="bg-teal-100 rounded-2xl p-6 shadow-xl">
-              <div className="h-6 w-40 bg-gray-300/50 rounded mb-6 animate-pulse"></div>
-              <div className="h-96 space-y-3">
+            <div className="bg-teal-100 rounded-2xl p-4 shadow-xl">
+              <div className="h-5 w-40 bg-gray-300/50 rounded mb-3 animate-pulse"></div>
+              <div className="space-y-1.5">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
-                  <div key={i} className="flex items-center space-x-4">
-                    <div className="h-4 w-32 bg-gray-300/50 rounded animate-pulse"></div>
-                    <div className="flex-1 h-8 bg-teal-200/50 rounded animate-pulse"></div>
+                  <div key={i} className="flex items-center space-x-3">
+                    <div className="w-7 h-7 bg-teal-200/50 rounded-full animate-pulse"></div>
+                    <div className="flex-1">
+                      <div className="h-3.5 w-32 bg-teal-200/50 rounded mb-1 animate-pulse"></div>
+                      <div className="w-full bg-teal-200/50 rounded-full h-1.5 animate-pulse"></div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -195,12 +198,12 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
 
   return (
     <div
-      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      className={`min-h-screen p-4 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
     >
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">Top Topics Distribution</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold text-gray-900">Top Topics Distribution</h2>
 
           {/* Toggle Button for Show All Topics */}
           <div className="flex items-center space-x-3">
@@ -226,24 +229,24 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Panel - Top 10 Topics (Time) */}
           <div
-            className="bg-gray-700 rounded-2xl p-6 shadow-xl"
+            className="bg-teal-100 rounded-2xl p-4 shadow-xl"
             style={{
               opacity: isVisible ? 1 : 0,
               transform: isVisible ? 'translateX(0) translateY(0)' : 'translateX(-50px) translateY(20px)',
               transition: 'opacity 0.8s ease-out 200ms, transform 0.8s ease-out 200ms',
             }}
           >
-            <h3 className="text-xl font-bold text-white mb-6">Top 10 Topics (Time)</h3>
-            <div className="space-y-3">
+            <h3 className="text-lg font-bold text-gray-900 mb-3">Top 10 Topics (Time)</h3>
+            <div className="space-y-1.5">
               {topTopicsByDuration.length === 0 ? (
-                <p className="text-white text-center py-8">No data available</p>
+                <p className="text-gray-700 text-center py-4 text-sm">No data available</p>
               ) : (
                 topTopicsByDuration.map((topic, index) => {
                   const baseDelay = 200 + (index * 100);
                   return (
                     <div
                       key={topic.name}
-                      className="flex items-center space-x-4 transition-all duration-700 cursor-pointer hover:bg-white/10 p-2 rounded-lg"
+                      className="flex items-center space-x-3 transition-all duration-700 cursor-pointer hover:bg-teal-200 p-1.5 rounded-lg"
                       style={{
                         opacity: isVisible ? 1 : 0,
                         transform: isVisible ? 'translateX(0)' : 'translateX(-20px)',
@@ -251,25 +254,27 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
                       }}
                       onClick={(e) => handleTopicClick(topic, e)}
                     >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${index < 3 ? 'bg-pink-500 text-white' : 'bg-white text-gray-700 border-2 border-blue-500'
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${index < 3 ? 'bg-pink-500 text-white' : 'bg-white text-gray-700 border-2 border-teal-500'
                         }`}>
                         {index + 1}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-white font-medium">{topic.name}</span>
-                          <span className="text-white text-sm">{topic.durationFormatted}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-900 font-medium text-sm">{topic.name}</span>
+                            <span className="text-gray-600 text-xs">{topic.percentage}%</span>
+                          </div>
+                          <span className="text-gray-700 text-xs">{topic.durationFormatted}</span>
                         </div>
-                        <div className="w-full bg-gray-600 rounded-full h-2">
+                        <div className="w-full bg-teal-200 rounded-full h-1.5">
                           <div
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-1000"
+                            className="bg-teal-500 h-1.5 rounded-full transition-all duration-1000"
                             style={{
                               width: isVisible ? `${topic.percentage}%` : '0%',
                               transitionDelay: `${baseDelay + 200}ms`,
                             }}
                           />
                         </div>
-                        <span className="text-white text-xs mt-1">{topic.percentage}%</span>
                       </div>
                     </div>
                   );
@@ -280,52 +285,57 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
 
           {/* Right Panel - Top 10 Topics # */}
           <div
-            className="bg-teal-100 rounded-2xl p-6 shadow-xl"
+            className="bg-teal-100 rounded-2xl p-4 shadow-xl"
             style={{
               opacity: isVisible ? 1 : 0,
               transform: isVisible ? 'translateX(0) translateY(0)' : 'translateX(50px) translateY(20px)',
               transition: 'opacity 0.8s ease-out 400ms, transform 0.8s ease-out 400ms',
             }}
           >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Top 10 Topics #</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-gray-900">Top 10 Topics #</h3>
             </div>
-            <div className="h-96">
-              <div className="flex flex-col h-full justify-between">
-                {topTopicsByCount.length === 0 ? (
-                  <p className="text-gray-700 text-center py-8">No data available</p>
-                ) : (
-                  topTopicsByCount.map((topic, index) => {
-                    const baseDelay = 400 + (index * 100);
-                    return (
-                      <div
-                        key={topic.name}
-                        className="flex items-center space-x-4 transition-all duration-700 cursor-pointer hover:bg-teal-200 p-2 rounded-lg"
-                        style={{
-                          opacity: isVisible ? 1 : 0,
-                          transform: isVisible ? 'translateX(0)' : 'translateX(20px)',
-                          transitionDelay: `${baseDelay}ms`,
-                        }}
-                        onClick={(e) => handleTopicClick(topic, e)}
-                      >
-                        <span className="text-sm font-medium text-gray-700 w-32 truncate" title={topic.name}>
-                          {topic.name}
-                        </span>
-                        <div className="flex-1 flex items-center">
+            <div className="space-y-1.5">
+              {topTopicsByCount.length === 0 ? (
+                <p className="text-gray-700 text-center py-4 text-sm">No data available</p>
+              ) : (
+                topTopicsByCount.map((topic, index) => {
+                  const baseDelay = 400 + (index * 100);
+                  const percentage = maxTopicCount > 0 ? Math.round((topic.count / maxTopicCount) * 100) : 0;
+                  return (
+                    <div
+                      key={topic.name}
+                      className="flex items-center space-x-3 transition-all duration-700 cursor-pointer hover:bg-teal-200 p-1.5 rounded-lg"
+                      style={{
+                        opacity: isVisible ? 1 : 0,
+                        transform: isVisible ? 'translateX(0)' : 'translateX(20px)',
+                        transitionDelay: `${baseDelay}ms`,
+                      }}
+                      onClick={(e) => handleTopicClick(topic, e)}
+                    >
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${index < 3 ? 'bg-pink-500 text-white' : 'bg-white text-gray-700 border-2 border-teal-500'
+                        }`}>
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-gray-900 font-medium text-sm">{topic.name}</span>
+                          <span className="text-gray-700 text-xs">{topic.count}</span>
+                        </div>
+                        <div className="w-full bg-teal-200 rounded-full h-1.5">
                           <div
-                            className="bg-teal-500 h-8 rounded transition-all duration-1000"
+                            className="bg-teal-500 h-1.5 rounded-full transition-all duration-1000"
                             style={{
-                              width: isVisible ? `${(topic.count / maxTopicCount) * 100}%` : '0%',
+                              width: isVisible ? `${percentage}%` : '0%',
                               transitionDelay: `${baseDelay + 200}ms`,
                             }}
                           />
-                          <span className="ml-2 text-sm font-bold text-gray-900">{topic.count}</span>
                         </div>
                       </div>
-                    );
-                  })
-                )}
-              </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
