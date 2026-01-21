@@ -38,16 +38,35 @@ const ChannelCard = ({ channel, onEdit }) => {
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            {channel.name ? channel.name : `Channel: ${channel.channelId}`}
+            {channel.name ? channel.name : (channel.channelType === 'podcast' ? 'Podcast Channel' : `Channel: ${channel.channelId}`)}
           </h3>
-          {channel.name && (
-            <p className="text-sm text-gray-600 mb-1">
-              <span className="font-medium">Channel ID:</span> {channel.channelId}
-            </p>
+          {channel.channelType === 'podcast' ? (
+            <>
+              {channel.rssUrl && (
+                <p className="text-sm text-gray-600 mb-1">
+                  <span className="font-medium">RSS URL:</span> {channel.rssUrl}
+                </p>
+              )}
+              {channel.rssStartDate && (
+                <p className="text-sm text-gray-600 mb-1">
+                  <span className="font-medium">RSS Start Date:</span> {new Date(channel.rssStartDate).toLocaleString()}
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              {channel.name && channel.channelId && (
+                <p className="text-sm text-gray-600 mb-1">
+                  <span className="font-medium">Channel ID:</span> {channel.channelId}
+                </p>
+              )}
+              {channel.projectId && (
+                <p className="text-sm text-gray-600 mb-1">
+                  <span className="font-medium">Project ID:</span> {channel.projectId}
+                </p>
+              )}
+            </>
           )}
-          <p className="text-sm text-gray-600 mb-1">
-            <span className="font-medium">Project ID:</span> {channel.projectId}
-          </p>
           {channel.timezone && (
             <p className="text-sm text-gray-600 mb-1">
               <span className="font-medium">Timezone:</span> {channel.timezone}

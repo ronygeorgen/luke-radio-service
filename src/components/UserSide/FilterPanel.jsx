@@ -4,6 +4,8 @@ import { Calendar, RotateCcw, ChevronUp, ChevronDown, Search, X, ToggleRight, Ar
 import { setFilter, fetchShifts  } from '../../store/slices/audioSegmentsSlice';
 import { fetchPredefinedFilters } from '../../store/slices/shiftManagementSlice';
 import { useDispatch, useSelector } from 'react-redux';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 const FilterPanel = ({ 
   filters, 
@@ -708,93 +710,234 @@ const FilterPanel = ({
     }
   };
 
-  // Compact Calendar component for sidebar
+  // Compact Calendar component for sidebar using react-datepicker with two calendars
   const CompactDateRangeCalendar = () => {
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const startDate = dateRange.start ? parseDateString(dateRange.start) : null;
+    const endDate = dateRange.end ? parseDateString(dateRange.end) : null;
+    
+    // Local state for date selection before applying
+    const [localStartDate, setLocalStartDate] = useState(startDate);
+    const [localEndDate, setLocalEndDate] = useState(endDate);
+    const prevShowDatePickerRef = useRef(showDatePicker);
+    
+    // Sync local state when modal opens (not on every change)
+    useEffect(() => {
+      // Only sync when modal transitions from closed to open
+      if (showDatePicker && !prevShowDatePickerRef.current) {
+        setLocalStartDate(startDate);
+        setLocalEndDate(endDate);
+      }
+      prevShowDatePickerRef.current = showDatePicker;
+    }, [showDatePicker]);
+    
+    const handleStartDateChange = (date) => {
+      if (!date) {
+        setLocalStartDate(null);
+        setLocalEndDate(null);
+        return;
+      }
+      
+      // If end date exists and new start is after end, clear end date
+      if (localEndDate && date > localEndDate) {
+        setLocalStartDate(date);
+        setLocalEndDate(null);
+      } else {
+        setLocalStartDate(date);
+      }
+    };
+    
+    const handleEndDateChange = (date) => {
+      if (!date) {
+        // If clearing end date, keep start date
+        setLocalEndDate(null);
+        return;
+      }
+      
+      // Ensure end date is not before start date
+      if (localStartDate && date < localStartDate) {
+        // If end is before start, swap them
+        const oldStart = localStartDate;
+        setLocalStartDate(date);
+        setLocalEndDate(oldStart);
+      } else if (localStartDate) {
+        setLocalEndDate(date);
+      } else {
+        // End date selected before start, set as start
+        setLocalStartDate(date);
+        setLocalEndDate(null);
+      }
+    };
+    
+    const handleApply = () => {
+      if (localStartDate && localEndDate) {
+        // Both dates selected, apply filter
+        const finalStartUTC = convertLocalToUTCDateString(localStartDate);
+        const finalEndUTC = convertLocalToUTCDateString(localEndDate);
+        
+        setDateRange({
+          start: getLocalDateString(localStartDate),
+          end: getLocalDateString(localEndDate),
+          selecting: false
+        });
+        
+        // Send UTC dates to backend
+        handleDateRangeSelection(finalStartUTC, finalEndUTC);
+        setShowDatePicker(false);
+      }
+    };
+    
+    const handleClear = () => {
+      setLocalStartDate(null);
+      setLocalEndDate(null);
+      setDateRange({ start: null, end: null, selecting: false });
+      handleDateRangeSelection(null, null);
+    };
     
     return (
-      <div ref={calendarRef} className="bg-white border border-gray-300 rounded-lg shadow-lg p-3 min-w-72 max-w-80">
-        <div className="flex justify-between items-center mb-3">
-          <button
-            onClick={() => navigateMonth('prev')}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
-          >
-            <ChevronUp className="w-3 h-3 transform -rotate-90" />
-          </button>
-          
-          <h3 className="font-semibold text-gray-700 text-sm">
-            {monthNames[currentMonth]} {currentYear}
-          </h3>
-          
-          <button
-            onClick={() => navigateMonth('next')}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
-          >
-            <ChevronUp className="w-3 h-3 transform rotate-90" />
-          </button>
-        </div>
-        
-        <div className="mb-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
-          {dateRange.selecting ? (
-            `Select end date (after ${dateRange.start})`
-          ) : (
-            'Select start date'
-          )}
-        </div>
-        
-        <div className="grid grid-cols-7 gap-1 mb-1">
-          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
-            <div key={day} className="text-center text-xs font-medium text-gray-500 py-1">
-              {day}
+      <div ref={calendarRef} className="bg-white border border-gray-300 rounded-lg shadow-lg p-4" style={{ minWidth: '560px' }}>
+        <style>{`
+          .react-datepicker {
+            font-family: inherit;
+            border: none;
+            box-shadow: none;
+          }
+          .react-datepicker__header {
+            background-color: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding-top: 0.75rem;
+          }
+          .react-datepicker__current-month {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #374151;
+            margin-bottom: 0.5rem;
+          }
+          .react-datepicker__day-names {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 0.25rem;
+          }
+          .react-datepicker__day-name {
+            color: #6b7280;
+            font-size: 0.75rem;
+            font-weight: 500;
+            width: 2rem;
+            line-height: 2rem;
+          }
+          .react-datepicker__month {
+            margin: 0.5rem;
+          }
+          .react-datepicker__week {
+            display: flex;
+            justify-content: space-around;
+          }
+          .react-datepicker__day {
+            width: 2rem;
+            line-height: 2rem;
+            margin: 0.125rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+          }
+          .react-datepicker__day--selected {
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 600;
+          }
+          .react-datepicker__day:hover {
+            background-color: #dbeafe;
+            border-radius: 0.25rem;
+          }
+          .react-datepicker__day--keyboard-selected {
+            background-color: #3b82f6;
+            color: white;
+          }
+          .react-datepicker__day--disabled {
+            color: #d1d5db;
+            cursor: not-allowed;
+          }
+          .react-datepicker__navigation {
+            top: 0.75rem;
+          }
+          .react-datepicker__year-dropdown-container,
+          .react-datepicker__month-dropdown-container {
+            margin: 0 0.25rem;
+          }
+          .react-datepicker__year-select,
+          .react-datepicker__month-select {
+            padding: 0.25rem 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            background-color: white;
+            color: #374151;
+          }
+        `}</style>
+        <div className="flex gap-4">
+          {/* From Date Calendar */}
+          <div className="flex-1">
+            <div className="mb-2">
+              <label className="text-sm font-medium text-gray-700">From Date</label>
             </div>
-          ))}
+            <DatePicker
+              selected={localStartDate}
+              onChange={handleStartDateChange}
+              inline
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              calendarStartDay={0}
+              dateFormat="yyyy-MM-dd"
+              fixedHeight
+              maxDate={localEndDate || new Date()}
+            />
+          </div>
+          
+          {/* To Date Calendar */}
+          <div className="flex-1">
+            <div className="mb-2">
+              <label className="text-sm font-medium text-gray-700">To Date</label>
+            </div>
+            <DatePicker
+              selected={localEndDate}
+              onChange={handleEndDateChange}
+              inline
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
+              calendarStartDay={0}
+              dateFormat="yyyy-MM-dd"
+              fixedHeight
+              minDate={localStartDate}
+              maxDate={new Date()}
+            />
+          </div>
         </div>
         
-        <div className="grid grid-cols-7 gap-1">
-          {generateCalendarDays().map((day, index) => {
-            const dateString = getLocalDateString(day.date);
-            const isInRange = isDateInRange(day.date);
-            const isStart = isRangeStart(day.date);
-            const isEnd = isRangeEnd(day.date);
-            const isSelected = isStart || isEnd;
-            const isToday = dateString === getTodayDateString();
-            
-            return (
-              <button
-                key={index}
-                onClick={() => !day.isDisabled && handleDateClick(day.date)}
-                disabled={day.isDisabled}
-                className={`
-                  relative p-1 text-xs rounded transition-colors min-w-6 h-6
-                  ${day.isDisabled ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-blue-50'}
-                  ${isSelected ? 'bg-blue-500 text-white hover:bg-blue-600' : ''}
-                  ${isInRange && !isSelected ? 'bg-blue-100' : ''}
-                  ${!day.isCurrentMonth ? 'text-gray-400' : ''}
-                  ${isToday && !isSelected ? 'border border-blue-300' : ''}
-                `}
-              >
-                {day.date.getDate()}
-              </button>
-            );
-          })}
-        </div>
-        
-        <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-200">
+        <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-200">
           <div className="text-xs text-gray-600 flex-1 truncate mr-2">
-            {dateRange.start && dateRange.end ? (
-              `${dateRange.start} to ${dateRange.end}`
-            ) : dateRange.start ? (
-              `Start: ${dateRange.start}`
+            {localStartDate && localEndDate ? (
+              `${getLocalDateString(localStartDate)} to ${getLocalDateString(localEndDate)}`
+            ) : localStartDate ? (
+              `From: ${getLocalDateString(localStartDate)}`
             ) : (
-              'Select start date'
+              'Select date range'
             )}
           </div>
-          <button
-            onClick={clearDateRange}
-            className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors whitespace-nowrap"
-          >
-            Clear
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleClear}
+              className="px-3 py-1.5 text-xs font-medium bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors whitespace-nowrap"
+            >
+              Clear
+            </button>
+            <button
+              onClick={handleApply}
+              disabled={!localStartDate || !localEndDate}
+              className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Apply
+            </button>
+          </div>
         </div>
       </div>
     );

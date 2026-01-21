@@ -1,8 +1,9 @@
 // OnboardModal.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
-import { X } from 'lucide-react';
+import { X, Info } from 'lucide-react';
 import { addChannel, updateChannel } from '../store/slices/channelSlice';
+import { axiosInstance } from '../services/api';
 import TimezoneSelect from 'react-timezone-select';
 
 const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
@@ -21,6 +22,10 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState({});
+  const [totalDuration, setTotalDuration] = useState(null);
+  const [isLoadingDuration, setIsLoadingDuration] = useState(false);
+  const [durationError, setDurationError] = useState(null);
+  const durationTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (channelToEdit) {
@@ -176,6 +181,100 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
       rssStartDate: e.target.value
     }));
   };
+
+  // Format seconds into human-readable format
+  const formatDuration = (seconds) => {
+    if (!seconds || seconds === 0) return '0 seconds';
+    
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    const parts = [];
+    if (days > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+    if (hours > 0) parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
+    if (minutes > 0) parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
+    if (secs > 0 && parts.length === 0) parts.push(`${secs} second${secs !== 1 ? 's' : ''}`);
+    
+    return parts.join(', ') || '0 seconds';
+  };
+
+  // Fetch RSS total duration when podcast type is selected and RSS URL + start date are provided
+  useEffect(() => {
+    // Clear any existing timeout
+    if (durationTimeoutRef.current) {
+      clearTimeout(durationTimeoutRef.current);
+    }
+
+    // Reset state when switching away from podcast
+    if (formData.channelType !== 'podcast') {
+      setTotalDuration(null);
+      setDurationError(null);
+      setIsLoadingDuration(false);
+      return;
+    }
+
+    const rssUrl = String(formData.rssUrl || '').trim();
+    const rssStartDate = String(formData.rssStartDate || '').trim();
+    const rssStartTime = String(formData.rssStartTime || '00:00').trim();
+
+    // Only fetch if both RSS URL and start date are provided
+    if (!rssUrl || !rssStartDate) {
+      setTotalDuration(null);
+      setDurationError(null);
+      setIsLoadingDuration(false);
+      return;
+    }
+
+    // Debounce the API call by 500ms
+    setIsLoadingDuration(true);
+    setDurationError(null);
+    
+    durationTimeoutRef.current = setTimeout(async () => {
+      try {
+        // Format the start date as ISO string with UTC timezone
+        const dateStr = rssStartDate;
+        const timeStr = rssStartTime;
+        const rssStartDateTime = `${dateStr}T${timeStr}:00Z`;
+
+        const response = await axiosInstance.post('/channels/rss/total-duration', {
+          rss_url: rssUrl,
+          rss_start_date: rssStartDateTime
+        });
+
+        if (response.data.success && response.data.total_duration_seconds !== undefined) {
+          setTotalDuration(response.data.total_duration_seconds);
+          setDurationError(null);
+        } else {
+          setDurationError('Failed to fetch duration');
+          setTotalDuration(null);
+        }
+      } catch (error) {
+        console.error('Error fetching RSS total duration:', error);
+        setDurationError(error.response?.data?.error || error.message || 'Failed to fetch duration');
+        setTotalDuration(null);
+      } finally {
+        setIsLoadingDuration(false);
+      }
+    }, 500);
+
+    // Cleanup function
+    return () => {
+      if (durationTimeoutRef.current) {
+        clearTimeout(durationTimeoutRef.current);
+      }
+    };
+  }, [formData.channelType, formData.rssUrl, formData.rssStartDate, formData.rssStartTime]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (durationTimeoutRef.current) {
+        clearTimeout(durationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!isOpen) return null;
 
@@ -333,6 +432,39 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
               required
             />
           </div>
+
+          {/* RSS Total Duration Display - Only for Podcast type */}
+          {formData.channelType === 'podcast' && (
+            <div className="pt-2 border-t border-gray-200">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">Total Duration:</span>
+                <div className="relative group">
+                  <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                    This shows the total duration of all episodes in the RSS feed from the selected start date to now. It helps you understand the amount of content that will be imported.
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                      <div className="border-4 border-transparent border-t-gray-900"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-1">
+                {isLoadingDuration ? (
+                  <span className="text-sm text-gray-500">Loading...</span>
+                ) : durationError ? (
+                  <span className="text-sm text-red-500">{durationError}</span>
+                ) : totalDuration !== null ? (
+                  <span className="text-sm font-semibold text-gray-900">
+                    {formatDuration(totalDuration)}
+                  </span>
+                ) : (
+                  <span className="text-sm text-gray-400">
+                    Enter RSS URL and start date to see total duration
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end space-x-3 pt-4">
             <button
