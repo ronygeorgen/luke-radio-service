@@ -1273,7 +1273,7 @@ const FilterPanelV2 = ({
   if (compact) {
     return (
       <div className="bg-transparent" ref={filterRef}>
-        <div className="space-y-4 bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+        <div className="space-y-4 bg-white p-4">
           {/* Only Active Section */}
           <div className="space-y-2 border-b border-gray-200 pb-3">
             <ToggleSwitch

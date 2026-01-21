@@ -947,7 +947,7 @@ const FilterPanel = ({
   if (compact) {
     return (
       <div className="bg-transparent" ref={filterRef}>
-        <div className="space-y-4 bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+        <div className="space-y-4 bg-white p-4">
             {/* Shifts Dropdown */}
             <div className="space-y-2">
               <label className="block text-xs font-medium text-gray-700">Shift</label>
