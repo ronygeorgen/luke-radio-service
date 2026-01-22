@@ -4,6 +4,32 @@ import { useNavigate } from 'react-router-dom';
 const UserChannelCard = ({ channel }) => {
   const navigate = useNavigate();
 
+  // Helper function to truncate URL
+  const truncateUrl = (url, maxLength = 40) => {
+    if (!url) return '';
+    if (url.length <= maxLength) return url;
+    
+    // Show first part and last part with ellipsis
+    const start = url.substring(0, 25);
+    const end = url.substring(url.length - 15);
+    return `${start}...${end}`;
+  };
+
+  // Helper function to format date in a more readable format
+  const formatReadableDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return dateString;
+    }
+  };
+
   const handleClick = () => {
       // Persist selected channel details in localStorage
       try {
@@ -47,19 +73,21 @@ const UserChannelCard = ({ channel }) => {
               />
             </svg>
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">{channel.name}</h3>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{channel.name}</h3>
             {channel.channelType === 'podcast' ? (
-              <>
+              <div className="space-y-1">
                 {channel.rssUrl && (
-                  <p className="text-sm text-gray-500">RSS URL: {channel.rssUrl}</p>
+                  <p className="text-sm text-gray-500 truncate" title={channel.rssUrl}>
+                    <span className="font-medium text-gray-600">RSS URL:</span> {truncateUrl(channel.rssUrl)}
+                  </p>
                 )}
                 {channel.rssStartDate && (
                   <p className="text-sm text-gray-500">
-                    RSS Start Date: {new Date(channel.rssStartDate).toLocaleString()}
+                    <span className="font-medium text-gray-600">RSS Start Date:</span> {formatReadableDate(channel.rssStartDate)}
                   </p>
                 )}
-              </>
+              </div>
             ) : (
               <>
                 {channel.channelId && (

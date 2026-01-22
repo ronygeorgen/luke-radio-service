@@ -14,6 +14,17 @@ const ChannelSelectionModal = ({
   const dispatch = useDispatch();
   const { userChannels, userChannelsLoading, userChannelsError } = useSelector((state) => state.channels);
 
+  // Helper function to truncate URL
+  const truncateUrl = (url, maxLength = 40) => {
+    if (!url) return '';
+    if (url.length <= maxLength) return url;
+    
+    // Show first part and last part with ellipsis
+    const start = url.substring(0, 25);
+    const end = url.substring(url.length - 15);
+    return `${start}...${end}`;
+  };
+
   useEffect(() => {
     if (isOpen) {
       dispatch(fetchUserChannels());
@@ -108,7 +119,17 @@ const ChannelSelectionModal = ({
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-gray-900 truncate">{channel.name}</h3>
-                      <p className="text-xs text-gray-500 mt-1">Channel ID: {channel.channelId}</p>
+                      {channel.channelType === 'podcast' ? (
+                        channel.rssUrl && (
+                          <p className="text-xs text-gray-500 mt-1 truncate" title={channel.rssUrl}>
+                            RSS URL: {truncateUrl(channel.rssUrl)}
+                          </p>
+                        )
+                      ) : (
+                        channel.channelId && (
+                          <p className="text-xs text-gray-500 mt-1">Channel ID: {channel.channelId}</p>
+                        )
+                      )}
                       {channel.assignedAt && (
                         <p className="text-xs text-gray-500 mt-1">
                           Assigned: { channel.assignedAt }

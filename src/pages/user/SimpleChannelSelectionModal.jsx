@@ -17,6 +17,18 @@ const SimpleChannelSelectionModal = ({
   // Only use dark theme if explicitly provided (from Dashboard V2)
   // Otherwise use default light theme
   const isDarkTheme = headerText === 'text-white' && headerBg && headerBorder;
+  
+  // Helper function to truncate URL
+  const truncateUrl = (url, maxLength = 40) => {
+    if (!url) return '';
+    if (url.length <= maxLength) return url;
+    
+    // Show first part and last part with ellipsis
+    const start = url.substring(0, 25);
+    const end = url.substring(url.length - 15);
+    return `${start}...${end}`;
+  };
+
   const handleChannelSelect = (channel) => {
     // Store the correct ID (internal id) in localStorage
     localStorage.setItem('channelId', channel.id);
@@ -102,7 +114,17 @@ const SimpleChannelSelectionModal = ({
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className={`font-semibold truncate ${isDarkTheme ? 'text-white' : 'text-gray-900'}`}>{channel.name}</h3>
-                      <p className={`text-xs mt-1 ${isDarkTheme ? 'text-gray-400' : 'text-gray-500'}`}>Channel ID: {channel.channelId}</p>
+                      {channel.channelType === 'podcast' ? (
+                        channel.rssUrl && (
+                          <p className={`text-xs mt-1 truncate ${isDarkTheme ? 'text-gray-400' : 'text-gray-500'}`} title={channel.rssUrl}>
+                            RSS URL: {truncateUrl(channel.rssUrl)}
+                          </p>
+                        )
+                      ) : (
+                        channel.channelId && (
+                          <p className={`text-xs mt-1 ${isDarkTheme ? 'text-gray-400' : 'text-gray-500'}`}>Channel ID: {channel.channelId}</p>
+                        )
+                      )}
                     </div>
                   </div>
                 </button>
