@@ -1252,12 +1252,12 @@ const FilterPanelV2 = ({
   // Toggle component for switches - matches the image design
   const ToggleSwitch = ({ checked, onChange, label }) => {
     return (
-      <div className={`flex items-center justify-between py-2 px-3 rounded transition-colors hover:bg-gray-50`}>
-        <span className={`text-sm text-gray-700`}>{label}</span>
+      <div className={`flex items-center justify-between py-2 px-0 rounded transition-colors hover:bg-gray-50 w-full`}>
+        <span className={`text-sm text-gray-700 flex-1`}>{label}</span>
         <button
           type="button"
           onClick={() => onChange(!checked)}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${checked ? 'bg-blue-600' : 'bg-gray-300'
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${checked ? 'bg-blue-600' : 'bg-gray-300'
             }`}
         >
           <span
@@ -1273,16 +1273,16 @@ const FilterPanelV2 = ({
   if (compact) {
     return (
       <div className="bg-transparent" ref={filterRef}>
-        <div className="space-y-4 bg-white p-4">
+        <div className="space-y-4 bg-white p-4 border-r border-gray-200">
           {/* Only Active Section */}
           <div className="space-y-2 border-b border-gray-200 pb-3">
             <ToggleSwitch
               checked={onlyActive}
               onChange={handleOnlyActiveToggle}
-              label="Only Active"
+              label="Show Active Only"
             />
             {!onlyActive && (
-              <div className="space-y-1 pl-4">
+              <div className="space-y-1 pl-0">
                 <ToggleSwitch
                   checked={activeStatus === 'all'}
                   onChange={(checked) => {
@@ -1319,17 +1319,17 @@ const FilterPanelV2 = ({
             <ToggleSwitch
               checked={onlyAnnouncers}
               onChange={handleOnlyAnnouncersToggle}
-              label="Only Announcers"
+              label="Announcers Only"
             />
             {!onlyAnnouncers && (
-              <div className="space-y-1 pl-4">
+              <div className="space-y-1 pl-0">
                 <ToggleSwitch
                   checked={selectedContentTypes.length === 0 && !onlyAnnouncers}
                   onChange={handleAllContentTypesToggle}
                   label="All"
                 />
                 {contentTypePrompt?.loading ? (
-                  <div className="text-xs text-gray-500 py-2">Loading content types...</div>
+                  <div className="text-xs text-gray-500 py-2 pl-0">Loading content types...</div>
                 ) : contentTypePrompt?.contentTypes && contentTypePrompt.contentTypes.length > 0 ? (
                   contentTypePrompt.contentTypes.map((contentType) => (
                     <ToggleSwitch
@@ -1340,7 +1340,7 @@ const FilterPanelV2 = ({
                     />
                   ))
                 ) : (
-                  <div className="text-xs text-gray-500 py-2">No content types available</div>
+                  <div className="text-xs text-gray-500 py-2 pl-0">No content types available</div>
                 )}
               </div>
             )}
@@ -1348,11 +1348,11 @@ const FilterPanelV2 = ({
 
           {/* Shifts Dropdown */}
           <div className="space-y-2">
-            <label className="block text-xs font-medium text-gray-700">Shift</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">BROADCAST SHIFT</label>
             <select
               value={currentShiftId}
               onChange={(e) => handleShiftChange(e.target.value || null)}
-              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
             >
               <option value="">All Shifts</option>
               {shiftsLoading ? (
@@ -1383,13 +1383,13 @@ const FilterPanelV2 = ({
 
           {/* Predefined Filters Dropdown */}
           <div className="space-y-2">
-            <label className="block text-xs font-medium text-gray-700">Predefined Filter</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">PREDEFINED FILTER</label>
             <select
               value={currentPredefinedFilterId}
               onChange={(e) => handlePredefinedFilterChange(e.target.value || null)}
-              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
             >
-              <option value="">None</option>
+              <option value="">None Selected</option>
               {predefinedLoading ? (
                 <option disabled>Loading filters...</option>
               ) : (
@@ -1404,12 +1404,12 @@ const FilterPanelV2 = ({
 
           {/* Date Range Picker */}
           <div className="space-y-2">
-            <label className="block text-xs font-medium text-gray-700">Date Range</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">DATE RANGE</label>
             <div className="relative">
               <button
                 ref={dateButtonRef}
                 onClick={() => setShowDatePicker(!showDatePicker)}
-                className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-left flex justify-between items-center"
+                className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-left flex justify-between items-center bg-white"
               >
                 <span className={dateRange.start ? 'text-gray-900' : 'text-gray-500 truncate'}>
                   {formatDateRangeDisplay()}
@@ -1432,29 +1432,22 @@ const FilterPanelV2 = ({
 
           {/* Time inputs */}
           <div className="space-y-2">
-            <label className="block text-xs font-medium text-gray-700">Time Range</label>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Start</label>
-                <input
-                  type="time"
-                  value={localStartTime}
-                  onChange={(e) => handleStartTimeChange(e.target.value)}
-                  onKeyDown={preventKeyboardInput}
-                  className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">End</label>
-                <input
-                  type="time"
-                  value={localEndTime}
-                  onChange={(e) => handleEndTimeChange(e.target.value)}
-                  onKeyDown={preventKeyboardInput}
-                  className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">START TIME</label>
+            <input
+              type="time"
+              value={localStartTime}
+              onChange={(e) => handleStartTimeChange(e.target.value)}
+              onKeyDown={preventKeyboardInput}
+              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            />
+            <label className="block text-xs font-medium text-gray-700 mb-1.5 mt-3">END TIME</label>
+            <input
+              type="time"
+              value={localEndTime}
+              onChange={(e) => handleEndTimeChange(e.target.value)}
+              onKeyDown={preventKeyboardInput}
+              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            />
           </div>
 
           {timeError && (
@@ -1465,7 +1458,7 @@ const FilterPanelV2 = ({
 
           {/* Duration Filter */}
           <div className="space-y-2">
-            <label className="block text-xs font-medium text-gray-700">Duration (seconds)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Duration (seconds)</label>
             <input
               type="number"
               value={localDuration}
@@ -1473,7 +1466,7 @@ const FilterPanelV2 = ({
               placeholder="Enter duration in seconds"
               min="0"
               step="1"
-              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
             />
           </div>
 

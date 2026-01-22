@@ -1396,7 +1396,7 @@ const AudioSegmentsPage = () => {
 
   if (loading && segments.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-100">
         <Header
           channelInfo={channelInfo}
           channelName={channelName}
@@ -1420,7 +1420,7 @@ const AudioSegmentsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
       <div
         className="fixed right-8 z-50"
         style={{ top: 'calc(4rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem + 1.5rem + 2rem)' }}
