@@ -1617,7 +1617,7 @@ const AudioSegmentsPage = () => {
         )}
 
         {/* Amazon-style Left Sidebar Filters - Compact & Transparent */}
-        <div className={`w-64 bg-transparent p-4 fixed left-0 top-16 bottom-0 overflow-y-auto no-scrollbar z-40 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className={`w-64 bg-white border-r border-gray-200 p-4 fixed left-0 top-16 bottom-0 overflow-y-auto no-scrollbar z-40 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           {/* Collapse Button */}
           <div className="flex justify-end mb-2">
             <button
@@ -1631,7 +1631,7 @@ const AudioSegmentsPage = () => {
           </div>
           <div className="space-y-6">
             {/* Filter Version Toggle - At the top */}
-            <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+            <div className="flex items-center justify-between pb-4">
               <span className="text-sm font-medium text-gray-700">Filter Version</span>
               <button
                 onClick={() => {
@@ -1722,7 +1722,7 @@ const AudioSegmentsPage = () => {
 
             {/* Status Filter - Amazon Style - Only show in V1 */}
             {filterVersion === 'v1' && (
-              <div className="border-b border-gray-200 pb-4">
+              <div className="pb-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Status</h3>
                 <div className="space-y-2">
                   {[
@@ -1758,7 +1758,7 @@ const AudioSegmentsPage = () => {
 
             {/* Recognition Filter - Amazon Style - Only show in V1 */}
             {filterVersion === 'v1' && (
-              <div className="border-b border-gray-200 pb-4">
+              <div className="pb-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Recognition</h3>
                 <div className="space-y-2">
                   {[
@@ -1794,7 +1794,7 @@ const AudioSegmentsPage = () => {
 
             {/* Content Filter - Amazon Style - Only show in V1 */}
             {filterVersion === 'v1' && (
-              <div className="border-b border-gray-200 pb-4">
+              <div className="pb-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Content</h3>
                 <div className="space-y-2">
                   {[
@@ -1829,7 +1829,7 @@ const AudioSegmentsPage = () => {
             )}
 
             {/* Filter Panel (Collapsible) - Compact */}
-            <div className="border-b border-gray-200 pb-4">
+            <div className="pb-4">
               {filterVersion === 'v1' ? (
                 <FilterPanel
                   filters={filters}

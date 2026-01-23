@@ -1272,10 +1272,10 @@ const FilterPanelV2 = ({
   // COMPACT VERSION FOR SIDEBAR
   if (compact) {
     return (
-      <div className="bg-transparent" ref={filterRef}>
-        <div className="space-y-4 bg-white p-4 border-r border-gray-200">
+      <div ref={filterRef}>
+        <div className="space-y-4">
           {/* Only Active Section */}
-          <div className="space-y-2 border-b border-gray-200 pb-3">
+          <div className="space-y-2 pb-3">
             <ToggleSwitch
               checked={onlyActive}
               onChange={handleOnlyActiveToggle}
@@ -1315,7 +1315,7 @@ const FilterPanelV2 = ({
           </div>
 
           {/* Only Announcers Section */}
-          <div className="space-y-2 border-b border-gray-200 pb-3">
+          <div className="space-y-2 pb-3">
             <ToggleSwitch
               checked={onlyAnnouncers}
               onChange={handleOnlyAnnouncersToggle}
