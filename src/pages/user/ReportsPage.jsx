@@ -52,6 +52,7 @@ const ReportsPage = () => {
   const [newDescription, setNewDescription] = useState('');
   const [isChannelSelectionOpen, setIsChannelSelectionOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [reportMenuOpenId, setReportMenuOpenId] = useState(null);
   const userChannels = [];
 
   const channelId = localStorage.getItem('channelId');
@@ -60,6 +61,20 @@ const ReportsPage = () => {
   useEffect(() => {
     dispatch(fetchReportFolders());
   }, [dispatch]);
+
+  // Close report menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (reportMenuOpenId && !event.target.closest('.report-menu-container')) {
+        setReportMenuOpenId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [reportMenuOpenId]);
 
   const filteredFolders = folders.filter(folder => {
     return folder.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -366,15 +381,68 @@ const ReportsPage = () => {
                 {filteredFolders.map((folder) => (
                   <div
                     key={folder.id}
-                    className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
+                    className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow cursor-pointer group relative"
                     onClick={() => navigate(`/reports/${folder.id}`)}
                   >
                     <div className="p-6">
+                      {/* Three-dot menu button in top right */}
+                      <div className="absolute top-4 right-4 z-10 report-menu-container">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReportMenuOpenId(reportMenuOpenId === folder.id ? null : folder.id);
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                          title="More options"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+
+                        {/* Dropdown menu */}
+                        {reportMenuOpenId === folder.id && (
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[100]">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/dashboard-v2?report_folder_id=${folder.id}`);
+                                setReportMenuOpenId(null);
+                              }}
+                              className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
+                              Dashboard
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditing(folder);
+                                setReportMenuOpenId(null);
+                              }}
+                              className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <Edit3 className="w-4 h-4 mr-3 text-gray-500" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(folder.id, folder.name);
+                                setReportMenuOpenId(null);
+                              }}
+                              className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4 mr-3" />
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="flex items-center space-x-4 mb-4">
                         <div className="flex-shrink-0 bg-blue-500 rounded-lg p-3">
                           <FolderOpen className="h-6 w-6 text-white" />
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 pr-8">
                           {editingFolderId === folder.id ? (
                             <div className="space-y-2">
                               <input
@@ -412,42 +480,6 @@ const ReportsPage = () => {
                               )}
                             </div>
                           )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/dashboard-v2?report_folder_id=${folder.id}`);
-                          }}
-                          className="px-3 py-1.5 bg-blue-500 text-white text-xs font-medium rounded-md hover:bg-blue-600 transition-colors flex items-center space-x-1"
-                          title="View Dashboard"
-                        >
-                          <BarChart3 className="w-3 h-3" />
-                          <span>Dashboard</span>
-                        </button>
-                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startEditing(folder);
-                            }}
-                            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                            title="Rename"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(folder.id, folder.name);
-                            }}
-                            className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
                         </div>
                       </div>
                     </div>

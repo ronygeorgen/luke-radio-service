@@ -303,11 +303,19 @@ const ReportDetailPage = () => {
           <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
             <div className="flex items-center justify-between h-full space-x-4">
 
-              {/* Report Info */}
-              <div className="flex-1 min-w-0">
-                <h1 className="text-lg font-bold text-gray-900 truncate">
-                  {folder.name}
-                </h1>
+              {/* Left Section - Back Button and Report Info */}
+              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                <button
+                  onClick={() => navigate('/reports')}
+                  className="flex items-center justify-center w-10 h-10 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md flex-shrink-0"
+                  aria-label="Back to reports"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-lg font-bold text-gray-900 truncate">
+                    {folder.name}
+                  </h1>
                 <div className="flex items-center space-x-4 text-sm text-gray-600">
                   <span className="flex items-center">
                     <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -320,16 +328,17 @@ const ReportDetailPage = () => {
                     {segments.length} items
                   </span>
                 </div>
+                </div>
               </div>
 
-              {/* Right Section - Delete and Navigation */}
+              {/* Right Section - Dashboard and Navigation */}
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={handleDeleteReport}
-                  className="flex items-center justify-center w-10 h-10 text-red-600 bg-white border border-gray-300 rounded-lg hover:bg-red-50 hover:border-red-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 shadow-sm hover:shadow-md"
-                  aria-label="Delete report"
+                  onClick={() => navigate(`/dashboard-v2?report_folder_id=${folder.id}`)}
+                  className="flex items-center justify-center w-10 h-10 text-blue-600 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
+                  aria-label="View dashboard"
                 >
-                  <Trash2 className="w-5 h-5" />
+                  <BarChart3 className="w-5 h-5" />
                 </button>
 
                 {/* Navigation Dropdown - hamburger trigger */}
