@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Radio, Mic, Heart } from 'lucide-react';
 import { dashboardApi } from '../../../services/dashboardApi';
 
-const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting: false } }) => {
+const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting: false }, reportFolderId = null }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -17,8 +17,8 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
         setError(null);
 
         const channelId = localStorage.getItem('channelId');
-        if (!channelId) {
-          setError('Channel ID not found. Please select a channel first.');
+        if (!reportFolderId && !channelId) {
+          setError('Channel ID or Report Folder ID not found. Please select a channel or report folder first.');
           setLoading(false);
           return;
         }
@@ -33,7 +33,8 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
           dateRange.start,
           dateRange.end,
           channelId,
-          showAllTopics
+          showAllTopics,
+          reportFolderId
         );
 
         // Use shifts directly from API response
@@ -60,7 +61,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
     };
 
     fetchData();
-  }, [dateRange?.start, dateRange?.end, showAllTopics]);
+  }, [dateRange?.start, dateRange?.end, showAllTopics, reportFolderId]);
 
   const handleToggleShowAllTopics = () => {
     setShowAllTopics(!showAllTopics);

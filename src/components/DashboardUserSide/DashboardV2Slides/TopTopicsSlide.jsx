@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { dashboardApi } from '../../../services/dashboardApi';
 
-const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '' }) => {
+const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '', reportFolderId = null }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -21,8 +21,8 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
         setError(null);
 
         const channelId = localStorage.getItem('channelId');
-        if (!channelId) {
-          setError('Channel ID not found. Please select a channel first.');
+        if (!reportFolderId && !channelId) {
+          setError('Channel ID or Report Folder ID not found. Please select a channel or report folder first.');
           setLoading(false);
           return;
         }
@@ -42,7 +42,8 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
             channelId,
             'duration',
             shiftId,
-            showAllTopics
+            showAllTopics,
+            reportFolderId
           ),
           dashboardApi.getTopTopics(
             dateRange.start,
@@ -50,7 +51,8 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
             channelId,
             'count',
             shiftId,
-            showAllTopics
+            showAllTopics,
+            reportFolderId
           )
         ]);
 
@@ -94,7 +96,7 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
     };
 
     fetchTopTopics();
-  }, [dateRange?.start, dateRange?.end, currentShiftId, showAllTopics, refreshKey]);
+  }, [dateRange?.start, dateRange?.end, currentShiftId, showAllTopics, refreshKey, reportFolderId]);
 
   const handleTopicClick = (topic, event) => {
     // Get the bounding rectangle of the clicked element

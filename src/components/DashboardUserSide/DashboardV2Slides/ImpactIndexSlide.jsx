@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { dashboardApi } from '../../../services/dashboardApi';
 
-const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '' }) => {
+const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '', reportFolderId = null }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [revealProgress, setRevealProgress] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -16,8 +16,8 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
         setError(null);
 
         const channelId = localStorage.getItem('channelId');
-        if (!channelId) {
-          setError('Channel ID not found. Please select a channel first.');
+        if (!reportFolderId && !channelId) {
+          setError('Channel ID or Report Folder ID not found. Please select a channel or report folder first.');
           setLoading(false);
           return;
         }
@@ -33,7 +33,8 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
           dateRange.start,
           dateRange.end,
           channelId,
-          shiftId
+          shiftId,
+          reportFolderId
         );
         setBucketData(data);
 
@@ -71,7 +72,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
     };
 
     fetchBucketData();
-  }, [dateRange?.start, dateRange?.end, currentShiftId]);
+  }, [dateRange?.start, dateRange?.end, currentShiftId, reportFolderId]);
 
   // Get categories dynamically from API response
   const getCategories = () => {

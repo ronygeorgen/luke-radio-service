@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, BarChart3, TrendingUp, Users, Heart, Sparkles, Target, Activity, Menu, X, Filter, Download, Upload } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
 import { axiosInstance } from '../../services/api';
@@ -132,6 +132,8 @@ function DashboardV2() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const [searchParams] = useSearchParams();
+  const reportFolderId = searchParams.get('report_folder_id');
 
   // Filter state - shared across all slides
   const getDefaultDateRange = () => {
@@ -584,7 +586,11 @@ function DashboardV2() {
       const params = new URLSearchParams();
       params.append('start_datetime', startDateTime);
       params.append('end_datetime', endDateTime);
-      if (channelId) params.append('channel_id', channelId);
+      if (reportFolderId) {
+        params.append('report_folder_id', reportFolderId);
+      } else if (channelId) {
+        params.append('channel_id', channelId);
+      }
       if (currentShiftId) params.append('shift_id', currentShiftId);
 
       // Make API call
@@ -867,11 +873,12 @@ function DashboardV2() {
             }`}
         >
           <CurrentSlideComponent
-            key={`${currentSlide}-${channelId}`}
+            key={`${currentSlide}-${channelId}-${reportFolderId || ''}`}
             dateRange={dateRange}
             setDateRange={setDateRange}
             currentShiftId={currentShiftId}
             setCurrentShiftId={setCurrentShiftId}
+            reportFolderId={reportFolderId}
           />
         </div>
       </div>
@@ -950,6 +957,7 @@ function DashboardV2() {
                 headerBorder={currentSlideConfig.headerBorder}
                 hideShiftFilter={currentSlideConfig.id === 'entities'}
                 channelId={channelId}
+                reportFolderId={reportFolderId}
               />
             </div>
           ) : (

@@ -138,7 +138,7 @@ export const dashboardApi = {
     }
   },
 
-  getSummary: async (startDate, endDate, channelId, shiftId = null) => {
+  getSummary: async (startDate, endDate, channelId, shiftId = null, reportFolderId = null) => {
     try {
       const { convertLocalToUTC } = await import('../utils/dateTimeUtils');
 
@@ -155,9 +155,14 @@ export const dashboardApi = {
 
       const params = {
         start_datetime: formatForAPI(startDatetime),
-        end_datetime: formatForAPI(endDatetime),
-        channel_id: parseInt(channelId, 10)
+        end_datetime: formatForAPI(endDatetime)
       };
+
+      if (reportFolderId) {
+        params.report_folder_id = parseInt(reportFolderId, 10);
+      } else if (channelId) {
+        params.channel_id = parseInt(channelId, 10);
+      }
 
       if (shiftId) {
         params.shift_id = parseInt(shiftId, 10);
@@ -173,7 +178,7 @@ export const dashboardApi = {
     }
   },
 
-  getBucketCount: async (startDate, endDate, channelId, shiftId = null) => {
+  getBucketCount: async (startDate, endDate, channelId, shiftId = null, reportFolderId = null) => {
     try {
       const { convertLocalToUTC } = await import('../utils/dateTimeUtils');
 
@@ -190,9 +195,14 @@ export const dashboardApi = {
 
       const params = {
         start_datetime: formatForAPI(startDatetime),
-        end_datetime: formatForAPI(endDatetime),
-        channel_id: parseInt(channelId, 10)
+        end_datetime: formatForAPI(endDatetime)
       };
+
+      if (reportFolderId) {
+        params.report_folder_id = parseInt(reportFolderId, 10);
+      } else if (channelId) {
+        params.channel_id = parseInt(channelId, 10);
+      }
 
       if (shiftId) {
         params.shift_id = parseInt(shiftId, 10);
@@ -208,7 +218,7 @@ export const dashboardApi = {
     }
   },
 
-  getCategoryBucketCount: async (startDate, endDate, channelId, categoryName, shiftId = null) => {
+  getCategoryBucketCount: async (startDate, endDate, channelId, categoryName, shiftId = null, reportFolderId = null) => {
     try {
       const { convertLocalToUTC } = await import('../utils/dateTimeUtils');
 
@@ -226,9 +236,14 @@ export const dashboardApi = {
       const params = {
         start_datetime: formatForAPI(startDatetime),
         end_datetime: formatForAPI(endDatetime),
-        channel_id: parseInt(channelId, 10),
         category_name: categoryName
       };
+
+      if (reportFolderId) {
+        params.report_folder_id = parseInt(reportFolderId, 10);
+      } else if (channelId) {
+        params.channel_id = parseInt(channelId, 10);
+      }
 
       if (shiftId) {
         params.shift_id = parseInt(shiftId, 10);
@@ -244,7 +259,7 @@ export const dashboardApi = {
     }
   },
 
-  getTopTopics: async (startDate, endDate, channelId, sortBy = 'count', shiftId = null, showAllTopics = true) => {
+  getTopTopics: async (startDate, endDate, channelId, sortBy = 'count', shiftId = null, showAllTopics = true, reportFolderId = null) => {
     try {
       const { convertLocalToUTC } = await import('../utils/dateTimeUtils');
 
@@ -262,10 +277,15 @@ export const dashboardApi = {
       const params = {
         start_datetime: formatForAPI(startDatetime),
         end_datetime: formatForAPI(endDatetime),
-        channel_id: parseInt(channelId, 10),
         show_all_topics: showAllTopics,
         sort_by: sortBy
       };
+
+      if (reportFolderId) {
+        params.report_folder_id = parseInt(reportFolderId, 10);
+      } else if (channelId) {
+        params.channel_id = parseInt(channelId, 10);
+      }
 
       if (shiftId) {
         params.shift_id = parseInt(shiftId, 10);
@@ -281,7 +301,7 @@ export const dashboardApi = {
     }
   },
 
-  getGeneralTopicCountByShift: async (startDate, endDate, channelId, showAllTopics = false) => {
+  getGeneralTopicCountByShift: async (startDate, endDate, channelId, showAllTopics = false, reportFolderId = null) => {
     try {
       const { convertLocalToUTC } = await import('../utils/dateTimeUtils');
 
@@ -299,9 +319,14 @@ export const dashboardApi = {
       const params = {
         start_datetime: formatForAPI(startDatetime),
         end_datetime: formatForAPI(endDatetime),
-        channel_id: parseInt(channelId, 10),
         show_all_topics: showAllTopics
       };
+
+      if (reportFolderId) {
+        params.report_folder_id = parseInt(reportFolderId, 10);
+      } else if (channelId) {
+        params.channel_id = parseInt(channelId, 10);
+      }
 
       const response = await axiosInstance.get('/v2/dashboard/general-topic-count-by-shift/', {
         params
@@ -313,7 +338,7 @@ export const dashboardApi = {
     }
   },
 
-  getWordCount: async (startDate, endDate, channelId, shiftId = null) => {
+  getWordCount: async (startDate, endDate, channelId, shiftId = null, reportFolderId = null) => {
     try {
       const { convertLocalToUTC } = await import('../utils/dateTimeUtils');
 
@@ -330,9 +355,14 @@ export const dashboardApi = {
 
       const params = {
         start_datetime: formatForAPI(startDatetime),
-        end_datetime: formatForAPI(endDatetime),
-        channel_id: parseInt(channelId, 10)
+        end_datetime: formatForAPI(endDatetime)
       };
+
+      if (reportFolderId) {
+        params.report_folder_id = parseInt(reportFolderId, 10);
+      } else if (channelId) {
+        params.channel_id = parseInt(channelId, 10);
+      }
 
       if (shiftId) {
         params.shift_id = parseInt(shiftId, 10);

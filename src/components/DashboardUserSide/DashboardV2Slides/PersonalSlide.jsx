@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { RefreshCw, User } from 'lucide-react';
 import { dashboardApi } from '../../../services/dashboardApi';
 
-const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '' }) => {
+const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '', reportFolderId = null }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -34,8 +34,8 @@ const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false 
         setError(null);
 
         const channelId = localStorage.getItem('channelId');
-        if (!channelId) {
-          setError('Channel ID not found. Please select a channel first.');
+        if (!reportFolderId && !channelId) {
+          setError('Channel ID or Report Folder ID not found. Please select a channel or report folder first.');
           setLoading(false);
           return;
         }
@@ -52,7 +52,8 @@ const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false 
           dateRange.end,
           channelId,
           'personal',
-          shiftId
+          shiftId,
+          reportFolderId
         );
         setCategoryData(data);
 
@@ -73,7 +74,7 @@ const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false 
     };
 
     fetchCategoryData();
-  }, [dateRange?.start, dateRange?.end, currentShiftId]);
+  }, [dateRange?.start, dateRange?.end, currentShiftId, reportFolderId]);
 
   // Process buckets data for display
   const processBucketsData = () => {

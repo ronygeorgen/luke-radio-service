@@ -3,7 +3,7 @@ import { Lightbulb, Target, Users, TrendingUp, Hand } from 'lucide-react';
 import { dashboardApi } from '../../../services/dashboardApi';
 import { convertUTCDateStringToLocal } from '../../../utils/dateTimeUtils';
 
-const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '' }) => {
+const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '', reportFolderId = null }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [averageSentimentProgress, setAverageSentimentProgress] = useState(0);
   const [targetSentimentProgress, setTargetSentimentProgress] = useState(0);
@@ -21,8 +21,8 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
         setError(null);
 
         const channelId = localStorage.getItem('channelId');
-        if (!channelId) {
-          setError('Channel ID not found. Please select a channel first.');
+        if (!reportFolderId && !channelId) {
+          setError('Channel ID or Report Folder ID not found. Please select a channel or report folder first.');
           setLoading(false);
           return;
         }
@@ -39,7 +39,8 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
           dateRange.start,
           dateRange.end,
           channelId,
-          shiftId
+          shiftId,
+          reportFolderId
         );
         setSummaryData(data);
 
@@ -92,7 +93,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
     };
 
     fetchSummaryData();
-  }, [dateRange?.start, dateRange?.end, currentShiftId]);
+  }, [dateRange?.start, dateRange?.end, currentShiftId, reportFolderId]);
 
   // Process sentiment data for chart display
   const processSentimentData = () => {

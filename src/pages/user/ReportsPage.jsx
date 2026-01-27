@@ -416,6 +416,17 @@ const ReportsPage = () => {
                       </div>
 
                       <div className="flex items-center justify-between">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/dashboard-v2?report_folder_id=${folder.id}`);
+                          }}
+                          className="px-3 py-1.5 bg-blue-500 text-white text-xs font-medium rounded-md hover:bg-blue-600 transition-colors flex items-center space-x-1"
+                          title="View Dashboard"
+                        >
+                          <BarChart3 className="w-3 h-3" />
+                          <span>Dashboard</span>
+                        </button>
                         <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={(e) => {
