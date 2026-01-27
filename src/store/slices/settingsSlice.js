@@ -17,7 +17,8 @@ const convertSettingsToApiFormat = (frontendSettings) => {
     generalTopicsPrompt: 'general_topics_prompt',
     iabTopicsPrompt: 'iab_topics_prompt',
     bucketPrompt: 'bucket_prompt',
-    determineRadioContentType: 'determine_radio_content_type_prompt',
+    determineRadioContentType: 'content_type_prompt',
+    determineRadioContentTypePrompt: 'determine_radio_content_type_prompt',
     bucketDefinitionErrorRate: 'bucket_definition_error_rate',
     chatGptModel: 'chatgpt_model',
     chatGptTemperature: 'chatgpt_temperature',
@@ -30,11 +31,6 @@ const convertSettingsToApiFormat = (frontendSettings) => {
     const apiKey = keyMapping[frontendKey] || frontendKey;
     apiSettings[apiKey] = frontendSettings[frontendKey];
   });
-
-  // Add content_type_prompt if determineRadioContentType exists
-  if (frontendSettings.determineRadioContentType !== undefined) {
-    apiSettings.content_type_prompt = frontendSettings.determineRadioContentType;
-  }
 
   return apiSettings;
 };
@@ -89,6 +85,7 @@ export const fetchSettings = createAsyncThunk(
         iabTopicsPrompt: response.data.settings.iab_topics_prompt || '',
         bucketPrompt: response.data.settings.bucket_prompt || '',
         determineRadioContentType: response.data.settings.content_type_prompt || '',
+        determineRadioContentTypePrompt: response.data.settings.determine_radio_content_type_prompt || '',
         bucketDefinitionErrorRate: response.data.settings.bucket_definition_error_rate || response.data.settings.bucket_error_rate || '',
         chatGptModel: response.data.settings.chatgpt_model || '',
         chatGptTemperature: response.data.settings.chatgpt_temperature || '',

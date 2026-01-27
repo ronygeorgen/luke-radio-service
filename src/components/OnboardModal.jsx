@@ -82,27 +82,41 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
       return;
     }
 
-    if (formData.channelType === 'broadcast') {
-      const channelId = String(formData.channelId || '').trim();
-      const projectId = String(formData.projectId || '').trim();
-      
-      if (!channelId || !projectId) {
-        alert('Please fill in Channel ID and Project ID');
-        return;
+    // Validation for new channels (all fields required)
+    if (!formData.id) {
+      if (formData.channelType === 'broadcast') {
+        const channelId = String(formData.channelId || '').trim();
+        const projectId = String(formData.projectId || '').trim();
+        
+        if (!channelId || !projectId) {
+          alert('Please fill in Channel ID and Project ID');
+          return;
+        }
+      } else if (formData.channelType === 'podcast') {
+        const rssUrl = String(formData.rssUrl || '').trim();
+        const rssStartDate = String(formData.rssStartDate || '').trim();
+        
+        if (!rssUrl) {
+          alert('Please fill in RSS URL');
+          return;
+        }
+        
+        if (!rssStartDate) {
+          alert('Please select a start date');
+          return;
+        }
       }
-    } else if (formData.channelType === 'podcast') {
-      const rssUrl = String(formData.rssUrl || '').trim();
-      const rssStartDate = String(formData.rssStartDate || '').trim();
-      
-      if (!rssUrl) {
-        alert('Please fill in RSS URL');
-        return;
+    } else {
+      // Validation for editing - only validate editable fields
+      if (formData.channelType === 'podcast') {
+        const rssStartDate = String(formData.rssStartDate || '').trim();
+        
+        if (!rssStartDate) {
+          alert('Please select a start date');
+          return;
+        }
       }
-      
-      if (!rssStartDate) {
-        alert('Please select a start date');
-        return;
-      }
+      // For broadcast, only name and timezone are editable (already validated above)
     }
 
     setIsSubmitting(true);
@@ -113,19 +127,39 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
         timezone: timezone
       };
       
-      if (formData.channelType === 'broadcast') {
-        const channelId = String(formData.channelId || '').trim();
-        const projectId = String(formData.projectId || '').trim();
-        payload.channelId = channelId ? parseInt(channelId, 10) : null;
-        payload.projectId = projectId ? parseInt(projectId, 10) : null;
-      } else if (formData.channelType === 'podcast') {
-        payload.rssUrl = String(formData.rssUrl || '').trim();
-        // Format date and time as local datetime without UTC conversion
-        const dateStr = String(formData.rssStartDate || '').trim();
-        const timeStr = String(formData.rssStartTime || '00:00').trim();
-        if (dateStr && timeStr) {
-          // Format as YYYY-MM-DDTHH:mm:ss in local time (no timezone conversion)
-          payload.rssStartDate = `${dateStr}T${timeStr}:00`;
+      // When creating new channel, include all required fields
+      if (!formData.id) {
+        if (formData.channelType === 'broadcast') {
+          const channelId = String(formData.channelId || '').trim();
+          const projectId = String(formData.projectId || '').trim();
+          payload.channelId = channelId ? parseInt(channelId, 10) : null;
+          payload.projectId = projectId ? parseInt(projectId, 10) : null;
+        } else if (formData.channelType === 'podcast') {
+          payload.rssUrl = String(formData.rssUrl || '').trim();
+          // Format date and time as local datetime without UTC conversion
+          const dateStr = String(formData.rssStartDate || '').trim();
+          const timeStr = String(formData.rssStartTime || '00:00').trim();
+          if (dateStr && timeStr) {
+            // Format as YYYY-MM-DDTHH:mm:ss in local time (no timezone conversion)
+            payload.rssStartDate = `${dateStr}T${timeStr}:00`;
+          }
+        }
+      } else {
+        // When editing, only include editable fields
+        if (formData.channelType === 'podcast') {
+          // For podcast: only send rssStartDate (editable), not rssUrl (read-only)
+          const dateStr = String(formData.rssStartDate || '').trim();
+          const timeStr = String(formData.rssStartTime || '00:00').trim();
+          if (dateStr && timeStr) {
+            // Format as YYYY-MM-DDTHH:mm:ss in local time (no timezone conversion)
+            payload.rssStartDate = `${dateStr}T${timeStr}:00`;
+          }
+          // Do NOT include rssUrl for podcast when editing (it's read-only)
+        } else if (formData.channelType === 'broadcast') {
+          // For broadcast: include channelId and projectId (read-only but needed for update)
+          // Do NOT include rssUrl or rssStartDate
+          payload.channelId = formData.channelId;
+          payload.projectId = formData.projectId;
         }
       }
       
@@ -278,9 +312,22 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
 
   if (!isOpen) return null;
 
+  const handleBackdropClick = (e) => {
+    // Close modal if clicking on the backdrop (not the modal content)
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]"
+      onClick={handleBackdropClick}
+    >
+      <div 
+        className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-gray-900">
             {formData.id ? 'Edit Channel' : 'Onboard New Channel'}
@@ -304,7 +351,8 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
               name="channelType"
               value={formData.channelType}
               onChange={handleChannelTypeChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={!!formData.id}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formData.id ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               required
             >
               <option value="broadcast">Broadcast</option>
@@ -325,7 +373,8 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
                   name="channelId"
                   value={formData.channelId}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={!!formData.id}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formData.id ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="Enter channel ID"
                   required
                 />
@@ -341,7 +390,8 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
                   name="projectId"
                   value={formData.projectId}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={!!formData.id}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formData.id ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="Enter project ID"
                   required
                 />
@@ -362,7 +412,8 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
                   name="rssUrl"
                   value={formData.rssUrl}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={!!formData.id}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formData.id ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="http://url.com"
                   required
                 />

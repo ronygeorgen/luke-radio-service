@@ -45,6 +45,7 @@ const GeneralSettings = () => {
         { key: 'iabTopicsPrompt', label: 'IAB Topics Prompt', isTextarea: true },
         { key: 'bucketPrompt', label: 'Bucket Prompt', isTextarea: true },
         { key: 'determineRadioContentType', label: 'Content Type(Comma Separated)', isTextarea: true },
+        { key: 'determineRadioContentTypePrompt', label: 'Determine Radio Content Type Prompt', isTextarea: true },
       ]
     },
     {

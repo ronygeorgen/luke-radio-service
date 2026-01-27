@@ -65,22 +65,49 @@ export const updateChannel = createAsyncThunk(
   'channels/updateChannel',
   async (channelData) => {
     const channelType = channelData.channelType || 'broadcast';
-    let payload = {
-      id: channelData.id,
-      channel_type: channelType,
-      name: channelData.name || '',
-      timezone: channelData.timezone
-    };
-
+    
+    // Build payload based on channel type - only include appropriate fields
+    let payload;
+    
     if (channelType === 'broadcast') {
-      payload.channel_id = channelData.channelId;
-      payload.project_id = channelData.projectId;
+      // For broadcast channels, only include broadcast-specific fields
+      payload = {
+        id: channelData.id,
+        channel_type: channelType,
+        name: channelData.name || '',
+        timezone: channelData.timezone,
+        channel_id: channelData.channelId,
+        project_id: channelData.projectId
+      };
+      // Explicitly do NOT include rss_url or rss_start_date for broadcast channels
     } else if (channelType === 'podcast') {
-      payload.rss_url = channelData.rssUrl || '';
-      payload.rss_start_date = channelData.rssStartDate || '';
+      // For podcast channels, only include podcast-specific fields
+      payload = {
+        id: channelData.id,
+        channel_type: channelType,
+        name: channelData.name || '',
+        timezone: channelData.timezone
+      };
+      // Only include rss_start_date if it's provided (for editing)
+      if (channelData.rssStartDate) {
+        payload.rss_start_date = channelData.rssStartDate;
+      }
+      // Only include rss_url if it's provided (shouldn't happen when editing, but just in case)
+      if (channelData.rssUrl) {
+        payload.rss_url = channelData.rssUrl;
+      }
+      // Explicitly do NOT include channel_id or project_id for podcast channels
+    } else {
+      // Fallback
+      payload = {
+        id: channelData.id,
+        channel_type: channelType,
+        name: channelData.name || '',
+        timezone: channelData.timezone
+      };
     }
 
-    const response = await axiosInstance.put('/channels', payload);
+    const response = await axiosInstance.patch('/channels', payload);
     return response.data.channel;
   }
 );

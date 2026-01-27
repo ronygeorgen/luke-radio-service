@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, BarChart3, TrendingUp, Users, Heart, Sparkle
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
+import { fetchReportFolders } from '../../store/slices/reportSlice';
 import { axiosInstance } from '../../services/api';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -132,8 +133,13 @@ function DashboardV2() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const { folders } = useSelector((state) => state.reports);
   const [searchParams] = useSearchParams();
   const reportFolderId = searchParams.get('report_folder_id');
+  
+  // Get report folder name if reportFolderId is present
+  const reportFolder = reportFolderId ? folders.find(f => f.id === parseInt(reportFolderId)) : null;
+  const reportFolderName = reportFolder?.name || null;
 
   // Filter state - shared across all slides
   const getDefaultDateRange = () => {
@@ -172,6 +178,13 @@ function DashboardV2() {
 
   const [channelId, setChannelId] = useState(() => localStorage.getItem('channelId') || '');
   const [channelName, setChannelName] = useState(() => decodeChannelName(localStorage.getItem('channelName') || ''));
+
+  // Fetch report folders if reportFolderId is present and folder not found
+  useEffect(() => {
+    if (reportFolderId && !reportFolder) {
+      dispatch(fetchReportFolders());
+    }
+  }, [reportFolderId, reportFolder, dispatch]);
 
   // Listen for channel changes in localStorage (for when channel switcher updates it)
   useEffect(() => {
@@ -638,7 +651,7 @@ function DashboardV2() {
   return (
     <div className={`min-h-screen bg-gradient-to-br ${currentSlideConfig.containerBg} transition-all duration-300`}>
       {/* Navigation Header - Matching Other Headers */}
-      <header className={`bg-gradient-to-r ${currentSlideConfig.headerBg} shadow-sm border-b ${currentSlideConfig.headerBorder} fixed top-0 left-0 right-0 z-40 h-16 transition-all duration-300`}>
+      <header className={`bg-gradient-to-r ${currentSlideConfig.headerBg} shadow-sm border-b ${currentSlideConfig.headerBorder} fixed top-0 left-0 right-0 z-40 ${reportFolderName ? 'h-20' : 'h-16'} transition-all duration-300`}>
         <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
           <div className="flex items-center justify-between h-full space-x-4">
             {/* Page Info */}
@@ -646,31 +659,43 @@ function DashboardV2() {
               <h1 className={`text-lg font-bold ${currentSlideConfig.headerText} truncate transition-colors duration-300`}>
                 Dashboard V2
               </h1>
-              {channelName && (
-                <div className={`flex items-center space-x-4 text-sm ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-300' : 'text-gray-600'} transition-colors duration-300`}>
-                  <span className="flex items-center">
-                    <svg className={`w-4 h-4 mr-1 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    {channelName}
-                  </span>
+              {(channelName || reportFolderName) && (
+                <div className={`flex flex-col space-y-1 text-sm ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-300' : 'text-gray-600'} transition-colors duration-300`}>
+                  {channelName && (
+                    <span className="flex items-center">
+                      <svg className={`w-4 h-4 mr-1 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      {channelName}
+                    </span>
+                  )}
+                  {reportFolderName && (
+                    <span className="flex items-center">
+                      <svg className={`w-4 h-4 mr-1 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      {reportFolderName}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Right Section - Channel Switcher, Slide Indicators and Navigation */}
             <div className="flex items-center space-x-4">
-              {/* Channel Switcher */}
-              <ChannelSwitcher
-                onChannelChange={handleChannelChange}
-                className={`flex items-center space-x-2 px-3 py-1.5 text-sm font-medium rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md ${currentSlideConfig.headerText === 'text-white'
-                  ? 'text-gray-200 bg-gray-700/50 border-gray-600 hover:bg-gray-600 hover:border-gray-500'
-                  : 'text-gray-700 bg-white/80 border-gray-300 hover:bg-white hover:border-gray-400'
-                  }`}
-                headerBg={currentSlideConfig.headerBg}
-                headerText={currentSlideConfig.headerText}
-                headerBorder={currentSlideConfig.headerBorder}
-              />
+              {/* Channel Switcher - Hide if reportFolderId is present */}
+              {!reportFolderId && (
+                <ChannelSwitcher
+                  onChannelChange={handleChannelChange}
+                  className={`flex items-center space-x-2 px-3 py-1.5 text-sm font-medium rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md ${currentSlideConfig.headerText === 'text-white'
+                    ? 'text-gray-200 bg-gray-700/50 border-gray-600 hover:bg-gray-600 hover:border-gray-500'
+                    : 'text-gray-700 bg-white/80 border-gray-300 hover:bg-white hover:border-gray-400'
+                    }`}
+                  headerBg={currentSlideConfig.headerBg}
+                  headerText={currentSlideConfig.headerText}
+                  headerBorder={currentSlideConfig.headerBorder}
+                />
+              )}
 
               {/* PDF Download Button */}
               <button
@@ -866,7 +891,7 @@ function DashboardV2() {
       </header>
 
       {/* Main Content */}
-      <div className="pt-16 relative overflow-hidden">
+      <div className={`${reportFolderName ? 'pt-20' : 'pt-16'} relative overflow-hidden`}>
         <div
           ref={slideContentRef}
           className={`transition-all duration-150 ease-out ${isAnimating ? 'opacity-80 translate-y-1' : 'opacity-100 translate-y-0'
