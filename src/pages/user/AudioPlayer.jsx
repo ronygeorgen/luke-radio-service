@@ -19,7 +19,10 @@ const AudioPlayer = ({ segment, onClose }) => {
   
   if (!segment) return null;
   
-  const fullSrc = `${import.meta.env.VITE_API_URL}/${segment.file_path}`;
+  // Use audio_url if available (for podcast segments), otherwise use file_path
+  const fullSrc = segment.audio_url 
+    ? segment.audio_url 
+    : `${import.meta.env.VITE_API_URL}/${segment.file_path}`;
 
 function formatDateTime(dateTimeString) {
   if (!dateTimeString) return "N/A";
@@ -80,10 +83,76 @@ function formatDateTime(dateTimeString) {
         return;
       }
       
-      const response = await fetch(fullSrc);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // For external URLs (audio_url), we need to handle CORS
+      const isExternalUrl = segment.audio_url && fullSrc === segment.audio_url;
+      
+      // For external URLs, try to fetch with CORS mode
+      // Note: Many external audio servers don't allow CORS, so this might fail
+      if (isExternalUrl) {
+        const fetchOptions = {
+          method: 'GET',
+          mode: 'cors', // Explicitly request CORS
+          credentials: 'omit', // Don't send credentials for external URLs
+        };
+        
+        let response;
+        try {
+          response = await fetch(fullSrc, fetchOptions);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+        } catch (fetchError) {
+          // If CORS fails for external URLs, we can't preload
+          // However, the audio element might still support native seeking
+          // if the server supports Range requests (many podcast CDNs do)
+          console.warn("CORS error when fetching external audio for preload. Native seeking may still work if server supports Range requests.", fetchError);
+          setIsPreloading(false);
+          // Don't disable seeking - let the audio element try native seeking
+          // Many podcast CDNs support Range requests even if CORS blocks preloading
+          // The handleLoadedMetadata will check if native seeking works
+          return;
+        }
+        
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Store the preloaded URL for future use
+        setPreloadedUrls(prev => ({ ...prev, [segment.id]: blobUrl }));
+        
+        // Store the current time before changing the source
+        const currentTime = audioRef.current.currentTime;
+        
+        // Update the audio source
+        audioRef.current.src = blobUrl;
+        setIsSeekable(true);
+        setIsPreloading(false);
+        
+        // Reload the audio element and set the current time
+        audioRef.current.load();
+        audioRef.current.currentTime = currentTime;
+        
+        // Add event listener to ensure metadata is loaded
+        const handleLoad = () => {
+          setDuration(audioRef.current.duration);
+          audioRef.current.removeEventListener('loadedmetadata', handleLoad);
+          
+          // If audio was playing, resume playback
+          if (isPlaying && currentPlayingId === segment.id) {
+            audioRef.current.play().catch(err => {
+              console.error("Play failed after preload:", err);
+              setHasError(true);
+              setErrorMessage("Failed to play audio after preloading");
+            });
+          }
+        };
+        
+        audioRef.current.addEventListener('loadedmetadata', handleLoad);
+        return;
       }
+      
+      // For local files, use standard fetch
+      const response = await fetch(fullSrc);
+      
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       
@@ -121,8 +190,15 @@ function formatDateTime(dateTimeString) {
     } catch (error) {
       console.error("Failed to preload audio:", error);
       setIsPreloading(false);
-      setHasError(true);
-      setErrorMessage("Failed to load audio. The file may be corrupted or unavailable.");
+      
+      // For external URLs with CORS issues, don't show error - just disable seeking
+      if (segment.audio_url && fullSrc === segment.audio_url) {
+        console.warn("Cannot preload external audio due to CORS. Seeking disabled.");
+        setIsSeekable(false);
+      } else {
+        setHasError(true);
+        setErrorMessage("Failed to load audio. The file may be corrupted or unavailable.");
+      }
     }
   };
 
@@ -160,16 +236,113 @@ function formatDateTime(dateTimeString) {
         const seekable = seekableEnd > 0 && !isNaN(seekableEnd);
         setIsSeekable(seekable);
         
+        // For external URLs, give it a moment to check if seeking actually works
+        // Many podcast CDNs support range requests even if initial check fails
         if (!seekable) {
-          console.warn("Audio is not seekable. Auto-preloading...");
-          // Automatically preload if not seekable
-          enableSeekingWorkaround();
+          console.warn("Audio appears not seekable. Checking if preload is needed...");
+          // For external URLs, wait a bit longer before preloading
+          // Sometimes the browser needs time to determine seekability
+          const isExternalUrl = segment.audio_url && fullSrc === segment.audio_url;
+          if (isExternalUrl) {
+            // Give external URLs more time - they might support range requests
+            // Also test if seeking actually works by trying to set currentTime
+            setTimeout(() => {
+              if (audio.seekable && audio.seekable.length > 0) {
+                const seekableEnd = audio.seekable.end(audio.seekable.length - 1);
+                const isNowSeekable = seekableEnd > 0 && !isNaN(seekableEnd);
+                if (isNowSeekable) {
+                  setIsSeekable(true);
+                } else {
+                  // Test if seeking actually works by trying to seek
+                  const testTime = Math.min(5, audio.duration / 2);
+                  const originalTime = audio.currentTime;
+                  try {
+                    audio.currentTime = testTime;
+                    // Wait a moment to see if the seek actually happened
+                    setTimeout(() => {
+                      const timeAfterSeek = audio.currentTime;
+                      // If the time changed significantly, seeking works
+                      if (Math.abs(timeAfterSeek - testTime) < 1) {
+                        console.log("Native seeking works for external URL!");
+                        setIsSeekable(true);
+                      } else {
+                        // Seek didn't work, try preloading
+                        console.warn("Native seeking doesn't work. Attempting preload...");
+                        audio.currentTime = originalTime; // Reset
+                        enableSeekingWorkaround();
+                      }
+                    }, 500);
+                  } catch (seekError) {
+                    console.warn("Seek test failed:", seekError);
+                    enableSeekingWorkaround();
+                  }
+                }
+              } else {
+                enableSeekingWorkaround();
+              }
+            }, 1500);
+          } else {
+            // For local files, preload immediately
+            enableSeekingWorkaround();
+          }
         }
       } else {
-        setIsSeekable(false);
-        console.warn("Audio is not seekable. Auto-preloading...");
-        // Automatically preload if not seekable
-        enableSeekingWorkaround();
+        // No seekable ranges yet - might need to wait or preload
+        const isExternalUrl = segment.audio_url && fullSrc === segment.audio_url;
+        if (isExternalUrl) {
+          // For external URLs, wait a bit to see if ranges become available
+          setTimeout(() => {
+            if (audio.seekable && audio.seekable.length > 0) {
+              const seekableEnd = audio.seekable.end(audio.seekable.length - 1);
+              const isNowSeekable = seekableEnd > 0 && !isNaN(seekableEnd);
+              if (isNowSeekable) {
+                setIsSeekable(true);
+              } else {
+                // Test if seeking actually works
+                const testTime = Math.min(5, audio.duration / 2);
+                try {
+                  audio.currentTime = testTime;
+                  setTimeout(() => {
+                    const timeAfterSeek = audio.currentTime;
+                    if (Math.abs(timeAfterSeek - testTime) < 1) {
+                      console.log("Native seeking works for external URL!");
+                      setIsSeekable(true);
+                    } else {
+                      setIsSeekable(false);
+                      enableSeekingWorkaround();
+                    }
+                  }, 500);
+                } catch (seekError) {
+                  setIsSeekable(false);
+                  enableSeekingWorkaround();
+                }
+              }
+            } else {
+              // Test if seeking actually works even without seekable ranges
+              const testTime = Math.min(5, audio.duration / 2);
+              try {
+                audio.currentTime = testTime;
+                setTimeout(() => {
+                  const timeAfterSeek = audio.currentTime;
+                  if (Math.abs(timeAfterSeek - testTime) < 1) {
+                    console.log("Native seeking works for external URL!");
+                    setIsSeekable(true);
+                  } else {
+                    setIsSeekable(false);
+                    enableSeekingWorkaround();
+                  }
+                }, 500);
+              } catch (seekError) {
+                setIsSeekable(false);
+                enableSeekingWorkaround();
+              }
+            }
+          }, 1500);
+        } else {
+          setIsSeekable(false);
+          console.warn("Audio is not seekable. Auto-preloading...");
+          enableSeekingWorkaround();
+        }
       }
     };
 
@@ -213,13 +386,28 @@ function formatDateTime(dateTimeString) {
 
     // Check if server supports range requests
     const checkRangeSupport = async () => {
+      const isExternalUrl = segment.audio_url && fullSrc === segment.audio_url;
+      
+      // For external URLs, don't check range support via HEAD request
+      // (CORS might block it, but GET requests with Range headers might still work)
+      // Instead, rely on the audio element's native seeking capabilities
+      if (isExternalUrl) {
+        console.log("External URL detected. Relying on native audio element seeking capabilities.");
+        // Don't disable seeking - let the audio element try to seek natively
+        // Many podcast CDNs support Range requests even if HEAD requests fail
+        return;
+      }
+      
+      // For local files, check range support
       try {
-        const response = await fetch(fullSrc, {
+        const fetchOptions = {
           method: 'HEAD',
           headers: {
             'Range': 'bytes=0-1'
           }
-        });
+        };
+        
+        const response = await fetch(fullSrc, fetchOptions);
         
         const acceptsRanges = response.headers.get('accept-ranges') === 'bytes';
         const contentRange = response.headers.get('content-range');

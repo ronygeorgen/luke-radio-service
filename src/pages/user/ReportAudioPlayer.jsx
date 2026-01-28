@@ -19,16 +19,16 @@ const ReportAudioPlayer = ({ segment, onClose }) => {
   // Get the correct segment ID for this specific data structure
   const segmentId = segment?.audio_segment_id || null;
   
-  // Get the file path - handle the specific API response structure
-  const getFilePath = () => {
-    if (!segment || !segment.file_path) return null;
-    return segment.file_path;
+  // Get the file path or audio URL - handle the specific API response structure
+  // Use audio_url if available (for podcast segments), otherwise use file_path
+  const getAudioSource = () => {
+    if (!segment) return null;
+    if (segment.audio_url) return segment.audio_url;
+    if (segment.file_path) return `${import.meta.env.VITE_API_URL}/${segment.file_path}`;
+    return null;
   };
   
-  const filePath = getFilePath();
-  const fullSrc = filePath 
-    ? `${import.meta.env.VITE_API_URL}/${filePath}`
-    : null;
+  const fullSrc = getAudioSource();
 
   // Format time for display
   const formatTime = (seconds) => {

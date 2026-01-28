@@ -184,6 +184,7 @@ const ReportDetailPage = () => {
     return {
       id: segment.audio_segment_id, // This is crucial for preloading
       file_path: segment.file_path,
+      audio_url: segment.audio_url, // Add audio_url for podcast segments
       duration_seconds: segment.duration_seconds,
       start_time: segment.start_time,
       end_time: segment.end_time,

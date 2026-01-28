@@ -485,7 +485,10 @@ const AudioTrimmer = () => {
   if (!isOpen || !currentSegment) return null;
 
   // Fix audio source path - use the same approach as AudioPlayer
-  const fullSrc = `${import.meta.env.VITE_API_URL}/${currentSegment.file_path}`;
+  // Use audio_url if available (for podcast segments), otherwise use file_path
+  const fullSrc = currentSegment.audio_url 
+    ? currentSegment.audio_url 
+    : `${import.meta.env.VITE_API_URL}/${currentSegment.file_path}`;
   console.log('Audio source:', fullSrc); // Debug log
 
   return (
