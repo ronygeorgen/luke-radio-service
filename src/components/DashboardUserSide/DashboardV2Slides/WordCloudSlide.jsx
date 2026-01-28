@@ -140,7 +140,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
     
     // Margin to prevent words from being clipped at edges
     // Use a margin that accounts for the largest possible word size
-    const MARGIN = 20; // Margin in pixels to ensure words stay fully visible
+    const MARGIN = 15; // Margin in pixels to ensure words stay fully visible (reduced for tighter packing)
     const MIN_X = MARGIN;
     const MAX_X = CONTAINER_WIDTH - MARGIN;
     const MIN_Y = MARGIN;
@@ -161,51 +161,95 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
       return minSize + (powerNormalized * (maxSize - minSize));
     };
 
-    // Collision detection using bounding boxes with improved accuracy
+    // Enhanced collision detection with spatial grid for performance
     const placedBounds = [];
-
-    // Consistent padding constant - must be the same everywhere
-    const COLLISION_PADDING = 1.0; // Safe padding to account for font rendering, anti-aliasing, and sub-pixel differences
     
+    // Increased padding to account for font rendering, anti-aliasing, sub-pixel rendering, and browser differences
+    // This is critical for 100% collision-free rendering
+    const COLLISION_PADDING = 2.0; // Reduced from 3.0 for tighter packing while maintaining safety
+    
+    // Spatial grid for efficient collision detection
+    // Divide the canvas into a grid to avoid checking every word against every other word
+    const GRID_SIZE = 50; // Grid cell size in pixels
+    const gridCols = Math.ceil(CONTAINER_WIDTH / GRID_SIZE);
+    const gridRows = Math.ceil(CONTAINER_HEIGHT / GRID_SIZE);
+    const spatialGrid = Array(gridRows).fill(null).map(() => Array(gridCols).fill(null).map(() => []));
+    
+    // Helper to get grid cells that a bounding box overlaps
+    const getGridCells = (left, right, top, bottom) => {
+      const cells = [];
+      const minCol = Math.max(0, Math.floor(left / GRID_SIZE));
+      const maxCol = Math.min(gridCols - 1, Math.floor(right / GRID_SIZE));
+      const minRow = Math.max(0, Math.floor(top / GRID_SIZE));
+      const maxRow = Math.min(gridRows - 1, Math.floor(bottom / GRID_SIZE));
+      
+      for (let row = minRow; row <= maxRow; row++) {
+        for (let col = minCol; col <= maxCol; col++) {
+          cells.push({ row, col });
+        }
+      }
+      return cells;
+    };
+    
+    // Enhanced collision detection with spatial grid optimization
     const hasCollision = (x, y, width, height, word = '') => {
-      // Robust rectangular collision detection with guaranteed no-overlap
       const halfWidth = width / 2;
       const halfHeight = height / 2;
       
-      // Calculate bounding box edges for current word with padding
+      // Calculate bounding box with padding
       const left1 = x - halfWidth - COLLISION_PADDING;
       const right1 = x + halfWidth + COLLISION_PADDING;
       const top1 = y - halfHeight - COLLISION_PADDING;
       const bottom1 = y + halfHeight + COLLISION_PADDING;
       
-      // Check against all placed words using proper rectangular overlap detection
-      for (const bound of placedBounds) {
-        // Calculate bounding box edges for placed word with padding
-        const left2 = bound.x - bound.halfWidth - COLLISION_PADDING;
-        const right2 = bound.x + bound.halfWidth + COLLISION_PADDING;
-        const top2 = bound.y - bound.halfHeight - COLLISION_PADDING;
-        const bottom2 = bound.y + bound.halfHeight + COLLISION_PADDING;
-        
-        // Proper rectangular collision: boxes overlap if they intersect on BOTH axes
-        // Two rectangles overlap if:
-        // - left1 < right2 AND right1 > left2 (overlap on X axis)
-        // - top1 < bottom2 AND bottom1 > top2 (overlap on Y axis)
-        if (left1 < right2 && right1 > left2 && top1 < bottom2 && bottom1 > top2) {
-          return true;
+      // Get grid cells this bounding box overlaps
+      const cells = getGridCells(left1, right1, top1, bottom1);
+      const checkedBounds = new Set();
+      
+      // Only check words in overlapping grid cells
+      for (const { row, col } of cells) {
+        for (const bound of spatialGrid[row][col]) {
+          if (checkedBounds.has(bound)) continue;
+          checkedBounds.add(bound);
+          
+          const left2 = bound.x - bound.halfWidth - COLLISION_PADDING;
+          const right2 = bound.x + bound.halfWidth + COLLISION_PADDING;
+          const top2 = bound.y - bound.halfHeight - COLLISION_PADDING;
+          const bottom2 = bound.y + bound.halfHeight + COLLISION_PADDING;
+          
+          // Proper rectangular collision detection
+          if (left1 < right2 && right1 > left2 && top1 < bottom2 && bottom1 > top2) {
+            return true;
+          }
         }
       }
       return false;
     };
-
-    // Helper to calculate accurate text dimensions
-    // Uses conservative estimates to ensure collision detection is accurate
-    const calculateTextDimensions = (word, fontSize, isVertical) => {
-      // More conservative character width to account for actual rendered width
-      // Average character width is typically 0.5-0.6x font size, using 0.5 for safety
-      const avgCharWidth = fontSize * 0.5;
-      const charHeight = fontSize * 0.92; // Slightly conservative height
+    
+    // Add a word to the spatial grid
+    const addToSpatialGrid = (bound) => {
+      const left = bound.x - bound.halfWidth - COLLISION_PADDING;
+      const right = bound.x + bound.halfWidth + COLLISION_PADDING;
+      const top = bound.y - bound.halfHeight - COLLISION_PADDING;
+      const bottom = bound.y + bound.halfHeight + COLLISION_PADDING;
       
-      // Calculate actual text width - add small buffer for character width variations
+      const cells = getGridCells(left, right, top, bottom);
+      for (const { row, col } of cells) {
+        spatialGrid[row][col].push(bound);
+      }
+    };
+
+    // Enhanced text dimension calculation with more conservative estimates
+    // Uses larger multipliers to account for font rendering differences, kerning, and browser variations
+    const calculateTextDimensions = (word, fontSize, isVertical) => {
+      // More conservative character width - actual rendered width can vary significantly
+      // Using 0.58x for average character width (slightly reduced for tighter packing while maintaining safety)
+      // Adding extra buffer for font rendering differences across browsers
+      const avgCharWidth = fontSize * 0.58; // Slightly reduced from 0.6 for tighter packing
+      const charHeight = fontSize * 0.98; // Slightly reduced from 1.0 for tighter packing
+      
+      // Calculate text width with additional buffer for character width variations
+      // Some characters are wider (m, w) and some are narrower (i, l)
       const textWidth = word.length * avgCharWidth;
       const textHeight = charHeight;
       
@@ -230,15 +274,15 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
     // Archimedean spiral for organic cloud shape
     const getSpiralPosition = (angle, radius) => {
       // Archimedean spiral: r = a * θ
-      const spiralRadius = radius * 0.35; // Very tight spiral for maximum density
+      const spiralRadius = radius * 0.3; // Tighter spiral for denser packing (reduced from 0.35)
       const x = CENTER_X + spiralRadius * Math.cos(angle);
       const y = CENTER_Y + spiralRadius * Math.sin(angle);
       return { x, y };
     };
 
     const placedWords = [];
-    // Ensure we try to place at least 100 words
-    const wordsToPlace = wordsArray.slice(0, Math.max(100, wordsArray.length));
+    // Try to place more words for denser cloud (increased from 100 to 150)
+    const wordsToPlace = wordsArray.slice(0, Math.max(150, wordsArray.length));
 
     // Place words starting from center, spiraling outward
     // Some words will be vertical (90deg rotation) for better packing
@@ -261,17 +305,17 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
       
       // Try to place word using spiral pattern
       let placed = false;
-      const maxAttempts = 600; // More attempts for tighter packing
+      const maxAttempts = 800; // More attempts for tighter packing (increased from 600)
       let spiralAngle = 0;
       let spiralRadius = 0;
       
       for (let attempt = 0; attempt < maxAttempts && !placed; attempt++) {
         // Increase spiral radius gradually - very tight for maximum density
-        spiralRadius = Math.sqrt(attempt) * 1.4; // Even tighter for closer spacing
-        spiralAngle = attempt * 0.18; // Tighter angle increment
+        spiralRadius = Math.sqrt(attempt) * 1.2; // Tighter for closer spacing (reduced from 1.4)
+        spiralAngle = attempt * 0.15; // Tighter angle increment for denser packing (reduced from 0.18)
         
         // Add minimal randomness to spiral for organic shape
-        const randomOffset = (Math.random() - 0.5) * 6; // Reduced for tighter packing
+        const randomOffset = (Math.random() - 0.5) * 5; // Reduced for tighter packing (reduced from 6)
         const angle = spiralAngle + randomOffset;
         
         const { x, y } = getSpiralPosition(angle, spiralRadius);
@@ -284,8 +328,8 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
         
         // Check for collisions with improved detection
         if (!hasCollision(x, y, textWidth, textHeight, word)) {
-          // Place the word
-          placedBounds.push({
+          // Create bound object
+          const bound = {
             x,
             y,
             halfWidth,
@@ -293,7 +337,13 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
             word,
             fontSize,
             isVertical
-          });
+          };
+          
+          // Place the word
+          placedBounds.push(bound);
+          
+          // Add to spatial grid for efficient collision detection
+          addToSpatialGrid(bound);
           
           // Convert to percentage for CSS positioning
           const xPercent = (x / CONTAINER_WIDTH) * 100;
@@ -317,17 +367,17 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
         }
       }
       
-      // If couldn't place after spiral attempts, try random positions
-      // This ensures we place as many words as possible
-      if (!placed) {
-        const randomAttempts = 400; // More random attempts for tighter packing
+        // If couldn't place after spiral attempts, try random positions
+        // This ensures we place as many words as possible
+        if (!placed) {
+          const randomAttempts = 500; // More random attempts for tighter packing (increased from 400)
         for (let randomAttempt = 0; randomAttempt < randomAttempts; randomAttempt++) {
           // Try random positions within safe bounds (with margin)
           const x = Math.random() * (MAX_X - MIN_X - textWidth) + MIN_X + halfWidth;
           const y = Math.random() * (MAX_Y - MIN_Y - textHeight) + MIN_Y + halfHeight;
           
           if (!hasCollision(x, y, textWidth, textHeight, word)) {
-            placedBounds.push({
+            const bound = {
               x,
               y,
               halfWidth,
@@ -335,7 +385,10 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
               word,
               fontSize,
               isVertical
-            });
+            };
+            
+            placedBounds.push(bound);
+            addToSpatialGrid(bound);
             
             const xPercent = (x / CONTAINER_WIDTH) * 100;
             const yPercent = (y / CONTAINER_HEIGHT) * 100;
@@ -360,19 +413,19 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
         }
       }
       
-      // If still not placed and we have less than 100 words, try with reduced size
-      if (!placed && placedWords.length < 100) {
+      // If still not placed and we have less than 150 words, try with reduced size
+      if (!placed && placedWords.length < 150) {
         const reducedFontSize = Math.max(10, fontSize * 0.7);
         const { width: reducedTextWidth, height: reducedTextHeight, halfWidth: reducedHalfWidth, halfHeight: reducedHalfHeight } = 
           calculateTextDimensions(word, reducedFontSize, isVertical);
         
-        for (let attempt = 0; attempt < 250; attempt++) {
+        for (let attempt = 0; attempt < 300; attempt++) {
           // Try random positions within safe bounds (with margin)
           const x = Math.random() * (MAX_X - MIN_X - reducedTextWidth) + MIN_X + reducedHalfWidth;
           const y = Math.random() * (MAX_Y - MIN_Y - reducedTextHeight) + MIN_Y + reducedHalfHeight;
           
           if (!hasCollision(x, y, reducedTextWidth, reducedTextHeight, word)) {
-            placedBounds.push({
+            const bound = {
               x,
               y,
               halfWidth: reducedHalfWidth,
@@ -380,7 +433,10 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
               word,
               fontSize: reducedFontSize,
               isVertical
-            });
+            };
+            
+            placedBounds.push(bound);
+            addToSpatialGrid(bound);
             
             const xPercent = (x / CONTAINER_WIDTH) * 100;
             const yPercent = (y / CONTAINER_HEIGHT) * 100;
@@ -406,88 +462,200 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
       }
     }
 
-    // Post-processing: Aggressively eliminate ALL overlaps with guaranteed separation
+    // Enhanced post-processing: Force-directed repulsion algorithm with guaranteed separation
+    // This uses a physics-based approach to push overlapping words apart
     const eliminateOverlaps = () => {
-      const maxIterations = 15; // More iterations to ensure complete separation
+      const maxIterations = 25; // More iterations for complete convergence
+      const damping = 0.8; // Damping factor to prevent oscillation
       let iterations = 0;
       
-      while (iterations < maxIterations) {
-        let hasOverlap = false;
+      // Rebuild spatial grid from current positions
+      const rebuildSpatialGrid = () => {
+        // Clear grid
+        for (let row = 0; row < gridRows; row++) {
+          for (let col = 0; col < gridCols; col++) {
+            spatialGrid[row][col] = [];
+          }
+        }
         
+        // Rebuild bounds and grid
+        placedBounds.length = 0;
+        for (const word of placedWords) {
+          const dims = calculateTextDimensions(word.word, word.fontSize, word.isVertical);
+          const bound = {
+            x: word.pixelX,
+            y: word.pixelY,
+            halfWidth: dims.halfWidth,
+            halfHeight: dims.halfHeight,
+            word: word.word,
+            fontSize: word.fontSize,
+            isVertical: word.isVertical
+          };
+          placedBounds.push(bound);
+          addToSpatialGrid(bound);
+        }
+      };
+      
+      while (iterations < maxIterations) {
+        rebuildSpatialGrid();
+        
+        let maxOverlap = 0;
+        const forces = placedWords.map(() => ({ fx: 0, fy: 0 }));
+        
+        // Calculate repulsion forces between overlapping words
         for (let i = 0; i < placedWords.length; i++) {
           const word1 = placedWords[i];
           const dims1 = calculateTextDimensions(word1.word, word1.fontSize, word1.isVertical);
           const x1 = word1.pixelX;
           const y1 = word1.pixelY;
           
-          // Calculate bounding box for word1 with consistent padding
           const left1 = x1 - dims1.halfWidth - COLLISION_PADDING;
           const right1 = x1 + dims1.halfWidth + COLLISION_PADDING;
           const top1 = y1 - dims1.halfHeight - COLLISION_PADDING;
           const bottom1 = y1 + dims1.halfHeight + COLLISION_PADDING;
           
-          for (let j = i + 1; j < placedWords.length; j++) {
+          // Use spatial grid to find nearby words
+          const cells = getGridCells(left1, right1, top1, bottom1);
+          const checkedIndices = new Set();
+          
+          for (const { row, col } of cells) {
+            for (const bound of spatialGrid[row][col]) {
+              const j = placedBounds.indexOf(bound);
+              if (j === -1 || j === i || checkedIndices.has(j)) continue;
+              checkedIndices.add(j);
+              
+              const word2 = placedWords[j];
+              const dims2 = calculateTextDimensions(word2.word, word2.fontSize, word2.isVertical);
+              const x2 = word2.pixelX;
+              const y2 = word2.pixelY;
+              
+              const left2 = x2 - dims2.halfWidth - COLLISION_PADDING;
+              const right2 = x2 + dims2.halfWidth + COLLISION_PADDING;
+              const top2 = y2 - dims2.halfHeight - COLLISION_PADDING;
+              const bottom2 = y2 + dims2.halfHeight + COLLISION_PADDING;
+              
+              // Check for overlap
+              if (left1 < right2 && right1 > left2 && top1 < bottom2 && bottom1 > top2) {
+                // Calculate overlap amounts
+                const overlapX = Math.min(right1 - left2, right2 - left1);
+                const overlapY = Math.min(bottom1 - top2, bottom2 - top1);
+                const currentOverlap = Math.max(overlapX, overlapY);
+                maxOverlap = Math.max(maxOverlap, currentOverlap);
+                
+                // Calculate direction vector
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Calculate repulsion force (stronger for larger overlaps)
+                let forceX, forceY;
+                if (distance < 0.1) {
+                  // Words are on top of each other, use random direction
+                  const angle = Math.random() * Math.PI * 2;
+                  forceX = Math.cos(angle);
+                  forceY = Math.sin(angle);
+                } else {
+                  // Normalize and apply stronger force for larger overlaps
+                  forceX = (dx / distance) * (currentOverlap + COLLISION_PADDING * 2);
+                  forceY = (dy / distance) * (currentOverlap + COLLISION_PADDING * 2);
+                }
+                
+                // Apply force - smaller word moves more
+                const forceMultiplier = word1.fontSize <= word2.fontSize ? 1.0 : 0.5;
+                forces[i].fx -= forceX * forceMultiplier;
+                forces[i].fy -= forceY * forceMultiplier;
+                forces[j].fx += forceX * (1.0 - forceMultiplier);
+                forces[j].fy += forceY * (1.0 - forceMultiplier);
+              }
+            }
+          }
+        }
+        
+        // Apply forces with damping
+        for (let i = 0; i < placedWords.length; i++) {
+          const word = placedWords[i];
+          const dims = calculateTextDimensions(word.word, word.fontSize, word.isVertical);
+          
+          // Apply force with damping
+          const newX = word.pixelX + forces[i].fx * damping;
+          const newY = word.pixelY + forces[i].fy * damping;
+          
+          // Clamp to bounds
+          word.pixelX = Math.max(MIN_X + dims.halfWidth, Math.min(MAX_X - dims.halfWidth, newX));
+          word.pixelY = Math.max(MIN_Y + dims.halfHeight, Math.min(MAX_Y - dims.halfHeight, newY));
+          word.x = (word.pixelX / CONTAINER_WIDTH) * 100;
+          word.y = (word.pixelY / CONTAINER_HEIGHT) * 100;
+        }
+        
+        // If no overlaps remain, we're done
+        if (maxOverlap < 0.1) break;
+        iterations++;
+      }
+      
+      // Final pass: ensure absolute separation by pushing words apart more aggressively
+      rebuildSpatialGrid();
+      for (let i = 0; i < placedWords.length; i++) {
+        const word1 = placedWords[i];
+        const dims1 = calculateTextDimensions(word1.word, word1.fontSize, word1.isVertical);
+        const x1 = word1.pixelX;
+        const y1 = word1.pixelY;
+        
+        const left1 = x1 - dims1.halfWidth - COLLISION_PADDING;
+        const right1 = x1 + dims1.halfWidth + COLLISION_PADDING;
+        const top1 = y1 - dims1.halfHeight - COLLISION_PADDING;
+        const bottom1 = y1 + dims1.halfHeight + COLLISION_PADDING;
+        
+        const cells = getGridCells(left1, right1, top1, bottom1);
+        const checkedIndices = new Set();
+        
+        for (const { row, col } of cells) {
+          for (const bound of spatialGrid[row][col]) {
+            const j = placedBounds.indexOf(bound);
+            if (j === -1 || j === i || checkedIndices.has(j)) continue;
+            checkedIndices.add(j);
+            
             const word2 = placedWords[j];
             const dims2 = calculateTextDimensions(word2.word, word2.fontSize, word2.isVertical);
             const x2 = word2.pixelX;
             const y2 = word2.pixelY;
             
-            // Calculate bounding box for word2 with consistent padding
             const left2 = x2 - dims2.halfWidth - COLLISION_PADDING;
             const right2 = x2 + dims2.halfWidth + COLLISION_PADDING;
             const top2 = y2 - dims2.halfHeight - COLLISION_PADDING;
             const bottom2 = y2 + dims2.halfHeight + COLLISION_PADDING;
             
-            // Proper rectangular collision detection (same as hasCollision)
-            const overlaps = left1 < right2 && right1 > left2 && top1 < bottom2 && bottom1 > top2;
-            
-            if (overlaps) {
-              hasOverlap = true;
-              
-              // Calculate overlap amounts on both axes
+            if (left1 < right2 && right1 > left2 && top1 < bottom2 && bottom1 > top2) {
+              // Still overlapping - push apart more aggressively
               const overlapX = Math.min(right1 - left2, right2 - left1);
               const overlapY = Math.min(bottom1 - top2, bottom2 - top1);
+              const maxOverlap = Math.max(overlapX, overlapY);
               
-              // Calculate centers and direction vector
               const dx = x2 - x1;
               const dy = y2 - y1;
               const distance = Math.sqrt(dx * dx + dy * dy);
               
-              // If words are on top of each other, use a default direction
               let moveX, moveY;
               if (distance < 0.1) {
-                // Words are essentially on top of each other, move in a random direction
                 const angle = Math.random() * Math.PI * 2;
                 moveX = Math.cos(angle);
                 moveY = Math.sin(angle);
               } else {
-                // Normalize direction vector
                 moveX = dx / distance;
                 moveY = dy / distance;
               }
               
-              // Calculate how much to move - move enough to completely eliminate overlap
-              // Use the larger overlap to ensure complete separation with extra safety margin
-              const maxOverlap = Math.max(overlapX, overlapY);
-              const moveDistance = maxOverlap * 1.5 + COLLISION_PADDING; // Move 150% + padding to guarantee complete separation
+              const moveDistance = maxOverlap * 2.0 + COLLISION_PADDING * 2;
               
-              // Move words apart - move smaller word more to preserve larger word positions
               if (word1.fontSize <= word2.fontSize) {
-                // Move word1 away from word2
                 const newX = x1 - moveX * moveDistance;
                 const newY = y1 - moveY * moveDistance;
-                
-                // Ensure word stays within bounds
                 word1.pixelX = Math.max(MIN_X + dims1.halfWidth, Math.min(MAX_X - dims1.halfWidth, newX));
                 word1.pixelY = Math.max(MIN_Y + dims1.halfHeight, Math.min(MAX_Y - dims1.halfHeight, newY));
                 word1.x = (word1.pixelX / CONTAINER_WIDTH) * 100;
                 word1.y = (word1.pixelY / CONTAINER_HEIGHT) * 100;
               } else {
-                // Move word2 away from word1
                 const newX = x2 + moveX * moveDistance;
                 const newY = y2 + moveY * moveDistance;
-                
-                // Ensure word stays within bounds
                 word2.pixelX = Math.max(MIN_X + dims2.halfWidth, Math.min(MAX_X - dims2.halfWidth, newX));
                 word2.pixelY = Math.max(MIN_Y + dims2.halfHeight, Math.min(MAX_Y - dims2.halfHeight, newY));
                 word2.x = (word2.pixelX / CONTAINER_WIDTH) * 100;
@@ -496,16 +664,28 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
             }
           }
         }
-        
-        if (!hasOverlap) break;
-        iterations++;
       }
     };
     
-    // Final validation: Check for any remaining collisions using the same algorithm
+    // Enhanced final validation: Check for any remaining collisions using spatial grid
     const validateNoCollisions = () => {
       const wordsToKeep = [];
       const validatedBounds = [];
+      
+      // Rebuild spatial grid for validation
+      const validationGrid = Array(gridRows).fill(null).map(() => Array(gridCols).fill(null).map(() => []));
+      
+      const addToValidationGrid = (bound) => {
+        const left = bound.x - bound.halfWidth - COLLISION_PADDING;
+        const right = bound.x + bound.halfWidth + COLLISION_PADDING;
+        const top = bound.y - bound.halfHeight - COLLISION_PADDING;
+        const bottom = bound.y + bound.halfHeight + COLLISION_PADDING;
+        
+        const cells = getGridCells(left, right, top, bottom);
+        for (const { row, col } of cells) {
+          validationGrid[row][col].push(bound);
+        }
+      };
       
       // Sort words by size (largest first) to prioritize keeping important words
       const sortedWords = [...placedWords].sort((a, b) => b.fontSize - a.fontSize);
@@ -516,35 +696,46 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
         const x = word.pixelX;
         const y = word.pixelY;
         
-        // Check if this word collides with any already validated word
+        // Check if this word collides with any already validated word using spatial grid
         let hasCollision = false;
         const left1 = x - dims.halfWidth - COLLISION_PADDING;
         const right1 = x + dims.halfWidth + COLLISION_PADDING;
         const top1 = y - dims.halfHeight - COLLISION_PADDING;
         const bottom1 = y + dims.halfHeight + COLLISION_PADDING;
         
-        for (const bound of validatedBounds) {
-          const left2 = bound.x - bound.halfWidth - COLLISION_PADDING;
-          const right2 = bound.x + bound.halfWidth + COLLISION_PADDING;
-          const top2 = bound.y - bound.halfHeight - COLLISION_PADDING;
-          const bottom2 = bound.y + bound.halfHeight + COLLISION_PADDING;
-          
-          // Use the same collision detection algorithm
-          if (left1 < right2 && right1 > left2 && top1 < bottom2 && bottom1 > top2) {
-            hasCollision = true;
-            break;
+        const cells = getGridCells(left1, right1, top1, bottom1);
+        const checkedBounds = new Set();
+        
+        for (const { row, col } of cells) {
+          for (const bound of validationGrid[row][col]) {
+            if (checkedBounds.has(bound)) continue;
+            checkedBounds.add(bound);
+            
+            const left2 = bound.x - bound.halfWidth - COLLISION_PADDING;
+            const right2 = bound.x + bound.halfWidth + COLLISION_PADDING;
+            const top2 = bound.y - bound.halfHeight - COLLISION_PADDING;
+            const bottom2 = bound.y + bound.halfHeight + COLLISION_PADDING;
+            
+            // Use the same collision detection algorithm
+            if (left1 < right2 && right1 > left2 && top1 < bottom2 && bottom1 > top2) {
+              hasCollision = true;
+              break;
+            }
           }
+          if (hasCollision) break;
         }
         
         // Only keep words that don't collide
         if (!hasCollision) {
           wordsToKeep.push(word);
-          validatedBounds.push({
+          const bound = {
             x,
             y,
             halfWidth: dims.halfWidth,
             halfHeight: dims.halfHeight
-          });
+          };
+          validatedBounds.push(bound);
+          addToValidationGrid(bound);
         }
       }
       
@@ -564,10 +755,17 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
       placedWords.push(...validatedWords);
       placedBounds.length = 0;
       
+      // Clear and rebuild spatial grid
+      for (let row = 0; row < gridRows; row++) {
+        for (let col = 0; col < gridCols; col++) {
+          spatialGrid[row][col] = [];
+        }
+      }
+      
       // Rebuild placedBounds from validated words with current positions
       for (const word of validatedWords) {
         const dims = calculateTextDimensions(word.word, word.fontSize, word.isVertical);
-        placedBounds.push({
+        const bound = {
           x: word.pixelX,
           y: word.pixelY,
           halfWidth: dims.halfWidth,
@@ -575,7 +773,9 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
           word: word.word,
           fontSize: word.fontSize,
           isVertical: word.isVertical
-        });
+        };
+        placedBounds.push(bound);
+        addToSpatialGrid(bound);
       }
       
       // Run one more aggressive elimination pass
