@@ -4,7 +4,7 @@ import { Save } from 'lucide-react';
 import { updateSetting, clearError } from '../store/slices/settingsSlice';
 import Toast from './UserSide/Toast';
 
-const SettingField = ({ label, settingKey, value, isTextarea = false }) => {
+const SettingField = ({ label, settingKey, value, isTextarea = false, disableEdit = false }) => {
   const dispatch = useDispatch();
   const [localValue, setLocalValue] = useState(value);
   const [isEditing, setIsEditing] = useState(false);
@@ -53,7 +53,7 @@ const SettingField = ({ label, settingKey, value, isTextarea = false }) => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
       <div className="flex justify-between items-start mb-3">
         <h3 className="text-sm font-medium text-gray-900">{label}</h3>
-        {!isEditing && (
+        {!isEditing && !disableEdit && (
           <button
             onClick={() => setIsEditing(true)}
             className="text-xs text-blue-600 hover:text-blue-800"

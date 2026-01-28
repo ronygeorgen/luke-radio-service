@@ -43,7 +43,7 @@ const GeneralSettings = () => {
         { key: 'sentimentAnalysis', label: 'Sentiment Analysis', isTextarea: true },
         { key: 'generalTopicsPrompt', label: 'General Topics Prompt', isTextarea: true },
         { key: 'iabTopicsPrompt', label: 'IAB Topics Prompt', isTextarea: true },
-        { key: 'bucketPrompt', label: 'Bucket Prompt', isTextarea: true },
+        { key: 'bucketPrompt', label: 'Bucket Prompt', isTextarea: true, disableEdit: true },
         { key: 'determineRadioContentType', label: 'Content Type(Comma Separated)', isTextarea: true },
         { key: 'determineRadioContentTypePrompt', label: 'Determine Radio Content Type Prompt', isTextarea: true },
       ]
@@ -78,6 +78,7 @@ const GeneralSettings = () => {
                 settingKey={setting.key}
                 value={settings[setting.key] || ''}
                 isTextarea={setting.isTextarea}
+                disableEdit={setting.disableEdit}
               />
             ))}
           </div>
