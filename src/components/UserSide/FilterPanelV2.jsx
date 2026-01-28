@@ -1048,6 +1048,8 @@ const FilterPanelV2 = ({
     const [localStartDate, setLocalStartDate] = useState(startDate);
     const [localEndDate, setLocalEndDate] = useState(endDate);
     const prevShowDatePickerRef = useRef(showDatePicker);
+    const startCalendarMonthRef = useRef(null);
+    const endCalendarMonthRef = useRef(null);
     
     // Sync local state when modal opens (not on every change)
     useEffect(() => {
@@ -1055,18 +1057,52 @@ const FilterPanelV2 = ({
       if (showDatePicker && !prevShowDatePickerRef.current) {
         setLocalStartDate(startDate);
         setLocalEndDate(endDate);
+        // Initialize month refs to current month (or selected date's month if exists)
+        const now = new Date();
+        startCalendarMonthRef.current = startDate 
+          ? new Date(startDate.getFullYear(), startDate.getMonth()) 
+          : new Date(now.getFullYear(), now.getMonth());
+        endCalendarMonthRef.current = endDate 
+          ? new Date(endDate.getFullYear(), endDate.getMonth()) 
+          : new Date(now.getFullYear(), now.getMonth());
       }
       prevShowDatePickerRef.current = showDatePicker;
     }, [showDatePicker]);
     
+    // Handle month change for start date calendar - clear only start date selection when month changes
+    const handleStartMonthChange = (date) => {
+      const newMonth = new Date(date.getFullYear(), date.getMonth());
+      if (startCalendarMonthRef.current && 
+          (newMonth.getTime() !== startCalendarMonthRef.current.getTime())) {
+        // Month changed - clear only the start date selection
+        setLocalStartDate(null);
+      }
+      startCalendarMonthRef.current = newMonth;
+    };
+    
+    // Handle month change for end date calendar - clear only end date selection when month changes
+    const handleEndMonthChange = (date) => {
+      const newMonth = new Date(date.getFullYear(), date.getMonth());
+      if (endCalendarMonthRef.current && 
+          (newMonth.getTime() !== endCalendarMonthRef.current.getTime())) {
+        // Month changed - clear only the end date selection
+        setLocalEndDate(null);
+      }
+      endCalendarMonthRef.current = newMonth;
+    };
+    
     const handleStartDateChange = (date) => {
       if (!date) {
         setLocalStartDate(null);
-        setLocalEndDate(null);
+        // Don't clear end date when clearing start date - let user keep their end date
         return;
       }
       
-      // If end date exists and new start is after end, clear end date
+      // Update the month ref when a date is selected
+      const selectedMonth = new Date(date.getFullYear(), date.getMonth());
+      startCalendarMonthRef.current = selectedMonth;
+      
+      // If end date exists and new start is after end, clear end date (invalid range)
       if (localEndDate && date > localEndDate) {
         setLocalStartDate(date);
         setLocalEndDate(null);
@@ -1082,18 +1118,26 @@ const FilterPanelV2 = ({
         return;
       }
       
+      // Update the month ref when a date is selected
+      const selectedMonth = new Date(date.getFullYear(), date.getMonth());
+      endCalendarMonthRef.current = selectedMonth;
+      
       // Ensure end date is not before start date
       if (localStartDate && date < localStartDate) {
         // If end is before start, swap them
         const oldStart = localStartDate;
         setLocalStartDate(date);
         setLocalEndDate(oldStart);
+        // Update start month ref too since we swapped
+        startCalendarMonthRef.current = new Date(date.getFullYear(), date.getMonth());
       } else if (localStartDate) {
         setLocalEndDate(date);
       } else {
         // End date selected before start, set as start
         setLocalStartDate(date);
         setLocalEndDate(null);
+        // Update start month ref since we set it as start
+        startCalendarMonthRef.current = new Date(date.getFullYear(), date.getMonth());
       }
     };
     
@@ -1210,6 +1254,7 @@ const FilterPanelV2 = ({
             <DatePicker
               selected={localStartDate}
               onChange={handleStartDateChange}
+              onMonthChange={handleStartMonthChange}
               inline
               showYearDropdown
               showMonthDropdown
@@ -1229,6 +1274,7 @@ const FilterPanelV2 = ({
             <DatePicker
               selected={localEndDate}
               onChange={handleEndDateChange}
+              onMonthChange={handleEndMonthChange}
               inline
               showYearDropdown
               showMonthDropdown
