@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, RotateCcw, ChevronUp, ChevronDown, Search, X, ToggleLeft, ToggleRight, ArrowLeftRight } from 'lucide-react';
 import { setFilter, fetchShifts, fetchContentTypePrompt } from '../../store/slices/audioSegmentsSlice';
 import { fetchPredefinedFilters } from '../../store/slices/shiftManagementSlice';
 import { useDispatch, useSelector } from 'react-redux';
+import { selectUserChannels } from '../../store/slices/channelSlice';
 import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -122,6 +123,7 @@ const FilterPanelV2 = ({
   const { shifts, shiftsLoading } = useSelector(state => state.audioSegments);
   const { predefinedFilters, loading: predefinedLoading } = useSelector(state => state.shiftManagement);
   const { contentTypePrompt } = useSelector(state => state.audioSegments);
+  const userChannels = useSelector(selectUserChannels);
   const reduxDispatch = useDispatch();
 
   // Debug: Log content type prompt data
@@ -133,6 +135,27 @@ const FilterPanelV2 = ({
   const [trackedChannelId, setTrackedChannelId] = useState(() => {
     return localStorage.getItem('channelId') || channelId;
   });
+
+  // Get current channel type to determine if it's a podcast
+  const getCurrentChannelType = useCallback(() => {
+    const effectiveChannelId = localStorage.getItem('channelId') || channelId;
+    if (!effectiveChannelId || !userChannels || userChannels.length === 0) {
+      return null;
+    }
+    const currentChannel = userChannels.find(ch => ch.id === effectiveChannelId || ch.id === effectiveChannelId.toString());
+    return currentChannel?.channelType || null;
+  }, [channelId, userChannels]);
+
+  const [currentChannelType, setCurrentChannelType] = useState(() => getCurrentChannelType());
+  const isPodcast = currentChannelType === 'podcast';
+
+  // Update channel type when channelId or userChannels change
+  useEffect(() => {
+    const newChannelType = getCurrentChannelType();
+    if (newChannelType !== currentChannelType) {
+      setCurrentChannelType(newChannelType);
+    }
+  }, [channelId, userChannels, getCurrentChannelType, currentChannelType]);
 
   // Fetch content type prompt data on mount
   useEffect(() => {
@@ -1346,61 +1369,65 @@ const FilterPanelV2 = ({
             )}
           </div>
 
-          {/* Shifts Dropdown */}
-          <div className="space-y-2">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">BROADCAST SHIFT</label>
-            <select
-              value={currentShiftId}
-              onChange={(e) => handleShiftChange(e.target.value || null)}
-              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
-            >
-              <option value="">All Shifts</option>
-              {shiftsLoading ? (
-                <option disabled>Loading shifts...</option>
-              ) : (
-                shifts.map(shift => (
-                  <option key={shift.id} value={shift.id}>
-                    {shift.name} ({formatShiftTime(shift)})
-                  </option>
-                ))
+          {/* Shifts Dropdown - Hide for podcast channels */}
+          {!isPodcast && (
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">BROADCAST SHIFT</label>
+              <select
+                value={currentShiftId}
+                onChange={(e) => handleShiftChange(e.target.value || null)}
+                className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              >
+                <option value="">All Shifts</option>
+                {shiftsLoading ? (
+                  <option disabled>Loading shifts...</option>
+                ) : (
+                  shifts.map(shift => (
+                    <option key={shift.id} value={shift.id}>
+                      {shift.name} ({formatShiftTime(shift)})
+                    </option>
+                  ))
+                )}
+              </select>
+              {currentShiftId && (
+                <div className="flex items-center space-x-2 mt-2">
+                  <input
+                    type="checkbox"
+                    id="showFlaggedOnly"
+                    checked={showFlaggedOnly}
+                    onChange={(e) => handleShowFlaggedOnlyChange(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="showFlaggedOnly" className="text-xs text-gray-700 cursor-pointer">
+                    Show Flagged Only
+                  </label>
+                </div>
               )}
-            </select>
-            {currentShiftId && (
-              <div className="flex items-center space-x-2 mt-2">
-                <input
-                  type="checkbox"
-                  id="showFlaggedOnly"
-                  checked={showFlaggedOnly}
-                  onChange={(e) => handleShowFlaggedOnlyChange(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="showFlaggedOnly" className="text-xs text-gray-700 cursor-pointer">
-                  Show Flagged Only
-                </label>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Predefined Filters Dropdown */}
-          <div className="space-y-2">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">PREDEFINED FILTER</label>
-            <select
-              value={currentPredefinedFilterId}
-              onChange={(e) => handlePredefinedFilterChange(e.target.value || null)}
-              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
-            >
-              <option value="">None Selected</option>
-              {predefinedLoading ? (
-                <option disabled>Loading filters...</option>
-              ) : (
-                predefinedFilters.map(f => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
+          {/* Predefined Filters Dropdown - Hide for podcast channels */}
+          {!isPodcast && (
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">PREDEFINED FILTER</label>
+              <select
+                value={currentPredefinedFilterId}
+                onChange={(e) => handlePredefinedFilterChange(e.target.value || null)}
+                className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              >
+                <option value="">None Selected</option>
+                {predefinedLoading ? (
+                  <option disabled>Loading filters...</option>
+                ) : (
+                  predefinedFilters.map(f => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+          )}
 
           {/* Date Range Picker */}
           <div className="space-y-2">
