@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { MoreVertical } from 'lucide-react';
+import UploadCustomAudioModal from '../../components/UploadCustomAudioModal';
 
 const UserChannelCard = ({ channel }) => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const menuRef = useRef(null);
 
   // Helper function to truncate URL
@@ -100,8 +103,7 @@ const UserChannelCard = ({ channel }) => {
   const handleUploadCustomAudio = (e) => {
     e.stopPropagation(); // Prevent card click
     setIsMenuOpen(false);
-    // Placeholder function - will be implemented later
-    console.log('Upload custom audio for channel:', channel.id);
+    setIsUploadModalOpen(true);
   };
 
   return (
@@ -197,6 +199,16 @@ const UserChannelCard = ({ channel }) => {
           </button>
         </div>
       </div>
+
+      {/* Upload Custom Audio Modal - rendered in portal to prevent event bubbling */}
+      {isUploadModalOpen && createPortal(
+        <UploadCustomAudioModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          channelId={channel?.id}
+        />,
+        document.body
+      )}
     </div>
   );
 };
