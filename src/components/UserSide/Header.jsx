@@ -285,10 +285,11 @@ const Header = ({
         </div>
       </header>
 
-      {/* Upload Custom Audio Modal */}
+      {/* Upload Custom Audio Modal - pass current channel when on segments page */}
       <UploadCustomAudioModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
+        channelId={localStorage.getItem('channelId') || undefined}
       />
     </>
   );

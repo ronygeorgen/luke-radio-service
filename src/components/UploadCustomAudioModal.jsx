@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Upload, Loader } from 'lucide-react';
 import { axiosInstance } from '../services/api';
 
-const UploadCustomAudioModal = ({ isOpen, onClose, channelId }) => {
+const UploadCustomAudioModal = ({ isOpen, onClose, channelId, folderId }) => {
     const [submitting, setSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         file: null,
@@ -35,8 +35,11 @@ const UploadCustomAudioModal = ({ isOpen, onClose, channelId }) => {
             newErrors.title = 'Title is required';
         }
 
-        if (!channelId) {
-            newErrors.channel_id = 'Channel ID is required';
+        if (!channelId && !folderId) {
+            newErrors.destination = 'Either Channel or Folder is required';
+        }
+        if (channelId && folderId) {
+            newErrors.destination = 'Provide either Channel or Folder, not both';
         }
 
         setErrors(newErrors);
@@ -55,7 +58,13 @@ const UploadCustomAudioModal = ({ isOpen, onClose, channelId }) => {
             // Create FormData for multipart/form-data
             const formDataToSend = new FormData();
             formDataToSend.append('file', formData.file);
-            formDataToSend.append('channel_id', channelId);
+            formDataToSend.append('filename', formData.file.name || '');
+            // API requires either channel_id or folder_id (not both)
+            if (channelId) {
+                formDataToSend.append('channel_id', channelId);
+            } else if (folderId) {
+                formDataToSend.append('folder_id', folderId);
+            }
             formDataToSend.append('title', formData.title);
             
             if (formData.notes && formData.notes.trim() !== '') {
@@ -274,9 +283,9 @@ const UploadCustomAudioModal = ({ isOpen, onClose, channelId }) => {
                         </p>
                     </div>
 
-                    {errors.channel_id && (
+                    {errors.destination && (
                         <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                            <p className="text-sm text-red-600">{errors.channel_id}</p>
+                            <p className="text-sm text-red-600">{errors.destination}</p>
                         </div>
                     )}
 
