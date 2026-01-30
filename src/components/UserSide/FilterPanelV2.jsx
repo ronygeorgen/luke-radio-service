@@ -71,49 +71,54 @@ const FilterPanelV2 = ({
   const [onlyActive, setOnlyActive] = useState(getInitialStatus().onlyActive);
   const [activeStatus, setActiveStatus] = useState(getInitialStatus().activeStatus);
 
-  // Load filter state from localStorage on mount
-  const loadFilterStateFromStorage = () => {
+  // Load saved preference from localStorage on mount (user must click "Save preference" to persist)
+  const loadSavedPreference = () => {
     try {
-      const stored = localStorage.getItem('filterV2_contentTypes');
+      const stored = localStorage.getItem('filterV2_savedPreference');
       if (stored) {
         const parsed = JSON.parse(stored);
         return {
-          onlyAnnouncers: parsed.onlyAnnouncers !== undefined ? parsed.onlyAnnouncers : true,
-          selectedContentTypes: parsed.selectedContentTypes || []
+          hasSaved: true,
+          onlyAnnouncers: parsed.onlyAnnouncers !== undefined ? parsed.onlyAnnouncers : false,
+          selectedContentTypes: Array.isArray(parsed.selectedContentTypes) ? parsed.selectedContentTypes : []
         };
       }
     } catch (err) {
-      console.error('Error loading filter state from localStorage:', err);
+      console.error('Error loading saved filter preference from localStorage:', err);
     }
-    // Default to true for "Only Announcers" on initial load if no stored value
-    // Check if Redux has a value first
-    if (filters.onlyAnnouncers !== undefined) {
-      return {
-        onlyAnnouncers: filters.onlyAnnouncers,
-        selectedContentTypes: []
-      };
-    }
-    return {
-      onlyAnnouncers: true,
-      selectedContentTypes: []
-    };
+    return { hasSaved: false, onlyAnnouncers: false, selectedContentTypes: [] };
   };
 
-  const initialFilterState = loadFilterStateFromStorage();
-  const [onlyAnnouncers, setOnlyAnnouncers] = useState(initialFilterState.onlyAnnouncers);
-  const [selectedContentTypes, setSelectedContentTypes] = useState(initialFilterState.selectedContentTypes);
+  const initialPreference = loadSavedPreference();
+  const [onlyAnnouncers, setOnlyAnnouncers] = useState(initialPreference.hasSaved ? initialPreference.onlyAnnouncers : false);
+  const [selectedContentTypes, setSelectedContentTypes] = useState(initialPreference.hasSaved ? initialPreference.selectedContentTypes : []);
+  const [preferenceSavedMessage, setPreferenceSavedMessage] = useState('');
+  const hasAppliedDefaultRef = useRef(!initialPreference.hasSaved);
+  const hasSyncedSavedPreferenceToRedux = useRef(false);
 
-  // Save filter state to localStorage whenever it changes
+  // Sync saved preference to Redux once on mount so the first fetch uses it
   useEffect(() => {
+    if (!initialPreference.hasSaved || hasSyncedSavedPreferenceToRedux.current) return;
+    hasSyncedSavedPreferenceToRedux.current = true;
+    dispatch(setFilter({
+      onlyAnnouncers: initialPreference.onlyAnnouncers,
+      contentTypes: initialPreference.selectedContentTypes || []
+    }));
+  }, []);
+
+  // Save current filter state as user preference (only when user clicks "Save preference")
+  const handleSavePreference = () => {
     try {
-      localStorage.setItem('filterV2_contentTypes', JSON.stringify({
+      localStorage.setItem('filterV2_savedPreference', JSON.stringify({
         onlyAnnouncers,
         selectedContentTypes
       }));
+      setPreferenceSavedMessage('Preference saved');
+      setTimeout(() => setPreferenceSavedMessage(''), 2000);
     } catch (err) {
-      console.error('Error saving filter state to localStorage:', err);
+      console.error('Error saving filter preference to localStorage:', err);
     }
-  }, [onlyAnnouncers, selectedContentTypes]);
+  };
 
   // Ref to track if we're manually updating status (to prevent useEffect from interfering)
   const isManuallyUpdatingStatus = useRef(false);
@@ -180,42 +185,42 @@ const FilterPanelV2 = ({
     }
   }, [reduxDispatch, channelId, trackedChannelId]);
 
-  // Initialize defaults on mount - set onlyActive and onlyAnnouncers to true if not already set
+  // Apply default content type when API loads and user has no saved preference (first item on, rest off).
+  // Also persist this default to localStorage so sync effects don't overwrite user toggles (Redux starts with onlyAnnouncers: true).
+  useEffect(() => {
+    const contentTypes = contentTypePrompt?.contentTypes;
+    if (!hasAppliedDefaultRef.current || !contentTypes || contentTypes.length === 0) return;
+    const saved = localStorage.getItem('filterV2_savedPreference');
+    if (saved) return; // User has a saved preference, already loaded
+    hasAppliedDefaultRef.current = false;
+    const firstType = contentTypes[0];
+    const defaultPreference = { onlyAnnouncers: false, selectedContentTypes: [firstType] };
+    setOnlyAnnouncers(false);
+    setSelectedContentTypes([firstType]);
+    dispatch(setFilter({ contentTypes: [firstType], onlyAnnouncers: false }));
+    try {
+      localStorage.setItem('filterV2_savedPreference', JSON.stringify(defaultPreference));
+    } catch (err) {
+      console.error('Error persisting default filter preference:', err);
+    }
+  }, [contentTypePrompt?.contentTypes, dispatch]);
+
+  // Initialize Redux on mount: if no saved preference, set onlyAnnouncers false and contentTypes [] so sync effects don't overwrite toggles; set onlyActive when needed.
   const hasInitializedDefaults = useRef(false);
   useEffect(() => {
     if (hasInitializedDefaults.current) return;
-    
-    // Check if this is the first load (no stored values in localStorage)
-    const stored = localStorage.getItem('filterV2_contentTypes');
-    let hasStoredValue = false;
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        hasStoredValue = parsed.onlyAnnouncers !== undefined;
-      } catch (e) {
-        // Invalid stored value, treat as no stored value
-      }
+    const saved = localStorage.getItem('filterV2_savedPreference');
+    if (!saved) {
+      dispatch(setFilter({
+        onlyAnnouncers: false,
+        contentTypes: [],
+        ...(filters.onlyActive === undefined && { onlyActive: true, status: 'active' })
+      }));
+    } else if (filters.onlyActive === undefined) {
+      dispatch(setFilter({ onlyActive: true, status: 'active' }));
     }
-    
-    // Only set defaults if there's no stored value (first time load)
-    // We respect Redux state if it exists, but if localStorage has no value, we set defaults
-    if (!hasStoredValue) {
-      console.log('🎯 Initializing V2 filter defaults: onlyActive=true, onlyAnnouncers=true');
-      
-      // Update local state (already set in useState, but ensure Redux matches)
-      // Update Redux state with defaults only if not already set
-      if (filters.onlyActive === undefined) {
-        dispatch(setFilter({ onlyActive: true, status: 'active' }));
-      }
-      if (filters.onlyAnnouncers === undefined) {
-        dispatch(setFilter({ onlyAnnouncers: true }));
-      }
-      
-      hasInitializedDefaults.current = true;
-    } else {
-      hasInitializedDefaults.current = true;
-    }
-  }, []); // Run only once on mount
+    hasInitializedDefaults.current = true;
+  }, []);
 
   // Listen for channel changes and refetch shifts/predefined filters
   useEffect(() => {
@@ -241,11 +246,11 @@ const FilterPanelV2 = ({
         setActiveStatus('all');
         // Clear Redux state
         dispatch(setFilter({ contentTypes: [], onlyAnnouncers: false, onlyActive: false, status: null }));
-        // Clear localStorage for content type filters
+        // Clear saved filter preference for new channel
         try {
-          localStorage.removeItem('filterV2_contentTypes');
+          localStorage.removeItem('filterV2_savedPreference');
         } catch (err) {
-          console.error('Error clearing filter state from localStorage:', err);
+          console.error('Error clearing filter preference from localStorage:', err);
         }
       }
     };
@@ -1544,19 +1549,31 @@ const FilterPanelV2 = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex space-x-2 pt-2">
+          <div className="flex flex-col gap-2 pt-2">
+            <div className="flex space-x-2">
+              <button
+                onClick={handleResetFilters}
+                className="flex-1 bg-gray-200 text-gray-700 text-xs px-2 py-1.5 rounded hover:bg-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-500 transition-colors"
+              >
+                Reset
+              </button>
+              <button
+                onClick={handleApplyWithDuration}
+                className="flex-1 bg-blue-500 text-white text-xs px-2 py-1.5 rounded hover:bg-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+              >
+                Apply
+              </button>
+            </div>
             <button
-              onClick={handleResetFilters}
-              className="flex-1 bg-gray-200 text-gray-700 text-xs px-2 py-1.5 rounded hover:bg-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-500 transition-colors"
+              type="button"
+              onClick={handleSavePreference}
+              className="w-full text-xs px-2 py-1.5 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
             >
-              Reset
+              Save preference
             </button>
-            <button
-              onClick={handleApplyWithDuration}
-              className="flex-1 bg-blue-500 text-white text-xs px-2 py-1.5 rounded hover:bg-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
-            >
-              Apply
-            </button>
+            {preferenceSavedMessage && (
+              <span className="text-xs text-green-600">{preferenceSavedMessage}</span>
+            )}
           </div>
         </div>
       </div>
@@ -1779,7 +1796,7 @@ const FilterPanelV2 = ({
           )}
 
           {/* Action Buttons */}
-          <div className="flex justify-between items-center">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleResetFilters}
               className="flex items-center px-3 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
@@ -1793,6 +1810,16 @@ const FilterPanelV2 = ({
             >
               Apply
             </button>
+            <button
+              type="button"
+              onClick={handleSavePreference}
+              className="flex items-center px-3 py-1 text-xs border border-gray-300 bg-white text-gray-700 rounded hover:bg-gray-50 transition-colors"
+            >
+              Save preference
+            </button>
+            {preferenceSavedMessage && (
+              <span className="text-xs text-green-600">{preferenceSavedMessage}</span>
+            )}
           </div>
         </div>
       </div>
@@ -1889,14 +1916,20 @@ const FilterPanelV2 = ({
                       onChange={handleAllContentTypesToggle}
                       label="All"
                     />
-                    {contentTypePrompt.contentTypes.map((contentType) => (
-                      <ToggleSwitch
-                        key={contentType}
-                        checked={selectedContentTypes.includes(contentType)}
-                        onChange={(checked) => handleContentTypeToggle(contentType, checked)}
-                        label={contentType}
-                      />
-                    ))}
+                    {contentTypePrompt?.loading ? (
+                      <div className="text-xs text-gray-500 py-2">Loading content types...</div>
+                    ) : contentTypePrompt?.contentTypes?.length ? (
+                      contentTypePrompt.contentTypes.map((contentType) => (
+                        <ToggleSwitch
+                          key={contentType}
+                          checked={selectedContentTypes.includes(contentType)}
+                          onChange={(checked) => handleContentTypeToggle(contentType, checked)}
+                          label={contentType}
+                        />
+                      ))
+                    ) : (
+                      <div className="text-xs text-gray-500 py-2">No content types available</div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2057,7 +2090,7 @@ const FilterPanelV2 = ({
             </div>
           </div>
 
-          <div className="flex items-center justify-center mt-8 pt-6 border-t border-gray-200 gap-4">
+          <div className="flex flex-wrap items-center justify-center mt-8 pt-6 border-t border-gray-200 gap-4">
             <button
               onClick={handleResetFilters}
               className="flex items-center px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg shadow-sm transition-all duration-200"
@@ -2072,6 +2105,17 @@ const FilterPanelV2 = ({
             >
               Apply
             </button>
+
+            <button
+              type="button"
+              onClick={handleSavePreference}
+              className="flex items-center px-6 py-3 border border-gray-300 bg-white text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 transition-all duration-200"
+            >
+              Save preference
+            </button>
+            {preferenceSavedMessage && (
+              <span className="text-sm text-green-600">{preferenceSavedMessage}</span>
+            )}
           </div>
         </div>
       )}
