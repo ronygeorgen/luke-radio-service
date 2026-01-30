@@ -111,17 +111,17 @@ function formatDateTime(dateTimeString) {
           <span>
             {segment.title_before && (
               <>
-                <span className="text-gray-900">Audio Before: </span>
-                <span className="text-gray-500">{segment.title_before}</span>
+                <span className="text-gray-500">Audio Before: </span>
+                <span className="text-gray-900">{segment.title_before}</span>
               </>
             )}
             {segment.title_before && segment.title_after && (
-              <span className="text-gray-900"> - </span>
+              <span className="text-gray-500"> - </span>
             )}
             {segment.title_after && (
               <>
-                <span className="text-gray-900">Audio After: </span>
-                <span className="text-gray-500">{segment.title_after}</span>
+                <span className="text-gray-500">Audio After: </span>
+                <span className="text-gray-900">{segment.title_after}</span>
               </>
             )}
             {!segment.title_before && !segment.title_after && (

@@ -1,5 +1,8 @@
 import React from 'react';
 
+// Match "Speaker N" followed by timestamp (MM:SS:FF or HH:MM:SS) then the rest of the line
+const SPEAKER_LINE_REGEX = /^(Speaker \d+)\s+(\d{2}:\d{2}:\d{2})\s+(.*)$/;
+
 const TranscriptionModal = ({ transcription, onClose }) => {
   return (
     <div 
@@ -23,9 +26,23 @@ const TranscriptionModal = ({ transcription, onClose }) => {
             </button>
           </div>
           <div className="space-y-4">
-            {transcription.split('\n').map((line, index) => (
-              <p key={index} className="whitespace-pre-line">{line}</p>
-            ))}
+            {transcription.split('\n').map((line, index) => {
+              const match = line.match(SPEAKER_LINE_REGEX);
+              if (match) {
+                const [, speaker, timestamp, text] = match;
+                return (
+                  <p key={index} className="whitespace-pre-line">
+                    <span className="text-blue-500">{speaker} {timestamp} </span>
+                    <span className="text-gray-900">{text}</span>
+                  </p>
+                );
+              }
+              return (
+                <p key={index} className="whitespace-pre-line text-gray-900">
+                  {line}
+                </p>
+              );
+            })}
           </div>
         </div>
       </div>
