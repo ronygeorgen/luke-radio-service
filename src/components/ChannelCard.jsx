@@ -1,7 +1,8 @@
 // ChannelCard.jsx
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useDispatch } from 'react-redux';
-import { Trash2, Power, PowerOff, Edit, RefreshCw } from 'lucide-react';
+import { Trash2, Power, PowerOff, Edit, RefreshCw, X } from 'lucide-react';
 import { deleteChannel, toggleChannel, reanalyzeRSS } from '../store/slices/channelSlice';
 import Toast from './UserSide/Toast';
 
@@ -10,6 +11,7 @@ const ChannelCard = ({ channel, onEdit }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
   const [isReanalyzing, setIsReanalyzing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const [toastType, setToastType] = useState('success');
 
@@ -23,12 +25,19 @@ const ChannelCard = ({ channel, onEdit }) => {
     }
   };
 
-  const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this channel?')) {
-      setIsDeleting(true);
-      await dispatch(deleteChannel(channel.id));
-      setIsDeleting(false);
-    }
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    await dispatch(deleteChannel(channel.id));
+    setIsDeleting(false);
+    setShowDeleteModal(false);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
   };
 
   const handleToggle = async () => {
@@ -140,7 +149,7 @@ const ChannelCard = ({ channel, onEdit }) => {
             )}
           </button>
           <button
-            onClick={handleDelete}
+            onClick={handleDeleteClick}
             disabled={isDeleting}
             className={`sw-icon-btn text-red-600 ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
             title="Delete Channel"
@@ -164,6 +173,57 @@ const ChannelCard = ({ channel, onEdit }) => {
         </div>
       </div>
       
+      {/* Delete confirmation modal (portaled to body) */}
+      {showDeleteModal && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={handleCancelDelete}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-channel-title"
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h3 id="delete-channel-title" className="text-lg font-semibold text-gray-900">
+                Delete channel
+              </h3>
+              <button
+                type="button"
+                onClick={handleCancelDelete}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this channel? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleCancelDelete}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Toast Notification */}
       {toastMessage && (
         <Toast
