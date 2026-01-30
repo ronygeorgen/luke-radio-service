@@ -79,18 +79,16 @@ const FilterPanelV2 = ({
         const parsed = JSON.parse(stored);
         return {
           hasSaved: true,
-          onlyAnnouncers: parsed.onlyAnnouncers !== undefined ? parsed.onlyAnnouncers : false,
           selectedContentTypes: Array.isArray(parsed.selectedContentTypes) ? parsed.selectedContentTypes : []
         };
       }
     } catch (err) {
       console.error('Error loading saved filter preference from localStorage:', err);
     }
-    return { hasSaved: false, onlyAnnouncers: false, selectedContentTypes: [] };
+    return { hasSaved: false, selectedContentTypes: [] };
   };
 
   const initialPreference = loadSavedPreference();
-  const [onlyAnnouncers, setOnlyAnnouncers] = useState(initialPreference.hasSaved ? initialPreference.onlyAnnouncers : false);
   const [selectedContentTypes, setSelectedContentTypes] = useState(initialPreference.hasSaved ? initialPreference.selectedContentTypes : []);
   const [preferenceSavedMessage, setPreferenceSavedMessage] = useState('');
   const hasAppliedDefaultRef = useRef(!initialPreference.hasSaved);
@@ -100,19 +98,13 @@ const FilterPanelV2 = ({
   useEffect(() => {
     if (!initialPreference.hasSaved || hasSyncedSavedPreferenceToRedux.current) return;
     hasSyncedSavedPreferenceToRedux.current = true;
-    dispatch(setFilter({
-      onlyAnnouncers: initialPreference.onlyAnnouncers,
-      contentTypes: initialPreference.selectedContentTypes || []
-    }));
+    dispatch(setFilter({ contentTypes: initialPreference.selectedContentTypes || [] }));
   }, []);
 
   // Save current filter state as user preference (only when user clicks "Save preference")
   const handleSavePreference = () => {
     try {
-      localStorage.setItem('filterV2_savedPreference', JSON.stringify({
-        onlyAnnouncers,
-        selectedContentTypes
-      }));
+      localStorage.setItem('filterV2_savedPreference', JSON.stringify({ selectedContentTypes }));
       setPreferenceSavedMessage('Preference saved');
       setTimeout(() => setPreferenceSavedMessage(''), 2000);
     } catch (err) {
@@ -186,7 +178,7 @@ const FilterPanelV2 = ({
   }, [reduxDispatch, channelId, trackedChannelId]);
 
   // Apply default content type when API loads and user has no saved preference (first item on, rest off).
-  // Also persist this default to localStorage so sync effects don't overwrite user toggles (Redux starts with onlyAnnouncers: true).
+  // Also persist this default to localStorage so sync effects don't overwrite user toggles.
   useEffect(() => {
     const contentTypes = contentTypePrompt?.contentTypes;
     if (!hasAppliedDefaultRef.current || !contentTypes || contentTypes.length === 0) return;
@@ -194,10 +186,9 @@ const FilterPanelV2 = ({
     if (saved) return; // User has a saved preference, already loaded
     hasAppliedDefaultRef.current = false;
     const firstType = contentTypes[0];
-    const defaultPreference = { onlyAnnouncers: false, selectedContentTypes: [firstType] };
-    setOnlyAnnouncers(false);
+    const defaultPreference = { selectedContentTypes: [firstType] };
     setSelectedContentTypes([firstType]);
-    dispatch(setFilter({ contentTypes: [firstType], onlyAnnouncers: false }));
+    dispatch(setFilter({ contentTypes: [firstType] }));
     try {
       localStorage.setItem('filterV2_savedPreference', JSON.stringify(defaultPreference));
     } catch (err) {
@@ -205,14 +196,13 @@ const FilterPanelV2 = ({
     }
   }, [contentTypePrompt?.contentTypes, dispatch]);
 
-  // Initialize Redux on mount: if no saved preference, set onlyAnnouncers false and contentTypes [] so sync effects don't overwrite toggles; set onlyActive when needed.
+  // Initialize Redux on mount: if no saved preference, set contentTypes [] so sync effects don't overwrite toggles; set onlyActive when needed.
   const hasInitializedDefaults = useRef(false);
   useEffect(() => {
     if (hasInitializedDefaults.current) return;
     const saved = localStorage.getItem('filterV2_savedPreference');
     if (!saved) {
       dispatch(setFilter({
-        onlyAnnouncers: false,
         contentTypes: [],
         ...(filters.onlyActive === undefined && { onlyActive: true, status: 'active' })
       }));
@@ -239,13 +229,12 @@ const FilterPanelV2 = ({
         setShowFlaggedOnly(false);
 
         // Clear content type filters when channel changes
-        setOnlyAnnouncers(false);
         setSelectedContentTypes([]);
         // Clear status filters when channel changes
         setOnlyActive(false);
         setActiveStatus('all');
         // Clear Redux state
-        dispatch(setFilter({ contentTypes: [], onlyAnnouncers: false, onlyActive: false, status: null }));
+        dispatch(setFilter({ contentTypes: [], onlyActive: false, status: null }));
         // Clear saved filter preference for new channel
         try {
           localStorage.removeItem('filterV2_savedPreference');
@@ -459,62 +448,20 @@ const FilterPanelV2 = ({
     }
   }, [filters.predefinedFilterId, currentPredefinedFilterId]);
 
-  // Sync onlyAnnouncers from Redux state
-  useEffect(() => {
-    // Skip sync if we're manually updating content types
-    if (isManuallyUpdatingContentTypes.current) {
-      return;
-    }
-
-    // Sync onlyAnnouncers from Redux to local state
-    if (filters.onlyAnnouncers !== undefined && filters.onlyAnnouncers !== onlyAnnouncers) {
-      setOnlyAnnouncers(filters.onlyAnnouncers);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.onlyAnnouncers]);
-
   // Sync content types with Redux state
-  // IMPORTANT: Don't sync when onlyAnnouncers is true to prevent "Announcer" item from appearing checked
-  // When "Only Announcers" is selected, we track it via onlyAnnouncers state, not via Redux contentTypes
   useEffect(() => {
-    // Skip sync if we're manually updating content types
-    if (isManuallyUpdatingContentTypes.current) {
-      return;
-    }
-
-    // Skip sync if "Only Announcers" is selected (check both local and Redux state)
-    // This ensures the UI shows "Only Announcers" as selected, not "Announcer" as a checked item
-    const isOnlyAnnouncersActive = onlyAnnouncers || filters.onlyAnnouncers;
-    if (isOnlyAnnouncersActive) {
-      // When onlyAnnouncers is true, ensure selectedContentTypes stays empty
-      // This prevents any Redux contentTypes from syncing and showing "Announcer" as checked
-      if (selectedContentTypes.length > 0) {
-        setSelectedContentTypes([]);
-      }
-      // Also ensure onlyAnnouncers local state matches Redux
-      if (filters.onlyAnnouncers && !onlyAnnouncers) {
-        setOnlyAnnouncers(true);
-      }
-      return;
-    }
-
-    // Only sync from Redux when onlyAnnouncers is false
+    if (isManuallyUpdatingContentTypes.current) return;
     if (filters.contentTypes && Array.isArray(filters.contentTypes)) {
-      // Only update if different to avoid infinite loops
       const currentTypes = JSON.stringify([...selectedContentTypes].sort());
       const reduxTypes = JSON.stringify([...filters.contentTypes].sort());
       if (currentTypes !== reduxTypes) {
-        console.log('🔄 Syncing content types from Redux:', filters.contentTypes);
         setSelectedContentTypes(filters.contentTypes);
       }
     } else if (filters.contentTypes === null || (Array.isArray(filters.contentTypes) && filters.contentTypes.length === 0)) {
-      // If Redux has empty/null contentTypes and we have selected types, clear them
-      if (selectedContentTypes.length > 0) {
-        setSelectedContentTypes([]);
-      }
+      if (selectedContentTypes.length > 0) setSelectedContentTypes([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.contentTypes, onlyAnnouncers, filters.onlyAnnouncers]);
+  }, [filters.contentTypes]);
 
   // Sync onlyActive from Redux state
   useEffect(() => {
@@ -797,7 +744,7 @@ const FilterPanelV2 = ({
 
     // Apply filters with the new state values
     // When onlyActive is true, status will be 'active' regardless of activeStatus
-    applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, newOnlyActive, newActiveStatus, onlyAnnouncers, selectedContentTypes);
+    applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, newOnlyActive, newActiveStatus, selectedContentTypes);
 
     // Reset flag after a short delay to allow state updates to complete
     setTimeout(() => {
@@ -819,57 +766,11 @@ const FilterPanelV2 = ({
     dispatch(setFilter({ status: statusForRedux, onlyActive: false }));
 
     // Apply filters with the new state values
-    applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, newOnlyActive, newActiveStatus, onlyAnnouncers, selectedContentTypes);
-  };
-
-  const handleOnlyAnnouncersToggle = (checked) => {
-    if (checked) {
-      // When turning on "Only Announcers", first clear any selected content types (like clicking "All")
-      // This ensures a clean transition and prevents UI confusion
-      // Workflow: Set onlyAnnouncers first, then clear selected content types
-      // This prevents "All" from showing as checked during the transition
-      
-      // Set flag FIRST to prevent sync useEffect from interfering
-      isManuallyUpdatingContentTypes.current = true;
-      
-      // IMPORTANT: Update both states synchronously in the same event handler
-      // React 18 automatically batches these updates, but we set onlyAnnouncers first
-      // to ensure the UI condition {!onlyAnnouncers && ...} evaluates correctly
-      // Set onlyAnnouncers to true FIRST - this ensures "All" toggle section is hidden immediately
-      setOnlyAnnouncers(true);
-      
-      // Then clear selected content types (acts like clicking "All")
-      // Since onlyAnnouncers is already true, the "All" toggle won't be visible/checked
-      setSelectedContentTypes([]);
-      
-      // CRITICAL: Clear Redux contentTypes to prevent stale data from showing in UI
-      // Even though we track "Only Announcers" via local state, we must clear Redux
-      // to ensure the sync useEffect doesn't restore old content types after the timeout
-      dispatch(setFilter({ contentTypes: [], onlyAnnouncers: true }));
-      
-      // Apply filters with onlyAnnouncers=true (this will send content_type=Announcer to API)
-      applyFiltersV2WithContentTypes(filters, currentShiftId, true, []);
-      
-      // Reset flag after a short delay
-      setTimeout(() => {
-        isManuallyUpdatingContentTypes.current = false;
-      }, 100);
-    } else {
-      // When turning off only announcers, apply filters with current selectedContentTypes
-      setOnlyAnnouncers(false);
-      // Clear onlyAnnouncers flag in Redux
-      dispatch(setFilter({ onlyAnnouncers: false }));
-      applyFiltersV2WithContentTypes(filters, currentShiftId, false, selectedContentTypes);
-    }
+    applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, newOnlyActive, newActiveStatus, selectedContentTypes);
   };
 
   const handleContentTypeToggle = (contentType, checked) => {
-    // Set flag to prevent sync useEffect from interfering
     isManuallyUpdatingContentTypes.current = true;
-    
-    setOnlyAnnouncers(false); // Turn off only announcers when selecting specific content types
-    
-    // Calculate updated content types using functional update to ensure we have latest state
     setSelectedContentTypes(prev => {
       let updatedContentTypes;
       if (checked) {
@@ -885,7 +786,7 @@ const FilterPanelV2 = ({
       
       // Apply filters with the updated content types immediately
       // Use the calculated value directly to avoid race conditions
-      applyFiltersV2WithContentTypes(filters, currentShiftId, false, updatedContentTypes);
+      applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, onlyActive, activeStatus, updatedContentTypes);
       
       return updatedContentTypes;
     });
@@ -899,12 +800,8 @@ const FilterPanelV2 = ({
   const handleAllContentTypesToggle = (checked) => {
     if (checked) {
       setSelectedContentTypes([]);
-      setOnlyAnnouncers(false);
-      // Clear content types in Redux
       dispatch(setFilter({ contentTypes: [] }));
-      // Apply filters immediately - no content_type param should be added
-      // Pass empty array to indicate "All" is selected
-      applyFiltersV2WithContentTypes(filters, currentShiftId, false, []);
+      applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, onlyActive, activeStatus, []);
     }
   };
 
@@ -921,7 +818,7 @@ const FilterPanelV2 = ({
   };
 
   // Apply filters using V2 API with explicit status and content type parameters
-  const applyFiltersV2WithStatusAndContentTypes = (filterState, shiftId, onlyActiveValue, activeStatusValue, onlyAnnouncersValue, selectedContentTypesValue) => {
+  const applyFiltersV2WithStatusAndContentTypes = (filterState, shiftId, onlyActiveValue, activeStatusValue, selectedContentTypesValue) => {
     let startDatetime = null;
     let endDatetime = null;
 
@@ -941,26 +838,10 @@ const FilterPanelV2 = ({
     // Determine status - API expects 'active' or 'inactive' as strings
     const statusParam = getStatusParam(onlyActiveValue, activeStatusValue);
 
-    // Determine content types for API call using explicit parameters
-    // Rules:
-    // 1. When "Only Announcers" is selected → content_type=Announcer (exact case, capital A)
-    // 2. When "All" is selected → don't add content_type param at all (pass null or empty array)
-    // 3. When specific content types are selected → add them as-is (exact strings, no lowercase conversion)
-    let contentTypesParam = null; // null means don't add content_type param
-    if (onlyAnnouncersValue) {
-      // Filter to only "Announcer" content type (exact case as required by backend)
-      contentTypesParam = ['Announcer'];
-      console.log('📢 Only Announcers selected - using content_type=Announcer');
-    } else if (selectedContentTypesValue && selectedContentTypesValue.length > 0) {
-      // Use selected content types exactly as they are (no lowercase conversion)
-      // Pass the exact strings from the API/UI without modification
-      contentTypesParam = [...selectedContentTypesValue];
-      console.log('📋 Selected content types:', contentTypesParam);
-    } else {
-      // "All" is selected - no content_type param will be added
-      contentTypesParam = null; // Explicitly set to null to ensure no param is added
-      console.log('🌐 All content types selected - no content_type param');
-    }
+    // Content types: when "All" (empty) don't add param; otherwise use selected types as-is
+    const contentTypesParam = (selectedContentTypesValue && selectedContentTypesValue.length > 0)
+      ? [...selectedContentTypesValue]
+      : null;
     // If contentTypesParam is null or empty array, content_type won't be added to API call (handled in slice)
 
     // Get duration value
@@ -1004,15 +885,9 @@ const FilterPanelV2 = ({
   };
 
 
-  // Helper function to apply filters with explicit content type values
-  // This avoids race conditions where state hasn't updated yet
-  const applyFiltersV2WithContentTypes = (filterState, shiftId, onlyAnnouncersValue, selectedContentTypesValue) => {
-    applyFiltersV2WithStatusAndContentTypes(filterState, shiftId, onlyActive, activeStatus, onlyAnnouncersValue, selectedContentTypesValue);
-  };
-
   // Apply filters using V2 API (uses current state values)
   const applyFiltersV2 = (filterState, shiftId) => {
-    applyFiltersV2WithStatusAndContentTypes(filterState, shiftId, onlyActive, activeStatus, onlyAnnouncers, selectedContentTypes);
+    applyFiltersV2WithStatusAndContentTypes(filterState, shiftId, onlyActive, activeStatus, selectedContentTypes);
   };
 
   // Wrapper function to handle Apply button click
@@ -1388,36 +1263,36 @@ const FilterPanelV2 = ({
             )}
           </div>
 
-          {/* Only Announcers Section */}
+          {/* Content Type Section: first from API, then All, then rest */}
           <div className="space-y-2 pb-3">
-            <ToggleSwitch
-              checked={onlyAnnouncers}
-              onChange={handleOnlyAnnouncersToggle}
-              label="Announcers Only"
-            />
-            {!onlyAnnouncers && (
-              <div className="space-y-1 pl-0">
-                <ToggleSwitch
-                  checked={selectedContentTypes.length === 0 && !onlyAnnouncers}
-                  onChange={handleAllContentTypesToggle}
-                  label="All"
-                />
-                {contentTypePrompt?.loading ? (
-                  <div className="text-xs text-gray-500 py-2 pl-0">Loading content types...</div>
-                ) : contentTypePrompt?.contentTypes && contentTypePrompt.contentTypes.length > 0 ? (
-                  contentTypePrompt.contentTypes.map((contentType) => (
+            <div className="space-y-1 pl-0">
+              {contentTypePrompt?.loading ? (
+                <div className="text-xs text-gray-500 py-2 pl-0">Loading content types...</div>
+              ) : contentTypePrompt?.contentTypes && contentTypePrompt.contentTypes.length > 0 ? (
+                <>
+                  <ToggleSwitch
+                    checked={selectedContentTypes.includes(contentTypePrompt.contentTypes[0])}
+                    onChange={(checked) => handleContentTypeToggle(contentTypePrompt.contentTypes[0], checked)}
+                    label={contentTypePrompt.contentTypes[0]}
+                  />
+                  <ToggleSwitch
+                    checked={selectedContentTypes.length === 0}
+                    onChange={handleAllContentTypesToggle}
+                    label="All"
+                  />
+                  {contentTypePrompt.contentTypes.slice(1).map((contentType) => (
                     <ToggleSwitch
                       key={contentType}
                       checked={selectedContentTypes.includes(contentType)}
                       onChange={(checked) => handleContentTypeToggle(contentType, checked)}
                       label={contentType}
                     />
-                  ))
-                ) : (
-                  <div className="text-xs text-gray-500 py-2 pl-0">No content types available</div>
-                )}
-              </div>
-            )}
+                  ))}
+                </>
+              ) : (
+                <div className="text-xs text-gray-500 py-2 pl-0">No content types available</div>
+              )}
+            </div>
           </div>
 
           {/* Shifts Dropdown - Hide for podcast channels */}
@@ -1632,39 +1507,35 @@ const FilterPanelV2 = ({
               </div>
             </div>
 
-            {/* Only Announcers Section - Compact */}
+            {/* Content Type Section: first from API, then All, then rest */}
             <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-medium text-gray-700 mb-1">Content Type</label>
               <div className="space-y-1 border border-gray-300 rounded p-2 bg-white max-h-64 overflow-y-auto">
-                <ToggleSwitch
-                  checked={onlyAnnouncers}
-                  onChange={handleOnlyAnnouncersToggle}
-                  label="Only Announcers"
-                />
-                {!onlyAnnouncers && (
+                {contentTypePrompt?.loading ? (
+                  <div className="text-xs text-gray-500 py-2">Loading content types...</div>
+                ) : contentTypePrompt?.contentTypes && contentTypePrompt.contentTypes.length > 0 ? (
                   <>
-                    <div className="border-t border-gray-200 mt-1 pt-1">
+                    <ToggleSwitch
+                      checked={selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]}
+                      onChange={(checked) => handleContentTypeToggle(contentTypePrompt.contentTypes[0], checked)}
+                      label={contentTypePrompt.contentTypes[0]}
+                    />
+                    <ToggleSwitch
+                      checked={selectedContentTypes.length === 0}
+                      onChange={handleAllContentTypesToggle}
+                      label="All"
+                    />
+                    {contentTypePrompt.contentTypes.slice(1).map((contentType) => (
                       <ToggleSwitch
-                        checked={selectedContentTypes.length === 0 && !onlyAnnouncers}
-                        onChange={handleAllContentTypesToggle}
-                        label="All"
+                        key={contentType}
+                        checked={selectedContentTypes.includes(contentType)}
+                        onChange={(checked) => handleContentTypeToggle(contentType, checked)}
+                        label={contentType}
                       />
-                      {contentTypePrompt?.loading ? (
-                        <div className="text-xs text-gray-500 py-2">Loading content types...</div>
-                      ) : contentTypePrompt?.contentTypes && contentTypePrompt.contentTypes.length > 0 ? (
-                        contentTypePrompt.contentTypes.map((contentType) => (
-                          <ToggleSwitch
-                            key={contentType}
-                            checked={selectedContentTypes.includes(contentType)}
-                            onChange={(checked) => handleContentTypeToggle(contentType, checked)}
-                            label={contentType}
-                          />
-                        ))
-                      ) : (
-                        <div className="text-xs text-gray-500 py-2">No content types available</div>
-                      )}
-                    </div>
+                    ))}
                   </>
+                ) : (
+                  <div className="text-xs text-gray-500 py-2">No content types available</div>
                 )}
               </div>
             </div>
@@ -1901,37 +1772,37 @@ const FilterPanelV2 = ({
                 )}
               </div>
 
-              {/* Only Announcers Section */}
+              {/* Content Type Section: first from API, then All, then rest */}
               <div className="border border-gray-300 rounded-lg p-4">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">Content Type</h4>
-                <ToggleSwitch
-                  checked={onlyAnnouncers}
-                  onChange={handleOnlyAnnouncersToggle}
-                  label="Only Announcers"
-                />
-                {!onlyAnnouncers && (
-                  <div className="mt-2 space-y-1 pl-4 border-t border-gray-200 pt-2 max-h-64 overflow-y-auto">
-                    <ToggleSwitch
-                      checked={selectedContentTypes.length === 0 && !onlyAnnouncers}
-                      onChange={handleAllContentTypesToggle}
-                      label="All"
-                    />
-                    {contentTypePrompt?.loading ? (
-                      <div className="text-xs text-gray-500 py-2">Loading content types...</div>
-                    ) : contentTypePrompt?.contentTypes?.length ? (
-                      contentTypePrompt.contentTypes.map((contentType) => (
+                <div className="mt-2 space-y-1 pl-4 border-t border-gray-200 pt-2 max-h-64 overflow-y-auto">
+                  {contentTypePrompt?.loading ? (
+                    <div className="text-xs text-gray-500 py-2">Loading content types...</div>
+                  ) : contentTypePrompt?.contentTypes?.length ? (
+                    <>
+                      <ToggleSwitch
+                        checked={selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]}
+                        onChange={(checked) => handleContentTypeToggle(contentTypePrompt.contentTypes[0], checked)}
+                        label={contentTypePrompt.contentTypes[0]}
+                      />
+                      <ToggleSwitch
+                        checked={selectedContentTypes.length === 0}
+                        onChange={handleAllContentTypesToggle}
+                        label="All"
+                      />
+                      {contentTypePrompt.contentTypes.slice(1).map((contentType) => (
                         <ToggleSwitch
                           key={contentType}
                           checked={selectedContentTypes.includes(contentType)}
                           onChange={(checked) => handleContentTypeToggle(contentType, checked)}
                           label={contentType}
                         />
-                      ))
-                    ) : (
-                      <div className="text-xs text-gray-500 py-2">No content types available</div>
-                    )}
-                  </div>
-                )}
+                      ))}
+                    </>
+                  ) : (
+                    <div className="text-xs text-gray-500 py-2">No content types available</div>
+                  )}
+                </div>
               </div>
             </div>
 

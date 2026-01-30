@@ -472,15 +472,10 @@ const AudioSegmentsPage = () => {
           statusParam = filtersToUse.status;
         }
 
-        // Determine content types based on V2 logic
-        // If onlyAnnouncers is true (default), use ['Announcer']
-        // Otherwise, use selected content types if any
-        let contentTypesToUse = [];
-        if (filtersToUse.onlyAnnouncers === true) {
-          contentTypesToUse = ['Announcer'];
-        } else if (filtersToUse.contentTypes && filtersToUse.contentTypes.length > 0) {
-          contentTypesToUse = filtersToUse.contentTypes;
-        }
+        // Use selected content types from filters (empty = no content_type filter)
+        const contentTypesToUse = (filtersToUse.contentTypes && filtersToUse.contentTypes.length > 0)
+          ? filtersToUse.contentTypes
+          : [];
 
         dispatch(fetchAudioSegmentsV2({
           channelId,
@@ -618,13 +613,9 @@ const AudioSegmentsPage = () => {
                 statusParam = filters.status;
               }
 
-              // Determine content types
-              let contentTypesToUse = [];
-              if (filters.onlyAnnouncers === true) {
-                contentTypesToUse = ['Announcer'];
-              } else if (filters.contentTypes && filters.contentTypes.length > 0) {
-                contentTypesToUse = filters.contentTypes;
-              }
+              const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0)
+                ? filters.contentTypes
+                : [];
 
               dispatch(fetchAudioSegmentsV2({
                 channelId,
@@ -659,13 +650,9 @@ const AudioSegmentsPage = () => {
     hasAutoSwitchedPage.current = false;
 
     // Auto-detect which API version to use based on filter state
-    // Use V2 API if any V2-specific filters are active:
-    // - contentTypes array has items
-    // - onlyAnnouncers is true
-    // - onlyActive is true (V2-specific toggle)
+    // Use V2 API if any V2-specific filters are active
     const hasV2Filters = (
       (filters.contentTypes && filters.contentTypes.length > 0) ||
-      filters.onlyAnnouncers === true ||
       filters.onlyActive === true
     );
 
@@ -722,19 +709,9 @@ const AudioSegmentsPage = () => {
           console.log('📊 Pagination: Using explicit status:', statusParam);
         }
 
-        // Determine content types based on V2 logic (matching FilterPanelV2)
-        // If onlyAnnouncers is true (default), use ['Announcer']
-        // Otherwise, use selected content types if any
-        let contentTypesToUse = [];
-        if (filters.onlyAnnouncers === true) {
-          contentTypesToUse = ['Announcer'];
-          console.log('📢 Pagination: Only Announcers is true - setting contentTypes to ["Announcer"]');
-        } else if (filters.contentTypes && filters.contentTypes.length > 0) {
-          contentTypesToUse = filters.contentTypes;
-          console.log('📋 Pagination: Using selected content types:', contentTypesToUse);
-        } else {
-          console.log('🌐 Pagination: No specific content types (All)');
-        }
+        const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0)
+          ? filters.contentTypes
+          : [];
 
         console.log('🚀 V2 API - Calling with contentTypes:', contentTypesToUse, 'status:', statusParam);
 
