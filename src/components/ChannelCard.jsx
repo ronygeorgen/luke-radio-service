@@ -72,7 +72,7 @@ const ChannelCard = ({ channel, onEdit }) => {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
         <div className="flex-1 min-w-0">
           <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 break-words">
-            {channel.name ? channel.name : (channel.channelType === 'podcast' ? 'Podcast Channel' : `Channel: ${channel.channelId}`)}
+            {channel.name || (channel.channelType === 'podcast' ? 'Podcast Channel' : channel.channelType === 'custom_audio' ? 'Custom Audio' : `Channel: ${channel.channelId}`)}
           </h3>
           {channel.channelType === 'podcast' ? (
             <>
