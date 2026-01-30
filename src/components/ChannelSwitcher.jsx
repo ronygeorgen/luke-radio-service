@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Radio, ChevronDown } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { fetchUserChannels, selectUserChannels } from '../store/slices/channelSlice';
 import SimpleChannelSelectionModal from '../pages/user/SimpleChannelSelectionModal';
 
-const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerText, headerBorder }) => {
+const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerText, headerBorder, showReportFolders = false }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const userChannels = useSelector(selectUserChannels);
   const [isModalOpen, setIsModalOpen] = useState(false);
   // Helper function to decode URL-encoded channel name
@@ -82,6 +84,11 @@ const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerTe
     }
   };
 
+  const handleFolderSelect = (folder, channel) => {
+    handleChannelSelect(channel);
+    navigate(`/reports/${folder.id}`);
+  };
+
   if (userChannels.length === 0) {
     return null; // Don't show switcher if no channels available
   }
@@ -108,6 +115,8 @@ const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerTe
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onChannelSelect={handleChannelSelect}
+        onFolderSelect={showReportFolders ? handleFolderSelect : undefined}
+        showReportFolders={showReportFolders}
         channels={userChannels}
         title="Switch Channel"
         description="Select a channel to switch to"

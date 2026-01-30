@@ -687,6 +687,7 @@ function DashboardV2() {
               {!reportFolderId && (
                 <ChannelSwitcher
                   onChannelChange={handleChannelChange}
+                  showReportFolders={true}
                   className={`flex items-center space-x-2 px-3 py-1.5 text-sm font-medium rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md ${currentSlideConfig.headerText === 'text-white'
                     ? 'text-gray-200 bg-gray-700/50 border-gray-600 hover:bg-gray-600 hover:border-gray-500'
                     : 'text-gray-700 bg-white/80 border-gray-300 hover:bg-white hover:border-gray-400'
