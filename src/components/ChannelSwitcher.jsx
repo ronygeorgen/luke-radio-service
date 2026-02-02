@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Radio, ChevronDown } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchUserChannels, selectUserChannels } from '../store/slices/channelSlice';
 import SimpleChannelSelectionModal from '../pages/user/SimpleChannelSelectionModal';
 
 const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerText, headerBorder, showReportFolders = false }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const userChannels = useSelector(selectUserChannels);
   const [isModalOpen, setIsModalOpen] = useState(false);
   // Helper function to decode URL-encoded channel name
@@ -86,8 +87,12 @@ const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerTe
 
   const handleFolderSelect = (folder, channel) => {
     handleChannelSelect(channel);
-    // Stay on Dashboard V2 and show dashboard for this report folder (API uses report_folder_id, not channel_id)
-    navigate(`/dashboard-v2?report_folder_id=${folder.id}`);
+    // Stay on Dashboard V2 and show dashboard for this report folder (API uses report_folder_id, not channel_id).
+    // Preserve hideUI so PDF/screenshot mode is not lost.
+    const hideUI = searchParams.get('hideUI');
+    const query = new URLSearchParams({ report_folder_id: folder.id });
+    if (hideUI === 'true') query.set('hideUI', 'true');
+    navigate(`/dashboard-v2?${query.toString()}`);
   };
 
   if (userChannels.length === 0) {

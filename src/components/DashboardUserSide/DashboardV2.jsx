@@ -136,7 +136,11 @@ function DashboardV2() {
   const { folders } = useSelector((state) => state.reports);
   const [searchParams] = useSearchParams();
   const reportFolderId = searchParams.get('report_folder_id');
-  
+  // When true (e.g. ?hideUI=true), hide header, nav arrows, and slide menu for clean screenshots/PDF.
+  // Read from both searchParams and window.location so hideUI is respected even with other params (e.g. report_folder_id).
+  const hideUIRaw = searchParams.get('hideUI') ?? (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('hideUI') : null);
+  const hideUI = String(hideUIRaw ?? '').toLowerCase() === 'true';
+
   // Get report folder name if reportFolderId is present
   const reportFolder = reportFolderId ? folders.find(f => f.id === parseInt(reportFolderId)) : null;
   const reportFolderName = reportFolder?.name || null;
@@ -650,7 +654,8 @@ function DashboardV2() {
 
   return (
     <div className={`min-h-screen bg-gradient-to-br ${currentSlideConfig.containerBg} transition-all duration-300`}>
-      {/* Navigation Header - Matching Other Headers */}
+      {/* Navigation Header - Matching Other Headers (hidden when hideUI=true) */}
+      {!hideUI && (
       <header className={`bg-gradient-to-r ${currentSlideConfig.headerBg} shadow-sm border-b ${currentSlideConfig.headerBorder} fixed top-0 left-0 right-0 z-40 ${reportFolderName ? 'h-20' : 'h-16'} transition-all duration-300`}>
         <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
           <div className="flex items-center justify-between h-full space-x-4">
@@ -890,9 +895,10 @@ function DashboardV2() {
           </div>
         </div>
       </header>
+      )}
 
       {/* Main Content */}
-      <div className={`${reportFolderName ? 'pt-20' : 'pt-16'} relative overflow-hidden`}>
+      <div className={`${hideUI ? 'pt-0' : reportFolderName ? 'pt-20' : 'pt-16'} relative overflow-hidden`}>
         <div
           ref={slideContentRef}
           className={`transition-all duration-150 ease-out ${isAnimating ? 'opacity-80 translate-y-1' : 'opacity-100 translate-y-0'
@@ -909,7 +915,9 @@ function DashboardV2() {
         </div>
       </div>
 
-      {/* Navigation Arrows */}
+      {/* Navigation Arrows (hidden when hideUI=true) */}
+      {!hideUI && (
+        <>
       <button
         onClick={handlePrev}
         disabled={currentSlide === 0}
@@ -933,9 +941,11 @@ function DashboardV2() {
       >
         <ChevronRight className={`w-6 h-6 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-300' : 'text-gray-700'} transition-colors duration-300`} />
       </button>
+        </>
+      )}
 
-      {/* Slide Navigation Menu (Bottom Right - Hideable) */}
-      {isNavMenuVisible && (
+      {/* Slide Navigation Menu (Bottom Right - Hideable, hidden when hideUI=true) */}
+      {!hideUI && isNavMenuVisible && (
         <div className={`fixed bottom-4 right-4 z-20 bg-gradient-to-br ${currentSlideConfig.headerBg} ${currentSlideConfig.headerBorder} rounded-lg shadow-lg border px-4 py-2 transition-all duration-300`}>
           <div className="flex items-center justify-between mb-2">
             <span className={`text-xs font-semibold ${currentSlideConfig.headerText} transition-colors duration-300`}>
@@ -1009,8 +1019,8 @@ function DashboardV2() {
         </div>
       )}
 
-      {/* Show Navigation Button (when hidden) */}
-      {!isNavMenuVisible && (
+      {/* Show Navigation Button (when hidden; also hidden when hideUI=true) */}
+      {!hideUI && !isNavMenuVisible && (
         <button
           onClick={() => setIsNavMenuVisible(true)}
           className={`fixed bottom-4 right-4 z-20 p-3 ${currentSlideConfig.headerText === 'text-white' ? 'bg-gray-700 hover:bg-gray-600' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-full shadow-lg transition-all duration-300`}
