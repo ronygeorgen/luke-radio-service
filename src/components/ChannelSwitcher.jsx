@@ -86,7 +86,8 @@ const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerTe
 
   const handleFolderSelect = (folder, channel) => {
     handleChannelSelect(channel);
-    navigate(`/reports/${folder.id}`);
+    // Stay on Dashboard V2 and show dashboard for this report folder (API uses report_folder_id, not channel_id)
+    navigate(`/dashboard-v2?report_folder_id=${folder.id}`);
   };
 
   if (userChannels.length === 0) {
