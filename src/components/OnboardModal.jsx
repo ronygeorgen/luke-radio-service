@@ -82,11 +82,6 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
       return;
     }
 
-    if (formData.channelType === 'custom_audio' && !name) {
-      alert('Please enter a name for the custom audio channel');
-      return;
-    }
-
     // Validation for new channels (all fields required)
     if (!formData.id) {
       if (formData.channelType === 'broadcast') {
@@ -111,7 +106,6 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
           return;
         }
       }
-      // custom_audio: only name and timezone required (timezone already validated above)
     } else {
       // Validation for editing - only validate editable fields
       if (formData.channelType === 'podcast') {
@@ -122,7 +116,7 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
           return;
         }
       }
-      // For broadcast / custom_audio, only name and timezone are editable (already validated above)
+      // For broadcast, only name and timezone are editable (already validated above)
     }
 
     setIsSubmitting(true);
@@ -150,7 +144,6 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
             payload.rssStartDate = `${dateStr}T${timeStr}:00`;
           }
         }
-        // custom_audio: payload already has name, timezone, channelType - no extra fields
       } else {
         // When editing, only include editable fields
         if (formData.channelType === 'podcast') {
@@ -168,7 +161,6 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
           payload.channelId = formData.channelId;
           payload.projectId = formData.projectId;
         }
-        // custom_audio: only name and timezone are editable (already in payload)
       }
       
       if (formData.id) {
@@ -213,8 +205,7 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
       channelType: newType,
       // Clear fields that don't apply to the new type
       ...(newType === 'broadcast' ? { rssUrl: '', rssStartDate: '', rssStartTime: '00:00' } : {}),
-      ...(newType === 'podcast' ? { channelId: '', projectId: '' } : {}),
-      ...(newType === 'custom_audio' ? { channelId: '', projectId: '', rssUrl: '', rssStartDate: '', rssStartTime: '00:00' } : {})
+      ...(newType === 'podcast' ? { channelId: '', projectId: '' } : {})
     }));
   };
 
@@ -461,10 +452,10 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
             </>
           )}
 
-          {/* Common fields: name required for custom_audio, optional for others */}
+          {/* Common fields */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Channel Name {formData.channelType === 'custom_audio' ? '*' : '(Optional)'}
+              Channel Name (Optional)
             </label>
             <input
               type="text"
@@ -474,7 +465,6 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter channel name"
-              required={formData.channelType === 'custom_audio'}
             />
           </div>
 
