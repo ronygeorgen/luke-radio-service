@@ -136,10 +136,24 @@ function DashboardV2() {
   const { folders } = useSelector((state) => state.reports);
   const [searchParams] = useSearchParams();
   const reportFolderId = searchParams.get('report_folder_id');
+  // Query params for initial filter: start_time, end_time (date or datetime), shift_id
+  const startTimeParam = searchParams.get('start_time');
+  const endTimeParam = searchParams.get('end_time');
+  const shiftIdParam = searchParams.get('shift_id');
   // When true (e.g. ?hideUI=true), hide header, nav arrows, and slide menu for clean screenshots/PDF.
   // Read from both searchParams and window.location so hideUI is respected even with other params (e.g. report_folder_id).
   const hideUIRaw = searchParams.get('hideUI') ?? (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('hideUI') : null);
   const hideUI = String(hideUIRaw ?? '').toLowerCase() === 'true';
+
+  // Helper: extract YYYY-MM-DD from a query param (accepts "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm:ss" etc.)
+  const parseDateFromParam = (param) => {
+    if (!param || typeof param !== 'string') return null;
+    const trimmed = param.trim();
+    if (!trimmed) return null;
+    const datePart = trimmed.split('T')[0];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return null;
+    return datePart;
+  };
 
   // Get report folder name if reportFolderId is present
   const reportFolder = reportFolderId ? folders.find(f => f.id === parseInt(reportFolderId)) : null;
@@ -167,6 +181,27 @@ function DashboardV2() {
 
   const [dateRange, setDateRange] = useState(getDefaultDateRange());
   const [currentShiftId, setCurrentShiftId] = useState('');
+
+  // Apply start_time, end_time, shift_id from query params on mount and when params change
+  useEffect(() => {
+    const startDate = parseDateFromParam(startTimeParam);
+    const endDate = parseDateFromParam(endTimeParam);
+    if (startDate && endDate) {
+      setDateRange((prev) => ({
+        ...prev,
+        start: startDate,
+        end: endDate,
+        selecting: false
+      }));
+    } else if (startDate) {
+      setDateRange((prev) => ({ ...prev, start: startDate, selecting: false }));
+    } else if (endDate) {
+      setDateRange((prev) => ({ ...prev, end: endDate, selecting: false }));
+    }
+    if (shiftIdParam != null && shiftIdParam !== '') {
+      setCurrentShiftId(String(shiftIdParam).trim());
+    }
+  }, [startTimeParam, endTimeParam, shiftIdParam]);
 
   // Helper function to decode URL-encoded channel name
   const decodeChannelName = (name) => {
