@@ -403,17 +403,15 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
                       }
                     });
 
-                    const revealWidth = (revealProgress / 100) * 400;
-
                     return (
                       <g>
-                        {/* Clip path for left-to-right reveal animation */}
+                        {/* Full chart visible immediately (no reveal animation) */}
                         <defs>
                           <clipPath id="chartReveal">
                             <rect
                               x="0"
                               y="0"
-                              width={revealWidth}
+                              width="400"
                               height="300"
                             />
                           </clipPath>
@@ -430,26 +428,18 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
                           </g>
                         ))}
 
-                        {/* Month labels - appear as wave passes */}
-                        {points.map((point, index) => {
-                          const labelProgress = ((point.x - 40) / 340) * 100;
-                          const isLabelVisible = revealProgress >= labelProgress;
-                          return (
-                            <text
-                              key={index}
-                              x={point.x}
-                              y="295"
-                              textAnchor="middle"
-                              className="text-xs fill-white"
-                              style={{
-                                opacity: isLabelVisible ? 1 : 0,
-                                transition: 'opacity 0.2s ease-out',
-                              }}
-                            >
-                              {point.month}
-                            </text>
-                          );
-                        })}
+                        {/* Month labels - visible immediately */}
+                        {points.map((point, index) => (
+                          <text
+                            key={index}
+                            x={point.x}
+                            y="295"
+                            textAnchor="middle"
+                            className="text-xs fill-white"
+                          >
+                            {point.month}
+                          </text>
+                        ))}
                       </g>
                     );
                   })()}
