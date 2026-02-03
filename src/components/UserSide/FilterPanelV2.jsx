@@ -1411,20 +1411,6 @@ const FilterPanelV2 = ({
             </div>
           )}
 
-          {/* Duration Filter */}
-          <div className="space-y-2">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Duration (seconds)</label>
-            <input
-              type="number"
-              value={localDuration}
-              onChange={(e) => setLocalDuration(e.target.value)}
-              placeholder="Enter duration in seconds"
-              min="0"
-              step="1"
-              className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
-            />
-          </div>
-
           {/* Action Buttons */}
           <div className="flex flex-col gap-2 pt-2">
             <div className="flex space-x-2">
@@ -1650,19 +1636,6 @@ const FilterPanelV2 = ({
                 value={localEndTime}
                 onChange={(e) => handleEndTimeChange(e.target.value)}
                 onKeyDown={preventKeyboardInput}
-                className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Duration (seconds)</label>
-              <input
-                type="number"
-                value={localDuration}
-                onChange={(e) => setLocalDuration(e.target.value)}
-                placeholder="Enter duration"
-                min="0"
-                step="1"
                 className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
@@ -1952,20 +1925,6 @@ const FilterPanelV2 = ({
                       {timeError}
                     </div>
                   )}
-                </div>
-
-                {/* Duration Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Duration (seconds)</label>
-                  <input
-                    type="number"
-                    value={localDuration}
-                    onChange={(e) => setLocalDuration(e.target.value)}
-                    placeholder="Enter duration in seconds"
-                    min="0"
-                    step="1"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  />
                 </div>
               </div>
             </div>
