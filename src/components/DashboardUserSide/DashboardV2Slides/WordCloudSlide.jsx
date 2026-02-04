@@ -10,6 +10,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [wordCounts, setWordCounts] = useState({});
+  const [isFullyLoaded, setIsFullyLoaded] = useState(false);
   const fetchTimeoutRef = useRef(null);
 
   // Vibrant color palette for words - better distribution
@@ -113,6 +114,16 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
       }
     };
   }, [dateRange?.start, dateRange?.end, currentShiftId, reportFolderId]);
+
+  // Mark slide as fully loaded (data + animations done) for PDF capture — backend waits for .dashboard-slide-ready
+  useEffect(() => {
+    if (loading || error || !isVisible) {
+      setIsFullyLoaded(false);
+      return;
+    }
+    const t = setTimeout(() => setIsFullyLoaded(true), 3000);
+    return () => clearTimeout(t);
+  }, [loading, error, isVisible]);
 
   // Organic cloud-like layout algorithm with dramatic size differences
   const layoutWords = useMemo(() => {
@@ -823,7 +834,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
 
   return (
     <div
-      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'} ${isFullyLoaded ? 'dashboard-slide-ready' : ''}`}
       data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
     >
       <div className="max-w-7xl mx-auto">

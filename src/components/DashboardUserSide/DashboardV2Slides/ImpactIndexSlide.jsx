@@ -7,6 +7,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [bucketData, setBucketData] = useState(null);
+  const [isFullyLoaded, setIsFullyLoaded] = useState(false);
 
   // Fetch bucket count data
   useEffect(() => {
@@ -73,6 +74,16 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
 
     fetchBucketData();
   }, [dateRange?.start, dateRange?.end, currentShiftId, reportFolderId]);
+
+  // Mark slide as fully loaded (data + animations done) for PDF capture — backend waits for .dashboard-slide-ready
+  useEffect(() => {
+    if (loading || error || !bucketData || !isVisible) {
+      setIsFullyLoaded(false);
+      return;
+    }
+    const t = setTimeout(() => setIsFullyLoaded(true), 3000);
+    return () => clearTimeout(t);
+  }, [loading, error, bucketData, isVisible]);
 
   // Get categories dynamically from API response
   const getCategories = () => {
@@ -254,7 +265,7 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
 
   return (
     <div
-      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'} ${isFullyLoaded ? 'dashboard-slide-ready' : ''}`}
       data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
     >
       <div className="max-w-7xl mx-auto">

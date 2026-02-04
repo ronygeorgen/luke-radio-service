@@ -12,6 +12,7 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
   const [blockingTopic, setBlockingTopic] = useState(null);
   const [modalPosition, setModalPosition] = useState({ top: 0, left: 0 });
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isFullyLoaded, setIsFullyLoaded] = useState(false);
 
   // Fetch top topics data
   useEffect(() => {
@@ -97,6 +98,16 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
 
     fetchTopTopics();
   }, [dateRange?.start, dateRange?.end, currentShiftId, showAllTopics, refreshKey, reportFolderId]);
+
+  // Mark slide as fully loaded (data + animations done) for PDF capture — backend waits for .dashboard-slide-ready
+  useEffect(() => {
+    if (loading || error || !isVisible) {
+      setIsFullyLoaded(false);
+      return;
+    }
+    const t = setTimeout(() => setIsFullyLoaded(true), 3000);
+    return () => clearTimeout(t);
+  }, [loading, error, isVisible]);
 
   const handleTopicClick = (topic, event) => {
     // Get the bounding rectangle of the clicked element
@@ -200,7 +211,7 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
 
   return (
     <div
-      className={`min-h-screen p-4 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      className={`min-h-screen p-4 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'} ${isFullyLoaded ? 'dashboard-slide-ready' : ''}`}
       data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
     >
       <div className="max-w-7xl mx-auto">

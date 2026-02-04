@@ -7,6 +7,7 @@ const SpiritualSlide = ({ dateRange = { start: null, end: null, selecting: false
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [categoryData, setCategoryData] = useState(null);
+  const [isFullyLoaded, setIsFullyLoaded] = useState(false);
 
   // Color palette for buckets
   const bucketColors = {
@@ -75,6 +76,16 @@ const SpiritualSlide = ({ dateRange = { start: null, end: null, selecting: false
 
     fetchCategoryData();
   }, [dateRange?.start, dateRange?.end, currentShiftId, reportFolderId]);
+
+  // Mark slide as fully loaded (data + animations done) for PDF capture — backend waits for .dashboard-slide-ready
+  useEffect(() => {
+    if (loading || error || !categoryData || !isVisible) {
+      setIsFullyLoaded(false);
+      return;
+    }
+    const t = setTimeout(() => setIsFullyLoaded(true), 3000);
+    return () => clearTimeout(t);
+  }, [loading, error, categoryData, isVisible]);
 
   // Process buckets data for display
   const processBucketsData = () => {
@@ -148,7 +159,7 @@ const SpiritualSlide = ({ dateRange = { start: null, end: null, selecting: false
 
   return (
     <div
-      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'} ${isFullyLoaded ? 'dashboard-slide-ready' : ''}`}
       data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
     >
       <div className="max-w-7xl mx-auto">

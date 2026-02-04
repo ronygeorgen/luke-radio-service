@@ -12,6 +12,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [summaryData, setSummaryData] = useState(null);
+  const [isFullyLoaded, setIsFullyLoaded] = useState(false);
 
 
   useEffect(() => {
@@ -94,6 +95,16 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
 
     fetchSummaryData();
   }, [dateRange?.start, dateRange?.end, currentShiftId, reportFolderId]);
+
+  // Mark slide as fully loaded (data + animations done) for PDF capture — backend waits for .dashboard-slide-ready
+  useEffect(() => {
+    if (loading || error || !summaryData || !isVisible) {
+      setIsFullyLoaded(false);
+      return;
+    }
+    const t = setTimeout(() => setIsFullyLoaded(true), 3000);
+    return () => clearTimeout(t);
+  }, [loading, error, summaryData, isVisible]);
 
   // Process sentiment data for chart display
   const processSentimentData = () => {
@@ -332,7 +343,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
 
   return (
     <div
-      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'} ${isFullyLoaded ? 'dashboard-slide-ready' : ''}`}
       data-loaded={!loading && !error && summaryData && isVisible ? 'true' : 'false'}
     >
       <div className="max-w-7xl mx-auto">

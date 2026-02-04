@@ -8,6 +8,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
   const [error, setError] = useState(null);
   const [showAllTopics, setShowAllTopics] = useState(false);
   const [shifts, setShifts] = useState([]);
+  const [isFullyLoaded, setIsFullyLoaded] = useState(false);
 
   // Fetch shifts and topics data
   useEffect(() => {
@@ -62,6 +63,16 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
 
     fetchData();
   }, [dateRange?.start, dateRange?.end, showAllTopics, reportFolderId]);
+
+  // Mark slide as fully loaded (data + animations done) for PDF capture — backend waits for .dashboard-slide-ready
+  useEffect(() => {
+    if (loading || error || !isVisible) {
+      setIsFullyLoaded(false);
+      return;
+    }
+    const t = setTimeout(() => setIsFullyLoaded(true), 3000);
+    return () => clearTimeout(t);
+  }, [loading, error, isVisible]);
 
   const handleToggleShowAllTopics = () => {
     setShowAllTopics(!showAllTopics);
@@ -137,7 +148,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
 
   return (
     <div
-      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'} ${isFullyLoaded ? 'dashboard-slide-ready' : ''}`}
       data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
     >
       <div className="max-w-7xl mx-auto">
