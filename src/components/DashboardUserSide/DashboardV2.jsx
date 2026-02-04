@@ -5,8 +5,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
 import { fetchReportFolders } from '../../store/slices/reportSlice';
 import { axiosInstance } from '../../services/api';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 import OverallSummarySlide from './DashboardV2Slides/OverallSummarySlide';
 import ImpactIndexSlide from './DashboardV2Slides/ImpactIndexSlide';
@@ -125,7 +123,6 @@ function DashboardV2() {
   const [isNavMenuVisible, setIsNavMenuVisible] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [pdfProgress, setPdfProgress] = useState(0); // 0 to 100
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const dropdownRef = useRef(null);
   const isNavigatingRef = useRef(false);
@@ -371,232 +368,65 @@ function DashboardV2() {
     }, SLIDE_TRANSITION_MS);
   };
 
-  // Handle PDF download - downloads all 8 slides
+  // Handle PDF download - backend generates the PDF
   const handleDownloadPDF = async () => {
+    if (!dateRange.start || !dateRange.end) {
+      alert('Please select a date range before downloading the PDF.');
+      return;
+    }
+    if (!channelId && !reportFolderId) {
+      alert('Please select a channel or report folder before downloading the PDF.');
+      return;
+    }
+
     try {
       setIsGeneratingPDF(true);
-      setPdfProgress(0);
 
-      // Store the original slide index
-      const originalSlide = currentSlide;
-
-      // Create PDF
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const pdfWidth = 210; // A4 width in mm
-      const pdfHeight = 297; // A4 height in mm
-
-      // Process each slide
-      for (let i = 0; i < slides.length; i++) {
-        // Update progress
-        setPdfProgress(Math.round(((i) / slides.length) * 100));
-
-        // Temporarily set the current slide
-        setCurrentSlide(i);
-
-        // Wait for React to render the slide component (longer initial wait)
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        if (!slideContentRef.current) {
-          // If still not ready, wait a bit more
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          if (!slideContentRef.current) {
-            continue;
-          }
-        }
-
-        const element = slideContentRef.current;
-        const slide = slides[i];
-
-        // Wait for the slide to be fully loaded by checking the data-loaded attribute
-        // This ensures all data is fetched and animations are complete
-        const waitForSlideToLoad = async () => {
-          const maxWaitTime = 25000; // Maximum 25 seconds wait
-          const checkInterval = 300; // Check every 300ms
-          const startTime = Date.now();
-
-          while (Date.now() - startTime < maxWaitTime) {
-            const slideElement = element.querySelector('[data-loaded]');
-            if (slideElement && slideElement.getAttribute('data-loaded') === 'true') {
-              // Slide is fully loaded, wait significantly longer for all animations to complete
-              console.log(`Slide ${i + 1} loaded, waiting for animations...`);
-              await new Promise(resolve => setTimeout(resolve, 3000));
-              return true;
-            }
-            await new Promise(resolve => setTimeout(resolve, checkInterval));
-          }
-          // Timeout reached, but continue anyway
-          console.warn(`Slide ${i + 1} timed out while waiting for data-loaded`);
-          return false;
-        };
-
-        const slideLoaded = await waitForSlideToLoad();
-
-        // Wait for SVG elements to be rendered (critical for charts)
-        const waitForSVGs = async () => {
-          const svgs = element.querySelectorAll('svg');
-          if (svgs.length > 0) {
-            console.log(`Slide ${i + 1} has ${svgs.length} SVG elements, waiting for rendering...`);
-            // Wait for SVG elements to have content
-            await new Promise(resolve => setTimeout(resolve, 2000));
-          }
-        };
-
-        await waitForSVGs();
-
-        // Wait for all images to load
-        const images = element.querySelectorAll('img');
-        const imagePromises = Array.from(images).map(img => {
-          if (img.complete) return Promise.resolve();
-          return new Promise((resolve) => {
-            img.onload = resolve;
-            img.onerror = resolve;
-            setTimeout(resolve, 3000); // Increased timeout
-          });
-        });
-
-        await Promise.all(imagePromises);
-
-        // Additional substantial wait for final rendering, paint, and any CSS animations
-        console.log(`Slide ${i + 1} waiting for final paint...`);
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Use the same onclone function
-        const onclone = (clonedDoc) => {
-          // Disable all animations and transitions in the cloned document
-          const style = clonedDoc.createElement('style');
-          style.innerHTML = `
-            * {
-              transition: none !important;
-              animation: none !important;
-              transform-style: flat !important;
-            }
-          `;
-          clonedDoc.head.appendChild(style);
-
-          // Helper to recursively copy computed styles
-          const copyComputedStyles = (source, target) => {
-            const computed = window.getComputedStyle(source);
-
-            // Critical layout properties - copy exact pixel values
-            target.style.width = computed.width;
-            target.style.height = computed.height;
-            target.style.display = computed.display;
-            target.style.position = computed.position;
-            target.style.left = computed.left;
-            target.style.top = computed.top;
-            target.style.margin = computed.margin;
-            target.style.padding = computed.padding;
-
-            if (computed.display === 'flex' || computed.display === 'inline-flex') {
-              target.style.flexDirection = computed.flexDirection;
-              target.style.alignItems = computed.alignItems;
-              target.style.justifyContent = computed.justifyContent;
-              target.style.flexWrap = computed.flexWrap;
-              target.style.gap = computed.gap;
-            }
-
-            if (computed.display === 'grid' || computed.display === 'inline-grid') {
-              target.style.gridTemplateColumns = computed.gridTemplateColumns;
-              target.style.gridTemplateRows = computed.gridTemplateRows;
-              target.style.gap = computed.gap;
-            }
-
-            // Flex child properties
-            if (computed.flexGrow !== '0' || computed.flexShrink !== '1' || computed.flexBasis !== 'auto') {
-              target.style.flex = computed.flex;
-            }
-
-            // Handle SVGs specifically
-            if (source.tagName === 'SVG') {
-              target.setAttribute('width', computed.width);
-              target.setAttribute('height', computed.height);
-              target.style.width = computed.width;
-              target.style.height = computed.height;
-            }
-
-            // Recursively process children
-            // We iterate by index, assuming the DOM structure is identical
-            for (let i = 0; i < source.children.length; i++) {
-              if (target.children[i]) {
-                copyComputedStyles(source.children[i], target.children[i]);
-              }
-            }
-          };
-
-          // Start copying styles from the root captured element
-          // element is the original React ref element
-          // In the cloned doc, the body usually contains the cloned element as the first child
-          if (element && clonedDoc.body.children[0]) {
-            copyComputedStyles(element, clonedDoc.body.children[0]);
-          }
-        };
-
-        // Capture the slide
-        const canvas = await html2canvas(element, {
-          scale: 3, // Increased scale for better quality
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#1f2937', // Ensure dark background
-          width: element.scrollWidth,
-          height: element.scrollHeight,
-          windowWidth: 1600, // Simulate desktop width
-          windowHeight: 1200, // Simulate desktop height
-          allowTaint: false,
-          letterRendering: true,
-          imageTimeout: 15000, // 15 seconds
-          onclone: onclone
-        });
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.98);
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-        const imgAspectRatio = imgWidth / imgHeight;
-        const pdfAspectRatio = pdfWidth / pdfHeight;
-
-        let finalWidth, finalHeight;
-        if (imgAspectRatio > pdfAspectRatio) {
-          finalWidth = pdfWidth;
-          finalHeight = pdfWidth / imgAspectRatio;
-        } else {
-          finalHeight = pdfHeight;
-          finalWidth = pdfHeight * imgAspectRatio;
-        }
-
-        // Add new page if not the first slide
-        if (i > 0) {
-          pdf.addPage();
-        }
-
-        // Add slide title at the top
-        pdf.setFontSize(16);
-        pdf.text(slide.title, pdfWidth / 2, 15, { align: 'center' });
-
-        // Add the slide image
-        pdf.addImage(imgData, 'JPEG', (pdfWidth - finalWidth) / 2, 20, finalWidth, finalHeight);
+      const body = {
+        channelId: channelId || reportFolderId,
+        channelName: channelName || reportFolderName || 'Dashboard',
+        start_time: dateRange.start,
+        end_time: dateRange.end
+      };
+      if (currentShiftId) {
+        body.shift_id = parseInt(currentShiftId, 10);
       }
 
-      // Restore the original slide
-      setCurrentSlide(originalSlide);
-      setPdfProgress(100);
+      const response = await axiosInstance.post('/download_pdf/dashboard', body, {
+        responseType: 'blob',
+        headers: { 'Content-Type': 'application/json' }
+      });
 
-      // Save PDF
-      pdf.save(`Dashboard-V2-All-Slides-${new Date().toISOString().split('T')[0]}.pdf`);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = `dashboard-${dateRange.start}-${dateRange.end}.pdf`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
 
-      // Small delay before closing the overlay
-      setTimeout(() => {
-        setIsGeneratingPDF(false);
-        setPdfProgress(0);
-      }, 1000);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
       setIsGeneratingPDF(false);
-      setPdfProgress(0);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      let message = 'Failed to download PDF. Please try again.';
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const json = JSON.parse(text);
+          message = json.detail || json.message || message;
+        } catch {
+          message = 'The server could not generate the PDF. Please try again.';
+        }
+      } else if (error.response?.data?.detail) {
+        message = error.response.data.detail;
+      } else if (error.message) {
+        message = error.message;
+      }
+      alert(message);
+      setIsGeneratingPDF(false);
     }
   };
 
@@ -1068,17 +898,19 @@ function DashboardV2() {
       {/* PDF Generation Overlay */}
       {isGeneratingPDF && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-white p-8 rounded-xl shadow-2xl flex flex-col items-center max-w-sm w-full">
+          <div className="bg-white p-8 rounded-xl shadow-2xl flex flex-col items-center max-w-md w-full mx-4">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mb-4"></div>
             <h3 className="text-xl font-bold text-gray-800 mb-2">Generating PDF Report</h3>
-            <p className="text-gray-600 mb-4 text-center">Processing slides... Please wait.</p>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-              <div
-                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${pdfProgress}%` }}
-              ></div>
+            <p className="text-gray-600 mb-2 text-center">
+              Your dashboard PDF is being generated on the server. This may take 1–2 minutes depending on the date range and number of slides.
+            </p>
+            <p className="text-gray-500 text-sm text-center mb-4">
+              Please don&apos;t close this page. You&apos;ll see a download when it&apos;s ready.
+            </p>
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div className="bg-blue-600 h-2 rounded-full animate-pulse w-full" />
             </div>
-            <p className="mt-2 text-sm text-gray-500 font-medium">{pdfProgress}% Complete</p>
+            <p className="mt-3 text-xs text-gray-400">Processing…</p>
           </div>
         </div>
       )}
