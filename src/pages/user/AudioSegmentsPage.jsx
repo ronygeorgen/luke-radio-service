@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Filter as FilterIcon, ArrowLeftRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Filter as FilterIcon } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { fetchAudioSegments, fetchAudioSegmentsV2, setCurrentPlaying, setIsPlaying, setFilter, clearError } from '../../store/slices/audioSegmentsSlice';
+import { fetchAudioSegmentsV2, setCurrentPlaying, setIsPlaying, setFilter, clearError } from '../../store/slices/audioSegmentsSlice';
 import Header from '../../components/UserSide/Header';
-import FilterPanel from '../../components/UserSide/FilterPanel';
 import FilterPanelV2 from '../../components/UserSide/FilterPanelV2';
 import SegmentCard from '../../components/UserSide/SegmentCard';
 import SegmentShimmer from '../../components/UserSide/SegmentShimmer';
@@ -69,30 +68,6 @@ const AudioSegmentsPage = () => {
   const [showConversionConfirm, setShowConversionConfirm] = useState(false);
   const [pendingConversion, setPendingConversion] = useState(null); // 'activeToInactive' or 'inactiveToActive'
 
-  // Filter version state - persist in localStorage
-  // Load from localStorage on mount, then auto-detect from Redux filters in useEffect
-  const getInitialFilterVersion = () => {
-    // Check localStorage for saved version
-    const stored = localStorage.getItem('filterVersion');
-    if (stored === 'v1' || stored === 'v2') {
-      console.log('📂 Loaded filterVersion from localStorage:', stored);
-      return stored;
-    }
-
-    // Default to v1
-    console.log('📂 No saved filterVersion, defaulting to v1');
-    return 'v1';
-  };
-
-  const [filterVersion, setFilterVersion] = useState(getInitialFilterVersion);
-
-  // Persist filterVersion to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('filterVersion', filterVersion);
-    console.log('💾 Saved filterVersion to localStorage:', filterVersion);
-  }, [filterVersion]);
-
-
   const handleTrimClick = (segment) => {
     dispatch(openTrimmer(segment));
   };
@@ -136,46 +111,6 @@ const AudioSegmentsPage = () => {
     pagination,
     availablePages
   } = useSelector((state) => state.audioSegments);
-
-  // Track if user has manually changed filter version (to prevent auto-switch)
-  const hasManuallyChangedVersion = useRef(false);
-  // Track if we've done the initial auto-switch check
-  const hasDoneInitialAutoSwitch = useRef(false);
-
-  // Auto-switch to V2 when V2-specific filters are applied (only once on initial load)
-  useEffect(() => {
-    // Don't auto-switch if user has manually changed the version
-    if (hasManuallyChangedVersion.current) {
-      return;
-    }
-
-    // Only do auto-switch check once after initial filters are set
-    if (hasDoneInitialAutoSwitch.current) {
-      return;
-    }
-
-    // Wait for initial filters to be set
-    if (!hasInitialFiltersSet.current) {
-      return;
-    }
-
-    const hasV2Filters = (
-      (filters.contentTypes && filters.contentTypes.length > 0) ||
-      filters.onlyAnnouncers === true ||
-      filters.onlyActive === true
-    );
-
-    // Only auto-switch to V2 once on initial load when V2 filters are detected
-    if (hasV2Filters && filterVersion === 'v1') {
-      console.log('🔄 Auto-switching filterVersion to V2 due to V2 filters being applied (initial load only)');
-      setFilterVersion('v2');
-      hasDoneInitialAutoSwitch.current = true;
-    } else {
-      // Mark as done even if we don't switch, so we don't check again
-      hasDoneInitialAutoSwitch.current = true;
-    }
-  }, [filters.contentTypes, filters.onlyAnnouncers, filters.onlyActive, filterVersion]);
-
 
   // Track the current channel ID from localStorage to detect changes
   // This ensures we always use the most up-to-date channel ID, even when switching channels
@@ -221,28 +156,39 @@ const AudioSegmentsPage = () => {
         // Navigate to new URL with updated channel ID, preserving all query params
         navigate(`/channels/${newChannelId}/segments?${newParams.toString()}`, { replace: true });
 
-        // Refetch audio segments with current filters
         const filtersToUse = filters;
         if ((filtersToUse.startDate && filtersToUse.endDate) || filtersToUse.date) {
-          dispatch(fetchAudioSegments({
-            channelId: newChannelId,
-            date: filtersToUse.date,
-            startDate: filtersToUse.startDate,
-            endDate: filtersToUse.endDate,
-            startTime: filtersToUse.startTime,
-            endTime: filtersToUse.endTime,
-            daypart: filtersToUse.daypart,
-            searchText: filtersToUse.searchText,
-            searchIn: filtersToUse.searchIn,
-            shiftId: filtersToUse.shiftId,
-            predefinedFilterId: filtersToUse.predefinedFilterId,
-            duration: filtersToUse.duration,
-            showFlaggedOnly: filtersToUse.showFlaggedOnly || false,
-            status: filtersToUse.status,
-            recognition_status: filtersToUse.recognition_status,
-            has_content: filtersToUse.has_content,
-            page: 1
-          }));
+          let startDatetime = null;
+          let endDatetime = null;
+          if (filtersToUse.startDate && filtersToUse.endDate) {
+            const startTime = filtersToUse.startTime || '00:00:00';
+            const endTime = filtersToUse.endTime || '23:59:59';
+            startDatetime = convertLocalToUTC(filtersToUse.startDate, startTime);
+            endDatetime = convertLocalToUTC(filtersToUse.endDate, endTime);
+          } else if (filtersToUse.date) {
+            const startTime = filtersToUse.startTime || '00:00:00';
+            const endTime = filtersToUse.endTime || '23:59:59';
+            startDatetime = convertLocalToUTC(filtersToUse.date, startTime);
+            endDatetime = convertLocalToUTC(filtersToUse.date, endTime);
+          }
+          if (startDatetime && endDatetime) {
+            let statusParam = null;
+            if (filtersToUse.onlyActive === true) statusParam = 'active';
+            else if (filtersToUse.status === 'active' || filtersToUse.status === 'inactive') statusParam = filtersToUse.status;
+            const contentTypesToUse = (filtersToUse.contentTypes && filtersToUse.contentTypes.length > 0) ? filtersToUse.contentTypes : [];
+            dispatch(fetchAudioSegmentsV2({
+              channelId: newChannelId,
+              startDatetime,
+              endDatetime,
+              page: 1,
+              shiftId: filtersToUse.shiftId || null,
+              predefinedFilterId: filtersToUse.predefinedFilterId || null,
+              contentTypes: contentTypesToUse,
+              status: statusParam,
+              searchText: filtersToUse.searchText || null,
+              searchIn: filtersToUse.searchIn || null
+            }));
+          }
         }
       }
     };
@@ -331,60 +277,36 @@ const AudioSegmentsPage = () => {
       // Set hasInitialFiltersSet to true after initial setup
       hasInitialFiltersSet.current = true;
 
-      // Check if we should use V2 API based on filterVersion or default V2 filters
-      const shouldUseV2 = filterVersion === 'v2' || defaultV2Filters.onlyActive === true || defaultV2Filters.onlyAnnouncers === true;
+      // Use V2 API with default filter values
+      const startDatetime = convertLocalToUTC(today, '00:00:00');
+      const endDatetime = convertLocalToUTC(today, '23:59:59');
 
-      if (shouldUseV2) {
-        // Use V2 API with default filter values
-        const startDatetime = convertLocalToUTC(today, '00:00:00');
-        const endDatetime = convertLocalToUTC(today, '23:59:59');
-
-        // Determine status parameter - use 'active' if onlyActive is true (default)
-        let statusParam = null;
-        if (defaultV2Filters.onlyActive === true) {
-          statusParam = 'active';
-        } else if (filters.status === 'active' || filters.status === 'inactive') {
-          statusParam = filters.status;
-        }
-
-        // Determine content types - use ['Announcer'] if onlyAnnouncers is true (default)
-        let contentTypesToUse = [];
-        if (defaultV2Filters.onlyAnnouncers === true) {
-          contentTypesToUse = ['Announcer'];
-        } else if (filters.contentTypes && filters.contentTypes.length > 0) {
-          contentTypesToUse = filters.contentTypes;
-        }
-
-        dispatch(fetchAudioSegmentsV2({
-          channelId,
-          startDatetime,
-          endDatetime,
-          page: 1,
-          shiftId: null,
-          predefinedFilterId: null,
-          contentTypes: contentTypesToUse,
-          status: statusParam,
-          searchText: null,
-          searchIn: null
-        }));
-      } else {
-        // Use V1 API
-        dispatch(fetchAudioSegments({
-          channelId,
-          date: today,
-          startTime: '00:00:00',
-          endTime: '23:59:59',
-          daypart: 'none',
-          shiftId: null,
-          predefinedFilterId: null,
-          duration: null,
-          showFlaggedOnly: false,
-          status: filters.status,
-          recognition_status: filters.recognition_status,
-          has_content: filters.has_content,
-          page: 1
-        }));
+      let statusParam = null;
+      if (defaultV2Filters.onlyActive === true) {
+        statusParam = 'active';
+      } else if (filters.status === 'active' || filters.status === 'inactive') {
+        statusParam = filters.status;
       }
+
+      let contentTypesToUse = [];
+      if (defaultV2Filters.onlyAnnouncers === true) {
+        contentTypesToUse = ['Announcer'];
+      } else if (filters.contentTypes && filters.contentTypes.length > 0) {
+        contentTypesToUse = filters.contentTypes;
+      }
+
+      dispatch(fetchAudioSegmentsV2({
+        channelId,
+        startDatetime,
+        endDatetime,
+        page: 1,
+        shiftId: null,
+        predefinedFilterId: null,
+        contentTypes: contentTypesToUse,
+        status: statusParam,
+        searchText: null,
+        searchIn: null
+      }));
     }
   }, [channelId]);
 
@@ -417,79 +339,46 @@ const AudioSegmentsPage = () => {
   const handleFilterChange = (newFilters = null) => {
     const filtersToUse = newFilters || filters;
 
-    // Reset auto-switch flag when filters change
     hasAutoSwitchedPage.current = false;
 
-    // Only call V1 API if we're in V1 mode
-    if (filterVersion === 'v1' && ((filtersToUse.startDate && filtersToUse.endDate) || filtersToUse.date)) {
-      console.log('Making V1 API call with filters:', filtersToUse);
+    let startDatetime = null;
+    let endDatetime = null;
+    if (filtersToUse.startDate && filtersToUse.endDate) {
+      const startTime = filtersToUse.startTime || '00:00:00';
+      const endTime = filtersToUse.endTime || '23:59:59';
+      startDatetime = convertLocalToUTC(filtersToUse.startDate, startTime);
+      endDatetime = convertLocalToUTC(filtersToUse.endDate, endTime);
+    } else if (filtersToUse.date) {
+      const startTime = filtersToUse.startTime || '00:00:00';
+      const endTime = filtersToUse.endTime || '23:59:59';
+      startDatetime = convertLocalToUTC(filtersToUse.date, startTime);
+      endDatetime = convertLocalToUTC(filtersToUse.date, endTime);
+    }
 
-      dispatch(fetchAudioSegments({
+    if (startDatetime && endDatetime) {
+      let statusParam = null;
+      if (filtersToUse.onlyActive === true) {
+        statusParam = 'active';
+      } else if (filtersToUse.status === 'active' || filtersToUse.status === 'inactive') {
+        statusParam = filtersToUse.status;
+      }
+
+      const contentTypesToUse = (filtersToUse.contentTypes && filtersToUse.contentTypes.length > 0)
+        ? filtersToUse.contentTypes
+        : [];
+
+      dispatch(fetchAudioSegmentsV2({
         channelId,
-        date: filtersToUse.date,
-        startDate: filtersToUse.startDate,
-        endDate: filtersToUse.endDate,
-        startTime: filtersToUse.startTime,
-        endTime: filtersToUse.endTime,
-        daypart: filtersToUse.daypart,
-        searchText: filtersToUse.searchText,
-        searchIn: filtersToUse.searchIn,
-        shiftId: filtersToUse.shiftId,
-        predefinedFilterId: filtersToUse.predefinedFilterId,
-        duration: filtersToUse.duration,
-        showFlaggedOnly: filtersToUse.showFlaggedOnly || false,
-        status: filtersToUse.status,
-        recognition_status: filtersToUse.recognition_status,
-        has_content: filtersToUse.has_content,
-        page: 1
+        startDatetime,
+        endDatetime,
+        page: 1,
+        shiftId: filtersToUse.shiftId || null,
+        predefinedFilterId: filtersToUse.predefinedFilterId || null,
+        contentTypes: contentTypesToUse,
+        status: statusParam,
+        searchText: filtersToUse.searchText || null,
+        searchIn: filtersToUse.searchIn || null
       }));
-    } else if (filterVersion === 'v2') {
-      // Handle V2 API calls
-      console.log('Making V2 API call with filters:', filtersToUse);
-
-      let startDatetime = null;
-      let endDatetime = null;
-      if (filtersToUse.startDate && filtersToUse.endDate) {
-        const startTime = filtersToUse.startTime || '00:00:00';
-        const endTime = filtersToUse.endTime || '23:59:59';
-        startDatetime = convertLocalToUTC(filtersToUse.startDate, startTime);
-        endDatetime = convertLocalToUTC(filtersToUse.endDate, endTime);
-      } else if (filtersToUse.date) {
-        const startTime = filtersToUse.startTime || '00:00:00';
-        const endTime = filtersToUse.endTime || '23:59:59';
-        startDatetime = convertLocalToUTC(filtersToUse.date, startTime);
-        endDatetime = convertLocalToUTC(filtersToUse.date, endTime);
-      }
-
-      if (startDatetime && endDatetime) {
-        // Determine status parameter
-        // If onlyActive is true (default), use 'active' status
-        // Otherwise, use the explicit status if set
-        let statusParam = null;
-        if (filtersToUse.onlyActive === true) {
-          statusParam = 'active';
-        } else if (filtersToUse.status === 'active' || filtersToUse.status === 'inactive') {
-          statusParam = filtersToUse.status;
-        }
-
-        // Use selected content types from filters (empty = no content_type filter)
-        const contentTypesToUse = (filtersToUse.contentTypes && filtersToUse.contentTypes.length > 0)
-          ? filtersToUse.contentTypes
-          : [];
-
-        dispatch(fetchAudioSegmentsV2({
-          channelId,
-          startDatetime,
-          endDatetime,
-          page: 1, // Always reset to page 1 for new filters
-          shiftId: filtersToUse.shiftId || null,
-          predefinedFilterId: filtersToUse.predefinedFilterId || null,
-          contentTypes: contentTypesToUse,
-          status: statusParam,
-          searchText: filtersToUse.searchText || null,
-          searchIn: filtersToUse.searchIn || null
-        }));
-      }
     }
   };
 
@@ -506,36 +395,6 @@ const AudioSegmentsPage = () => {
     setLocalSearchText(filters.searchText || '');
     setLocalSearchIn(filters.searchIn || 'transcription');
   }, [filters]);
-
-  // Add this useEffect for search-specific changes - only for V1
-  useEffect(() => {
-    if (hasInitialFiltersSet.current && filterVersion === 'v1' && (filters.searchText || (filters.searchIn && filters.searchIn !== 'transcription'))) {
-      console.log('Search filter changed:', {
-        searchText: filters.searchText,
-        searchIn: filters.searchIn
-      });
-
-      dispatch(fetchAudioSegments({
-        channelId,
-        date: filters.date,
-        startDate: filters.startDate,
-        endDate: filters.endDate,
-        startTime: filters.startTime,
-        endTime: filters.endTime,
-        daypart: filters.daypart,
-        searchText: filters.searchText,
-        searchIn: filters.searchIn,
-        shiftId: filters.shiftId,
-        predefinedFilterId: filters.predefinedFilterId,
-        duration: filters.duration,
-        showFlaggedOnly: filters.showFlaggedOnly || false,
-        status: filters.status,
-        recognition_status: filters.recognition_status,
-        has_content: filters.has_content,
-        page: 1
-      }));
-    }
-  }, [filters.searchText, filters.searchIn, channelId, filterVersion]);
 
   // Auto-switch to a page with data if current page has no segments - works for both V1 and V2
   useEffect(() => {
@@ -560,245 +419,132 @@ const AudioSegmentsPage = () => {
 
           hasAutoSwitchedPage.current = true;
 
-          // Determine which API to use based on filter version or V2 filters
-          const hasV2Filters = (
-            (filters.contentTypes && filters.contentTypes.length > 0) ||
-            filters.onlyAnnouncers === true ||
-            filters.onlyActive === true
-          );
-          const apiVersionToUse = hasV2Filters ? 'v2' : filterVersion;
+          let startDatetime = null;
+          let endDatetime = null;
+          if (filters.startDate && filters.endDate) {
+            const startTime = filters.startTime || '00:00:00';
+            const endTime = filters.endTime || '23:59:59';
+            startDatetime = convertLocalToUTC(filters.startDate, startTime);
+            endDatetime = convertLocalToUTC(filters.endDate, endTime);
+          } else if (filters.date) {
+            const startTime = filters.startTime || '00:00:00';
+            const endTime = filters.endTime || '23:59:59';
+            startDatetime = convertLocalToUTC(filters.date, startTime);
+            endDatetime = convertLocalToUTC(filters.date, endTime);
+          }
 
-          if (apiVersionToUse === 'v1') {
-            dispatch(fetchAudioSegments({
+          if (startDatetime && endDatetime) {
+            let statusParam = null;
+            if (filters.onlyActive === true) {
+              statusParam = 'active';
+            } else if (filters.status === 'active' || filters.status === 'inactive') {
+              statusParam = filters.status;
+            }
+
+            const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0)
+              ? filters.contentTypes
+              : [];
+
+            dispatch(fetchAudioSegmentsV2({
               channelId,
-              date: filters.date,
-              startDate: filters.startDate,
-              endDate: filters.endDate,
-              startTime: filters.startTime,
-              endTime: filters.endTime,
-              daypart: filters.daypart,
-              searchText: filters.searchText,
-              searchIn: filters.searchIn,
-              shiftId: filters.shiftId,
-              predefinedFilterId: filters.predefinedFilterId,
-              duration: filters.duration,
-              showFlaggedOnly: filters.showFlaggedOnly || false,
-              status: filters.status,
-              recognition_status: filters.recognition_status,
-              has_content: filters.has_content,
-              page: firstPageWithData
+              startDatetime,
+              endDatetime,
+              page: firstPageWithData,
+              shiftId: filters.shiftId || null,
+              predefinedFilterId: filters.predefinedFilterId || null,
+              contentTypes: contentTypesToUse,
+              status: statusParam,
+              searchText: filters.searchText || null,
+              searchIn: filters.searchIn || null
             }));
-          } else {
-            // V2 API
-            let startDatetime = null;
-            let endDatetime = null;
-            if (filters.startDate && filters.endDate) {
-              const startTime = filters.startTime || '00:00:00';
-              const endTime = filters.endTime || '23:59:59';
-              startDatetime = convertLocalToUTC(filters.startDate, startTime);
-              endDatetime = convertLocalToUTC(filters.endDate, endTime);
-            } else if (filters.date) {
-              const startTime = filters.startTime || '00:00:00';
-              const endTime = filters.endTime || '23:59:59';
-              startDatetime = convertLocalToUTC(filters.date, startTime);
-              endDatetime = convertLocalToUTC(filters.date, endTime);
-            }
-
-            if (startDatetime && endDatetime) {
-              // Determine status parameter
-              let statusParam = null;
-              if (filters.onlyActive === true) {
-                statusParam = 'active';
-              } else if (filters.status === 'active' || filters.status === 'inactive') {
-                statusParam = filters.status;
-              }
-
-              const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0)
-                ? filters.contentTypes
-                : [];
-
-              dispatch(fetchAudioSegmentsV2({
-                channelId,
-                startDatetime,
-                endDatetime,
-                page: firstPageWithData,
-                shiftId: filters.shiftId || null,
-                predefinedFilterId: filters.predefinedFilterId || null,
-                contentTypes: contentTypesToUse,
-                status: statusParam,
-                searchText: filters.searchText || null,
-                searchIn: filters.searchIn || null
-              }));
-            }
           }
         }
       }
     } else if (segments.length > 0) {
-      // Reset the flag when we have segments
       hasAutoSwitchedPage.current = false;
     }
-  }, [segments.length, pagination, currentPage, loading, channelId, filters, dispatch, filterVersion]);
+  }, [segments.length, pagination, currentPage, loading, channelId, filters, dispatch]);
 
   const handlePageChange = (pageNumber) => {
-    console.log('📄 Page change requested to:', pageNumber);
-    console.log('🔍 Current filters state:', filters);
-    console.log('🎯 filters.contentTypes:', filters.contentTypes);
-    console.log('🎯 filters.status:', filters.status);
-    console.log('🎯 filterVersion:', filterVersion);
-
-    // Reset auto-switch flag when user manually changes page
     hasAutoSwitchedPage.current = false;
 
-    // Auto-detect which API version to use based on filter state
-    // Use V2 API if any V2-specific filters are active
-    const hasV2Filters = (
-      (filters.contentTypes && filters.contentTypes.length > 0) ||
-      filters.onlyActive === true
-    );
+    let startDatetime = null;
+    let endDatetime = null;
+    if (filters.startDate && filters.endDate) {
+      const startTime = filters.startTime || '00:00:00';
+      const endTime = filters.endTime || '23:59:59';
+      startDatetime = convertLocalToUTC(filters.startDate, startTime);
+      endDatetime = convertLocalToUTC(filters.endDate, endTime);
+    } else if (filters.date) {
+      const startTime = filters.startTime || '00:00:00';
+      const endTime = filters.endTime || '23:59:59';
+      startDatetime = convertLocalToUTC(filters.date, startTime);
+      endDatetime = convertLocalToUTC(filters.date, endTime);
+    }
+    if (startDatetime && endDatetime) {
+      let statusParam = null;
+      if (filters.onlyActive === true) {
+        statusParam = 'active';
+      } else if (filters.status === 'active' || filters.status === 'inactive') {
+        statusParam = filters.status;
+      }
 
-    const apiVersionToUse = hasV2Filters ? 'v2' : filterVersion;
-    console.log('🔧 Auto-detected API version:', apiVersionToUse, '(hasV2Filters:', hasV2Filters, ')');
+      const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0)
+        ? filters.contentTypes
+        : [];
 
-    // Use the appropriate API based on filter version or auto-detection
-    if (apiVersionToUse === 'v1') {
-      // Use the unified fetchAudioSegments with page parameter
-      dispatch(fetchAudioSegments({
+      dispatch(fetchAudioSegmentsV2({
         channelId,
-        date: filters.date,
-        startDate: filters.startDate,
-        endDate: filters.endDate,
-        startTime: filters.startTime,
-        endTime: filters.endTime,
-        daypart: filters.daypart,
-        searchText: filters.searchText,
-        searchIn: filters.searchIn,
-        shiftId: filters.shiftId,
-        predefinedFilterId: filters.predefinedFilterId,
-        duration: filters.duration,
-        showFlaggedOnly: filters.showFlaggedOnly || false,
-        status: filters.status,
-        recognition_status: filters.recognition_status,
-        has_content: filters.has_content,
-        page: pageNumber
+        startDatetime,
+        endDatetime,
+        page: pageNumber,
+        shiftId: filters.shiftId || null,
+        predefinedFilterId: filters.predefinedFilterId || null,
+        contentTypes: contentTypesToUse,
+        status: statusParam,
+        searchText: filters.searchText || null,
+        searchIn: filters.searchIn || null
       }));
-    } else {
-      // V2 API
-      let startDatetime = null;
-      let endDatetime = null;
-      if (filters.startDate && filters.endDate) {
-        const startTime = filters.startTime || '00:00:00';
-        const endTime = filters.endTime || '23:59:59';
-        startDatetime = convertLocalToUTC(filters.startDate, startTime);
-        endDatetime = convertLocalToUTC(filters.endDate, endTime);
-      } else if (filters.date) {
-        const startTime = filters.startTime || '00:00:00';
-        const endTime = filters.endTime || '23:59:59';
-        startDatetime = convertLocalToUTC(filters.date, startTime);
-        endDatetime = convertLocalToUTC(filters.date, endTime);
-      }
-      if (startDatetime && endDatetime) {
-        // Determine status parameter from Redux filters
-        // If onlyActive is true (default), use 'active' status
-        // Otherwise, use the explicit status if set
-        let statusParam = null;
-        if (filters.onlyActive === true) {
-          statusParam = 'active';
-          console.log('✅ Pagination: Only Active is true - setting status to "active"');
-        } else if (filters.status === 'active' || filters.status === 'inactive') {
-          statusParam = filters.status;
-          console.log('📊 Pagination: Using explicit status:', statusParam);
-        }
-
-        const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0)
-          ? filters.contentTypes
-          : [];
-
-        console.log('🚀 V2 API - Calling with contentTypes:', contentTypesToUse, 'status:', statusParam);
-
-        dispatch(fetchAudioSegmentsV2({
-          channelId,
-          startDatetime,
-          endDatetime,
-          page: pageNumber,
-          shiftId: filters.shiftId || null,
-          predefinedFilterId: filters.predefinedFilterId || null,
-          contentTypes: contentTypesToUse, // Use content types from Redux state
-          status: statusParam,
-          searchText: filters.searchText || null,
-          searchIn: filters.searchIn || null
-        }));
-      }
     }
   };
-
-  useEffect(() => {
-    if (!isInitialLoad.current && hasInitialFiltersSet.current && filterVersion === 'v1') {
-      // Check if time filters have actually changed
-      const timeFiltersChanged =
-        filters.startTime !== lastFilters.current?.startTime ||
-        filters.endTime !== lastFilters.current?.endTime;
-
-      if (timeFiltersChanged && (filters.startTime || filters.endTime)) {
-        console.log('Time filters changed, triggering V1 API call:', {
-          startTime: filters.startTime,
-          endTime: filters.endTime
-        });
-
-        dispatch(fetchAudioSegments({
-          channelId,
-          date: filters.date,
-          startDate: filters.startDate,
-          endDate: filters.endDate,
-          startTime: filters.startTime,
-          endTime: filters.endTime,
-          daypart: filters.daypart,
-          searchText: filters.searchText,
-          searchIn: filters.searchIn,
-          shiftId: filters.shiftId,
-          predefinedFilterId: filters.predefinedFilterId,
-          duration: filters.duration,
-          showFlaggedOnly: filters.showFlaggedOnly || false,
-          status: filters.status,
-          recognition_status: filters.recognition_status,
-          has_content: filters.has_content,
-          page: 1
-        }));
-
-        // Update last filters
-        lastFilters.current = { ...filters };
-      }
-    }
-  }, [filters.startTime, filters.endTime, channelId, filterVersion]);
 
   // Handle errors with toast instead of replacing entire UI
   useEffect(() => {
     if (error) {
       // Check if error is about flag_seconds configuration
       if (error.includes('flag_seconds') || error.includes('Cannot filter flagged segments')) {
-        // Automatically uncheck showFlaggedOnly
         dispatch(setFilter({ showFlaggedOnly: false }));
         setErrorToast('This shift does not have flag duration configured. Flagged filter has been disabled.');
 
-        // Refetch data without showFlaggedOnly - only for V1
-        if (filterVersion === 'v1') {
-          dispatch(fetchAudioSegments({
+        let startDatetime = null;
+        let endDatetime = null;
+        if (filters.startDate && filters.endDate) {
+          const startTime = filters.startTime || '00:00:00';
+          const endTime = filters.endTime || '23:59:59';
+          startDatetime = convertLocalToUTC(filters.startDate, startTime);
+          endDatetime = convertLocalToUTC(filters.endDate, endTime);
+        } else if (filters.date) {
+          const startTime = filters.startTime || '00:00:00';
+          const endTime = filters.endTime || '23:59:59';
+          startDatetime = convertLocalToUTC(filters.date, startTime);
+          endDatetime = convertLocalToUTC(filters.date, endTime);
+        }
+        if (startDatetime && endDatetime) {
+          let statusParam = null;
+          if (filters.onlyActive === true) statusParam = 'active';
+          else if (filters.status === 'active' || filters.status === 'inactive') statusParam = filters.status;
+          const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0) ? filters.contentTypes : [];
+          dispatch(fetchAudioSegmentsV2({
             channelId,
-            date: filters.date,
-            startDate: filters.startDate,
-            endDate: filters.endDate,
-            startTime: filters.startTime,
-            endTime: filters.endTime,
-            daypart: filters.daypart,
-            searchText: filters.searchText,
-            searchIn: filters.searchIn,
-            shiftId: filters.shiftId,
-            predefinedFilterId: filters.predefinedFilterId,
-            duration: filters.duration,
-            showFlaggedOnly: false,
-            status: filters.status,
-            recognition_status: filters.recognition_status,
-            has_content: filters.has_content,
-            page: currentPage
+            startDatetime,
+            endDatetime,
+            page: currentPage,
+            shiftId: filters.shiftId || null,
+            predefinedFilterId: filters.predefinedFilterId || null,
+            contentTypes: contentTypesToUse,
+            status: statusParam,
+            searchText: filters.searchText || null,
+            searchIn: filters.searchIn || null
           }));
         }
       } else {
@@ -807,7 +553,7 @@ const AudioSegmentsPage = () => {
       // Clear error after showing toast
       dispatch(clearError());
     }
-  }, [error, dispatch, channelId, filters, currentPage, filterVersion]);
+  }, [error, dispatch, channelId, filters, currentPage]);
 
   const handleSearch = () => {
     console.log('🔍 Search button clicked - Current state:');
@@ -1199,37 +945,29 @@ const AudioSegmentsPage = () => {
       searchIn: 'transcription'
     });
 
-    // Reset auto-switch flag when filters change
     hasAutoSwitchedPage.current = false;
 
-    // Handle V1 and V2 differently
-    if (filterVersion === 'v1') {
-      handleFilterChange(newFilters);
-    } else {
-      // Clear FilterPanelV2 localStorage for content type filters
-      try {
-        localStorage.removeItem('filterV2_contentTypes');
-      } catch (err) {
-        console.error('Error clearing filter state from localStorage:', err);
-      }
-
-      // V2 API call
-      const startDatetime = convertLocalToUTC(today, defaultStartTime);
-      const endDatetime = convertLocalToUTC(today, defaultEndTime);
-
-      dispatch(fetchAudioSegmentsV2({
-        channelId,
-        startDatetime,
-        endDatetime,
-        page: 1,
-        shiftId: null,
-        predefinedFilterId: null,
-        contentTypes: ['Announcer'], // Reset to default: Only Announcers (true)
-        status: 'active', // Reset to default: Only Active (true)
-        searchText: null,
-        searchIn: null
-      }));
+    try {
+      localStorage.removeItem('filterV2_contentTypes');
+    } catch (err) {
+      console.error('Error clearing filter state from localStorage:', err);
     }
+
+    const startDatetime = convertLocalToUTC(today, defaultStartTime);
+    const endDatetime = convertLocalToUTC(today, defaultEndTime);
+
+    dispatch(fetchAudioSegmentsV2({
+      channelId,
+      startDatetime,
+      endDatetime,
+      page: 1,
+      shiftId: null,
+      predefinedFilterId: null,
+      contentTypes: ['Announcer'],
+      status: 'active',
+      searchText: null,
+      searchIn: null
+    }));
   };
 
   const handleSummaryClick = (segment) => {
@@ -1299,26 +1037,38 @@ const AudioSegmentsPage = () => {
         dispatch(openTrimmer(mergedSegment));
       }
 
-      // Refresh segments
-      dispatch(fetchAudioSegments({
-        channelId,
-        date: filters.date,
-        startDate: filters.startDate,
-        endDate: filters.endDate,
-        startTime: filters.startTime,
-        endTime: filters.endTime,
-        daypart: filters.daypart,
-        searchText: filters.searchText,
-        searchIn: filters.searchIn,
-        shiftId: filters.shiftId,
-        predefinedFilterId: filters.predefinedFilterId,
-        duration: filters.duration,
-        showFlaggedOnly: filters.showFlaggedOnly || false,
-        status: filters.status,
-        recognition_status: filters.recognition_status,
-        has_content: filters.has_content,
-        page: currentPage
-      }));
+      // Refresh segments with V2 API
+      let startDatetime = null;
+      let endDatetime = null;
+      if (filters.startDate && filters.endDate) {
+        const startTime = filters.startTime || '00:00:00';
+        const endTime = filters.endTime || '23:59:59';
+        startDatetime = convertLocalToUTC(filters.startDate, startTime);
+        endDatetime = convertLocalToUTC(filters.endDate, endTime);
+      } else if (filters.date) {
+        const startTime = filters.startTime || '00:00:00';
+        const endTime = filters.endTime || '23:59:59';
+        startDatetime = convertLocalToUTC(filters.date, startTime);
+        endDatetime = convertLocalToUTC(filters.date, endTime);
+      }
+      if (startDatetime && endDatetime) {
+        let statusParam = null;
+        if (filters.onlyActive === true) statusParam = 'active';
+        else if (filters.status === 'active' || filters.status === 'inactive') statusParam = filters.status;
+        const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0) ? filters.contentTypes : [];
+        dispatch(fetchAudioSegmentsV2({
+          channelId,
+          startDatetime,
+          endDatetime,
+          page: currentPage,
+          shiftId: filters.shiftId || null,
+          predefinedFilterId: filters.predefinedFilterId || null,
+          contentTypes: contentTypesToUse,
+          status: statusParam,
+          searchText: filters.searchText || null,
+          searchIn: filters.searchIn || null
+        }));
+      }
     } catch (error) {
       console.error('Error merging segments:', error);
 
@@ -1607,261 +1357,32 @@ const AudioSegmentsPage = () => {
             </button>
           </div>
           <div className="space-y-6">
-            {/* Filter Version Toggle - At the top */}
-            <div className="flex items-center justify-between pb-4">
-              <span className="text-sm font-medium text-gray-700">Filter Version</span>
-              <button
-                onClick={() => {
-                  const newVersion = filterVersion === 'v1' ? 'v2' : 'v1';
-                  // Mark that user has manually changed the version
-                  hasManuallyChangedVersion.current = true;
-                  setFilterVersion(newVersion);
-                  // Trigger API call when switching versions
-                  if (hasInitialFiltersSet.current) {
-                    if (newVersion === 'v2') {
-                      // Calculate datetime for V2 API
-                      let startDatetime = null;
-                      let endDatetime = null;
-                      if (filters.startDate && filters.endDate) {
-                        const startTime = filters.startTime || '00:00:00';
-                        const endTime = filters.endTime || '23:59:59';
-                        startDatetime = convertLocalToUTC(filters.startDate, startTime);
-                        endDatetime = convertLocalToUTC(filters.endDate, endTime);
-                      } else if (filters.date) {
-                        const startTime = filters.startTime || '00:00:00';
-                        const endTime = filters.endTime || '23:59:59';
-                        startDatetime = convertLocalToUTC(filters.date, startTime);
-                        endDatetime = convertLocalToUTC(filters.date, endTime);
-                      }
-                      if (startDatetime && endDatetime) {
-                        // Determine status parameter from Redux filters
-                        // If onlyActive is true (default), use 'active' status
-                        let statusParam = null;
-                        if (filters.onlyActive === true) {
-                          statusParam = 'active';
-                        } else if (filters.status === 'active' || filters.status === 'inactive') {
-                          statusParam = filters.status;
-                        }
-
-                        // Determine content types
-                        // If onlyAnnouncers is true (default), use ['Announcer']
-                        let contentTypesToUse = [];
-                        if (filters.onlyAnnouncers === true) {
-                          contentTypesToUse = ['Announcer'];
-                        } else if (filters.contentTypes && filters.contentTypes.length > 0) {
-                          contentTypesToUse = filters.contentTypes;
-                        }
-
-                        dispatch(fetchAudioSegmentsV2({
-                          channelId,
-                          startDatetime,
-                          endDatetime,
-                          page: 1,
-                          shiftId: filters.shiftId || null,
-                          predefinedFilterId: filters.predefinedFilterId || null,
-                          contentTypes: contentTypesToUse,
-                          status: statusParam,
-                          searchText: filters.searchText || null,
-                          searchIn: filters.searchIn || null
-                        }));
-                      }
-                    } else {
-                      // Switching to V1 - use V1 API
-                      dispatch(fetchAudioSegments({
-                        channelId,
-                        date: filters.date,
-                        startDate: filters.startDate,
-                        endDate: filters.endDate,
-                        startTime: filters.startTime,
-                        endTime: filters.endTime,
-                        daypart: filters.daypart,
-                        searchText: filters.searchText,
-                        searchIn: filters.searchIn,
-                        shiftId: filters.shiftId,
-                        predefinedFilterId: filters.predefinedFilterId,
-                        duration: filters.duration,
-                        showFlaggedOnly: filters.showFlaggedOnly || false,
-                        status: filters.status,
-                        recognition_status: filters.recognition_status,
-                        has_content: filters.has_content,
-                        page: 1
-                      }));
-                    }
-                  }
-                }}
-                className="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-700"
-                title={filterVersion === 'v1' ? 'Switch to V2 filters' : 'Switch to V1 filters'}
-              >
-                <ArrowLeftRight className="w-4 h-4" />
-                <span>{filterVersion === 'v1' ? 'V2' : 'V1'}</span>
-              </button>
-            </div>
-
-            {/* Status Filter - Amazon Style - Only show in V1 */}
-            {filterVersion === 'v1' && (
-              <div className="pb-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Status</h3>
-                <div className="space-y-2">
-                  {[
-                    { value: null, label: 'All Status' },
-                    { value: 'active', label: 'Active' },
-                    { value: 'inactive', label: 'Inactive' }
-                  ].map((option) => {
-                    return (
-                      <label
-                        key={option.value || 'all'}
-                        className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer"
-                      >
-                        <input
-                          type="radio"
-                          name="status"
-                          value={option.value || 'all'}
-                          checked={filters.status === option.value}
-                          onChange={(e) => {
-                            const newStatus = e.target.value === 'all' ? null : e.target.value;
-                            const newFilters = { ...filters, status: newStatus };
-                            dispatch(setFilter({ status: newStatus }));
-                            handleFilterChange(newFilters);
-                          }}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                        />
-                        <span className="ml-2">{option.label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Recognition Filter - Amazon Style - Only show in V1 */}
-            {filterVersion === 'v1' && (
-              <div className="pb-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Recognition</h3>
-                <div className="space-y-2">
-                  {[
-                    { value: null, label: 'All Recognition' },
-                    { value: 'recognized', label: 'Recognized' },
-                    { value: 'unrecognized', label: 'Unrecognized' }
-                  ].map((option) => {
-                    return (
-                      <label
-                        key={option.value || 'all'}
-                        className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer"
-                      >
-                        <input
-                          type="radio"
-                          name="recognition"
-                          value={option.value || 'all'}
-                          checked={filters.recognition_status === option.value}
-                          onChange={(e) => {
-                            const newRecognitionStatus = e.target.value === 'all' ? null : e.target.value;
-                            const newFilters = { ...filters, recognition_status: newRecognitionStatus };
-                            dispatch(setFilter({ recognition_status: newRecognitionStatus }));
-                            handleFilterChange(newFilters);
-                          }}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                        />
-                        <span className="ml-2">{option.label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Content Filter - Amazon Style - Only show in V1 */}
-            {filterVersion === 'v1' && (
-              <div className="pb-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Content</h3>
-                <div className="space-y-2">
-                  {[
-                    { value: null, label: 'All Content' },
-                    { value: true, label: 'With Content' },
-                    { value: false, label: 'No Content' }
-                  ].map((option) => {
-                    return (
-                      <label
-                        key={option.value === null ? 'all' : option.value.toString()}
-                        className="flex items-center text-sm text-gray-700 hover:text-gray-900 cursor-pointer"
-                      >
-                        <input
-                          type="radio"
-                          name="content"
-                          value={option.value === null ? 'all' : option.value.toString()}
-                          checked={filters.has_content === option.value}
-                          onChange={(e) => {
-                            const newHasContent = e.target.value === 'all' ? null : e.target.value === 'true';
-                            const newFilters = { ...filters, has_content: newHasContent };
-                            dispatch(setFilter({ has_content: newHasContent }));
-                            handleFilterChange(newFilters);
-                          }}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                        />
-                        <span className="ml-2">{option.label}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Filter Panel (Collapsible) - Compact */}
+            {/* Filter Panel - V2 only */}
             <div className="pb-4">
-              {filterVersion === 'v1' ? (
-                <FilterPanel
-                  filters={filters}
-                  dispatch={dispatch}
-                  segments={segments}
-                  channelId={channelId}
-                  fetchAudioSegments={fetchAudioSegments}
-                  handleDaypartChange={handleDaypartChange}
-                  handleSearchWithCustomTime={handleSearchWithCustomTime}
-                  localStartTime={localStartTime}
-                  localEndTime={localEndTime}
-                  setLocalStartTime={setLocalStartTime}
-                  setLocalEndTime={setLocalEndTime}
-                  handleResetFilters={handleResetFilters}
-                  isInHeader={false}
-                  compact={true}
-                  // Search props
-                  localSearchText={localSearchText}
-                  setLocalSearchText={setLocalSearchText}
-                  localSearchIn={localSearchIn}
-                  setLocalSearchIn={setLocalSearchIn}
-                  handleSearch={handleSearch}
-                  handleClearSearch={handleClearSearch}
-                  // Date handlers
-                  handleDateSelect={handleDateSelect}
-                  handleDateRangeSelect={handleDateRangeSelect}
-                />
-              ) : (
-                <FilterPanelV2
-                  filters={filters}
-                  dispatch={dispatch}
-                  segments={segments}
-                  channelId={channelId}
-                  fetchAudioSegments={fetchAudioSegmentsV2}
-                  handleDaypartChange={handleDaypartChange}
-                  handleSearchWithCustomTime={handleSearchWithCustomTime}
-                  localStartTime={localStartTime}
-                  localEndTime={localEndTime}
-                  setLocalStartTime={setLocalStartTime}
-                  setLocalEndTime={setLocalEndTime}
-                  handleResetFilters={handleResetFilters}
-                  isInHeader={false}
-                  compact={true}
-                  // Search props
-                  localSearchText={localSearchText}
-                  setLocalSearchText={setLocalSearchText}
-                  localSearchIn={localSearchIn}
-                  setLocalSearchIn={setLocalSearchIn}
-                  handleSearch={handleSearch}
-                  handleClearSearch={handleClearSearch}
-                  // Date handlers
-                  handleDateSelect={handleDateSelect}
-                  handleDateRangeSelect={handleDateRangeSelect}
-                />
-              )}
+              <FilterPanelV2
+                filters={filters}
+                dispatch={dispatch}
+                segments={segments}
+                channelId={channelId}
+                fetchAudioSegments={fetchAudioSegmentsV2}
+                handleDaypartChange={handleDaypartChange}
+                handleSearchWithCustomTime={handleSearchWithCustomTime}
+                localStartTime={localStartTime}
+                localEndTime={localEndTime}
+                setLocalStartTime={setLocalStartTime}
+                setLocalEndTime={setLocalEndTime}
+                handleResetFilters={handleResetFilters}
+                isInHeader={false}
+                compact={true}
+                localSearchText={localSearchText}
+                setLocalSearchText={setLocalSearchText}
+                localSearchIn={localSearchIn}
+                setLocalSearchIn={setLocalSearchIn}
+                handleSearch={handleSearch}
+                handleClearSearch={handleClearSearch}
+                handleDateSelect={handleDateSelect}
+                handleDateRangeSelect={handleDateRangeSelect}
+              />
             </div>
           </div>
         </div>
