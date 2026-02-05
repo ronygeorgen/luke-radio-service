@@ -527,7 +527,7 @@ function DashboardV2() {
             {/* Page Info */}
             <div className="flex-1 min-w-0">
               <h1 className={`text-lg font-bold ${currentSlideConfig.headerText} truncate transition-colors duration-300`}>
-                Dashboard V2
+                Dashboard
               </h1>
               {(channelName || reportFolderName) && (
                 <div className={`flex flex-col space-y-1 text-sm ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-300' : 'text-gray-600'} transition-colors duration-300`}>
@@ -645,10 +645,6 @@ function DashboardV2() {
                         <button onClick={() => handleNavigation('/dashboard')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
                           <BarChart3 className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} />
                           Dashboard
-                        </button>
-                        <button onClick={() => handleNavigation('/dashboard-v2')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
-                          <BarChart3 className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} />
-                          Dashboard V2
                         </button>
                         <button onClick={() => handleNavigation('/reports')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
                           <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">

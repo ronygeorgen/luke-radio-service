@@ -335,7 +335,7 @@ const ReportDetailPage = () => {
               {/* Right Section - Dashboard and Navigation */}
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => navigate(`/dashboard-v2?report_folder_id=${folder.id}`)}
+                  onClick={() => navigate(`/dashboard?report_folder_id=${folder.id}`)}
                   className="flex items-center justify-center w-10 h-10 text-blue-600 bg-white border border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
                   aria-label="View dashboard"
                 >
@@ -384,10 +384,6 @@ const ReportDetailPage = () => {
                           <button onClick={() => { navigate("/dashboard"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                             <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
                             Dashboard
-                          </button>
-                          <button onClick={() => { navigate("/dashboard-v2"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
-                            <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
-                            Dashboard V2
                           </button>
                           <button onClick={() => { navigate("/reports"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                             <FileText className="w-4 h-4 mr-3 text-gray-500" />
