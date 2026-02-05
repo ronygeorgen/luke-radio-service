@@ -52,6 +52,7 @@ const ReportsPage = () => {
   const [newDescription, setNewDescription] = useState('');
   const [isChannelSelectionOpen, setIsChannelSelectionOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadModalFolderId, setUploadModalFolderId] = useState(null);
   const [reportMenuOpenId, setReportMenuOpenId] = useState(null);
   const userChannels = [];
 
@@ -244,6 +245,7 @@ const ReportsPage = () => {
                           <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Settings</div>
                           <button
                             onClick={() => {
+                              setUploadModalFolderId(null);
                               setIsUploadModalOpen(true);
                               setMenuOpenId(null);
                             }}
@@ -415,6 +417,18 @@ const ReportsPage = () => {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
+                                setUploadModalFolderId(folder.id);
+                                setIsUploadModalOpen(true);
+                                setReportMenuOpenId(null);
+                              }}
+                              className="w-full flex items-center justify-start px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <Upload className="w-4 h-4 mr-3 flex-shrink-0 text-gray-500" />
+                              <span className="whitespace-nowrap">Upload Custom Audio</span>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 startEditing(folder);
                                 setReportMenuOpenId(null);
                               }}
@@ -550,7 +564,12 @@ const ReportsPage = () => {
         {/* Upload Custom Audio Modal */}
         <UploadCustomAudioModal
           isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
+          onClose={() => {
+            setIsUploadModalOpen(false);
+            setUploadModalFolderId(null);
+          }}
+          channelId={uploadModalFolderId == null ? channelId : null}
+          folderId={uploadModalFolderId ?? undefined}
         />
       </div>
     </>
