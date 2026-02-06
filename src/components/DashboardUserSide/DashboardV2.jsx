@@ -6,7 +6,7 @@ import { logout } from '../../store/slices/authSlice';
 import { fetchReportFolders } from '../../store/slices/reportSlice';
 import { axiosInstance } from '../../services/api';
 import { convertLocalToUTC } from '../../utils/dateTimeUtils';
-import OverallSummarySlide from './DashboardV2Slides/OverallSummarySlide';
+import OverallSummarySlideV2 from './DashboardV2Slides/OverallSummarySlideV2';
 import ImpactIndexSlide from './DashboardV2Slides/ImpactIndexSlide';
 import PersonalSlide from './DashboardV2Slides/PersonalSlide';
 import CommunitySlide from './DashboardV2Slides/CommunitySlide';
@@ -23,7 +23,7 @@ const slides = [
     id: 'overall',
     title: 'Overall Summary',
     icon: BarChart3,
-    component: OverallSummarySlide,
+    component: OverallSummarySlideV2,
     headerBg: 'from-gray-700 to-gray-800',
     containerBg: 'from-gray-600 via-gray-700 to-gray-800',
     headerText: 'text-white',
@@ -762,8 +762,10 @@ function DashboardV2() {
       <div className={`${hideUI ? 'pt-0' : reportFolderName ? 'pt-20' : 'pt-16'} relative overflow-x-hidden`}>
         <div
           ref={slideContentRef}
-          className={`transition-all duration-150 ease-out ${isAnimating ? 'opacity-80 translate-y-1' : 'opacity-100 translate-y-0'
-            }`}
+          className={hideUI
+            ? 'opacity-100 translate-y-0'
+            : `transition-all duration-150 ease-out ${isAnimating ? 'opacity-80 translate-y-1' : 'opacity-100 translate-y-0'}`
+          }
         >
           <CurrentSlideComponent
             key={`${currentSlide}-${channelId}-${reportFolderId || ''}`}
