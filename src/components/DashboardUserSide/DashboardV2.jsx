@@ -758,8 +758,8 @@ function DashboardV2() {
       </header>
       )}
 
-      {/* Main Content */}
-      <div className={`${hideUI ? 'pt-0' : reportFolderName ? 'pt-20' : 'pt-16'} relative overflow-hidden`}>
+      {/* Main Content - overflow-x-hidden only so slide content is never vertically clipped at any viewport */}
+      <div className={`${hideUI ? 'pt-0' : reportFolderName ? 'pt-20' : 'pt-16'} relative overflow-x-hidden`}>
         <div
           ref={slideContentRef}
           className={`transition-all duration-150 ease-out ${isAnimating ? 'opacity-80 translate-y-1' : 'opacity-100 translate-y-0'

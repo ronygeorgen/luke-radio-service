@@ -197,7 +197,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
       <div className="max-w-7xl mx-auto">
         <div className="h-10 w-64 bg-gray-700/50 rounded-lg mx-auto mb-8 animate-pulse"></div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Left Column Skeleton */}
           <div className="space-y-6">
             {/* Average Sentiment Skeleton */}
@@ -349,10 +349,10 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
       <div className="max-w-7xl mx-auto">
         <h2 className="text-3xl font-bold text-white mb-8 text-center">Overall Summary</h2>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Left Column - Sentiment Overview */}
           <div
-            className="space-y-6"
+            className="space-y-6 min-w-0"
             style={{
               opacity: isVisible ? 1 : 0,
               transform: isVisible ? 'translateX(0) translateY(0)' : 'translateX(-50px) translateY(20px)',
@@ -434,7 +434,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
 
           {/* Middle Column - Sentiment Analysis */}
           <div
-            className="space-y-6"
+            className="space-y-6 min-w-0"
             style={{
               opacity: isVisible ? 1 : 0,
               transform: isVisible ? 'translateX(0) translateY(0)' : 'translateY(30px)',
@@ -646,7 +646,7 @@ const OverallSummarySlide = ({ dateRange = { start: null, end: null, selecting: 
 
           {/* Right Column - KPIs */}
           <div
-            className="space-y-6"
+            className="space-y-6 min-w-0"
             style={{
               opacity: isVisible ? 1 : 0,
               transform: isVisible ? 'translateX(0) translateY(0)' : 'translateX(50px) translateY(20px)',
