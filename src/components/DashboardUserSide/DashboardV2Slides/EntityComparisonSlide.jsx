@@ -297,7 +297,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
                           transition: `opacity 0.5s ease-out ${baseDelay}ms, transform 0.5s ease-out ${baseDelay}ms`,
                         }}
                       >
-                        <div className="flex flex-col items-center justify-end h-full w-full pb-16">
+                        <div className="flex flex-col items-center justify-end h-full w-full pb-2">
                           <div
                             className="w-full rounded-t origin-bottom"
                             style={{
@@ -364,7 +364,7 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
                           transition: `opacity 0.5s ease-out ${baseDelay}ms, transform 0.5s ease-out ${baseDelay}ms`,
                         }}
                       >
-                        <div className="flex flex-col items-center justify-end h-full w-full pb-16">
+                        <div className="flex flex-col items-center justify-end h-full w-full pb-2">
                           <div
                             className="w-full rounded-t origin-bottom"
                             style={{
