@@ -49,7 +49,7 @@ const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerTe
 
     // Check for changes periodically (localStorage events don't fire in same tab)
     const interval = setInterval(handleStorageChange, 100);
-    
+
     // Also listen to storage events (for cross-tab updates)
     window.addEventListener('storage', handleStorageChange);
 
@@ -78,7 +78,7 @@ const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerTe
     }
 
     setIsModalOpen(false);
-    
+
     // Call the callback if provided (to refresh data on the page)
     if (onChannelChange) {
       onChannelChange(channel);
@@ -92,7 +92,7 @@ const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerTe
     const hideUI = searchParams.get('hideUI');
     const query = new URLSearchParams({ report_folder_id: folder.id });
     if (hideUI === 'true') query.set('hideUI', 'true');
-    navigate(`/dashboard-v2?${query.toString()}`);
+    navigate(`/dashboard?${query.toString()}`);
   };
 
   if (userChannels.length === 0) {

@@ -14,7 +14,7 @@ const UserChannelCard = ({ channel }) => {
   const truncateUrl = (url, maxLength = 40) => {
     if (!url) return '';
     if (url.length <= maxLength) return url;
-    
+
     // Show first part and last part with ellipsis
     const start = url.substring(0, 25);
     const end = url.substring(url.length - 15);
@@ -54,25 +54,25 @@ const UserChannelCard = ({ channel }) => {
   }, [isMenuOpen]);
 
   const handleClick = () => {
-      // Persist selected channel details in localStorage
-      try {
-        if (channel?.id) {
-          localStorage.setItem("channelId", String(channel.id));
-        }
-        if (channel?.name) {
-          localStorage.setItem("channelName", channel.name);
-        }
-        const channelTimezone = channel?.timezone || "Australia/Melbourne";
-        localStorage.setItem("channelTimezone", channelTimezone);
-      } catch (e) {
-        // No-op: localStorage might be unavailable; navigation should still proceed
+    // Persist selected channel details in localStorage
+    try {
+      if (channel?.id) {
+        localStorage.setItem("channelId", String(channel.id));
       }
+      if (channel?.name) {
+        localStorage.setItem("channelName", channel.name);
+      }
+      const channelTimezone = channel?.timezone || "Australia/Melbourne";
+      localStorage.setItem("channelTimezone", channelTimezone);
+    } catch (e) {
+      // No-op: localStorage might be unavailable; navigation should still proceed
+    }
 
-      const today = new Date().toISOString().split("T")[0].replace(/-/g, "");
-      navigate(
-        `/channels/${channel.id}/segments?date=${today}&hour=0&name=${encodeURIComponent(channel.name)}`
-      );
-    };
+    const today = new Date().toISOString().split("T")[0].replace(/-/g, "");
+    navigate(
+      `/channels/${channel.id}/segments?date=${today}&hour=0&name=${encodeURIComponent(channel.name)}`
+    );
+  };
 
   const handleMenuClick = (e) => {
     e.stopPropagation(); // Prevent card click
@@ -82,7 +82,7 @@ const UserChannelCard = ({ channel }) => {
   const handleDashboardV2Click = (e) => {
     e.stopPropagation(); // Prevent card click
     setIsMenuOpen(false);
-    
+
     // Set channel in localStorage for Dashboard V2
     try {
       if (channel?.id) {
@@ -96,8 +96,8 @@ const UserChannelCard = ({ channel }) => {
     } catch (e) {
       // No-op: localStorage might be unavailable
     }
-    
-    navigate('/dashboard-v2');
+
+    navigate('/dashboard');
   };
 
   const handleUploadCustomAudio = (e) => {
@@ -120,7 +120,7 @@ const UserChannelCard = ({ channel }) => {
         >
           <MoreVertical className="h-4 w-4 text-gray-600" />
         </button>
-        
+
         {/* Dropdown menu */}
         {isMenuOpen && (
           <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
@@ -131,7 +131,7 @@ const UserChannelCard = ({ channel }) => {
               <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              Dashboard V2
+              Dashboard
             </button>
             <button
               onClick={handleUploadCustomAudio}
