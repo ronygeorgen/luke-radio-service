@@ -152,11 +152,11 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
       data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
     >
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        <div className="relative flex items-center justify-center mb-8">
           <h2 className="text-3xl font-bold text-gray-900">Entity Comparison</h2>
 
           {/* Toggle Button for Show All Topics */}
-          <div className="flex items-center space-x-3">
+          <div className="absolute right-0 flex items-center space-x-3">
             <span className="text-sm text-gray-700 font-medium">Show All Topics</span>
             <button
               onClick={handleToggleShowAllTopics}

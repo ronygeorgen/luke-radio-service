@@ -215,11 +215,11 @@ const TopTopicsSlide = ({ dateRange = { start: null, end: null, selecting: false
       data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
     >
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-4">
+        <div className="relative flex items-center justify-center mb-4">
           <h2 className="text-2xl font-bold text-gray-900">Top Topics Distribution</h2>
 
           {/* Toggle Button for Show All Topics */}
-          <div className="flex items-center space-x-3">
+          <div className="absolute right-0 flex items-center space-x-3">
             <span className="text-sm text-gray-700 font-medium">Show All Topics</span>
             <button
               onClick={handleToggleShowAllTopics}
