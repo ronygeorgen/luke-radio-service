@@ -780,17 +780,17 @@ const FilterPanelV2 = ({
         // Remove the content type
         updatedContentTypes = prev.filter(type => type !== contentType);
       }
-      
+
       // Update Redux state immediately with the new content types
       dispatch(setFilter({ contentTypes: updatedContentTypes }));
-      
+
       // Apply filters with the updated content types immediately
       // Use the calculated value directly to avoid race conditions
       applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, onlyActive, activeStatus, updatedContentTypes);
-      
+
       return updatedContentTypes;
     });
-    
+
     // Reset flag after a short delay to allow state updates to complete
     setTimeout(() => {
       isManuallyUpdatingContentTypes.current = false;
@@ -923,14 +923,14 @@ const FilterPanelV2 = ({
   const CompactDateRangeCalendar = () => {
     const startDate = dateRange.start ? parseDateString(dateRange.start) : null;
     const endDate = dateRange.end ? parseDateString(dateRange.end) : null;
-    
+
     // Local state for date selection before applying
     const [localStartDate, setLocalStartDate] = useState(startDate);
     const [localEndDate, setLocalEndDate] = useState(endDate);
     const prevShowDatePickerRef = useRef(showDatePicker);
     const startCalendarMonthRef = useRef(null);
     const endCalendarMonthRef = useRef(null);
-    
+
     // Sync local state when modal opens (not on every change)
     useEffect(() => {
       // Only sync when modal transitions from closed to open
@@ -939,49 +939,49 @@ const FilterPanelV2 = ({
         setLocalEndDate(endDate);
         // Initialize month refs to current month (or selected date's month if exists)
         const now = new Date();
-        startCalendarMonthRef.current = startDate 
-          ? new Date(startDate.getFullYear(), startDate.getMonth()) 
+        startCalendarMonthRef.current = startDate
+          ? new Date(startDate.getFullYear(), startDate.getMonth())
           : new Date(now.getFullYear(), now.getMonth());
-        endCalendarMonthRef.current = endDate 
-          ? new Date(endDate.getFullYear(), endDate.getMonth()) 
+        endCalendarMonthRef.current = endDate
+          ? new Date(endDate.getFullYear(), endDate.getMonth())
           : new Date(now.getFullYear(), now.getMonth());
       }
       prevShowDatePickerRef.current = showDatePicker;
     }, [showDatePicker]);
-    
+
     // Handle month change for start date calendar - clear only start date selection when month changes
     const handleStartMonthChange = (date) => {
       const newMonth = new Date(date.getFullYear(), date.getMonth());
-      if (startCalendarMonthRef.current && 
-          (newMonth.getTime() !== startCalendarMonthRef.current.getTime())) {
+      if (startCalendarMonthRef.current &&
+        (newMonth.getTime() !== startCalendarMonthRef.current.getTime())) {
         // Month changed - clear only the start date selection
         setLocalStartDate(null);
       }
       startCalendarMonthRef.current = newMonth;
     };
-    
+
     // Handle month change for end date calendar - clear only end date selection when month changes
     const handleEndMonthChange = (date) => {
       const newMonth = new Date(date.getFullYear(), date.getMonth());
-      if (endCalendarMonthRef.current && 
-          (newMonth.getTime() !== endCalendarMonthRef.current.getTime())) {
+      if (endCalendarMonthRef.current &&
+        (newMonth.getTime() !== endCalendarMonthRef.current.getTime())) {
         // Month changed - clear only the end date selection
         setLocalEndDate(null);
       }
       endCalendarMonthRef.current = newMonth;
     };
-    
+
     const handleStartDateChange = (date) => {
       if (!date) {
         setLocalStartDate(null);
         // Don't clear end date when clearing start date - let user keep their end date
         return;
       }
-      
+
       // Update the month ref when a date is selected
       const selectedMonth = new Date(date.getFullYear(), date.getMonth());
       startCalendarMonthRef.current = selectedMonth;
-      
+
       // If end date exists and new start is after end, clear end date (invalid range)
       if (localEndDate && date > localEndDate) {
         setLocalStartDate(date);
@@ -990,18 +990,18 @@ const FilterPanelV2 = ({
         setLocalStartDate(date);
       }
     };
-    
+
     const handleEndDateChange = (date) => {
       if (!date) {
         // If clearing end date, keep start date
         setLocalEndDate(null);
         return;
       }
-      
+
       // Update the month ref when a date is selected
       const selectedMonth = new Date(date.getFullYear(), date.getMonth());
       endCalendarMonthRef.current = selectedMonth;
-      
+
       // Ensure end date is not before start date
       if (localStartDate && date < localStartDate) {
         // If end is before start, swap them
@@ -1020,32 +1020,32 @@ const FilterPanelV2 = ({
         startCalendarMonthRef.current = new Date(date.getFullYear(), date.getMonth());
       }
     };
-    
+
     const handleApply = () => {
       if (localStartDate && localEndDate) {
         // Both dates selected, apply filter
         const finalStartUTC = convertLocalToUTCDateString(localStartDate);
         const finalEndUTC = convertLocalToUTCDateString(localEndDate);
-        
+
         setDateRange({
           start: getLocalDateString(localStartDate),
           end: getLocalDateString(localEndDate),
           selecting: false
         });
-        
+
         // Send UTC dates to backend
         handleDateRangeSelection(finalStartUTC, finalEndUTC);
         setShowDatePicker(false);
       }
     };
-    
+
     const handleClear = () => {
       setLocalStartDate(null);
       setLocalEndDate(null);
       setDateRange({ start: null, end: null, selecting: false });
       handleDateRangeSelection(null, null);
     };
-    
+
     return (
       <div ref={calendarRef} className="bg-white border border-gray-300 rounded-lg shadow-lg p-4" style={{ minWidth: '560px' }}>
         <style>{`
@@ -1145,7 +1145,7 @@ const FilterPanelV2 = ({
               maxDate={localEndDate || new Date()}
             />
           </div>
-          
+
           {/* To Date Calendar */}
           <div className="flex-1">
             <div className="mb-2">
@@ -1167,7 +1167,7 @@ const FilterPanelV2 = ({
             />
           </div>
         </div>
-        
+
         <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-200">
           <div className="text-xs text-gray-600 flex-1 truncate mr-2">
             {localStartDate && localEndDate ? (
@@ -1272,7 +1272,7 @@ const FilterPanelV2 = ({
                 <ToggleSwitch
                   checked={selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]}
                   onChange={(checked) => handleContentTypeToggle(contentTypePrompt.contentTypes[0], checked)}
-                  label={`Only ${contentTypePrompt.contentTypes[0]}`}
+                  label={`${contentTypePrompt.contentTypes[0]}`}
                 />
                 {!(selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]) && (
                   <div className="space-y-1 pl-0">
@@ -1506,7 +1506,7 @@ const FilterPanelV2 = ({
                     <ToggleSwitch
                       checked={selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]}
                       onChange={(checked) => handleContentTypeToggle(contentTypePrompt.contentTypes[0], checked)}
-                      label={`Only ${contentTypePrompt.contentTypes[0]}`}
+                      label={`${contentTypePrompt.contentTypes[0]}`}
                     />
                     {!(selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]) && (
                       <>
@@ -1763,7 +1763,7 @@ const FilterPanelV2 = ({
                     <ToggleSwitch
                       checked={selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]}
                       onChange={(checked) => handleContentTypeToggle(contentTypePrompt.contentTypes[0], checked)}
-                      label={`Only ${contentTypePrompt.contentTypes[0]}`}
+                      label={`${contentTypePrompt.contentTypes[0]}`}
                     />
                     {!(selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]) && (
                       <div className="mt-2 space-y-1 pl-4 border-t border-gray-200 pt-2 max-h-64 overflow-y-auto">
