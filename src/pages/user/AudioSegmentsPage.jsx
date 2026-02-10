@@ -1136,30 +1136,8 @@ const AudioSegmentsPage = () => {
     });
   };
 
-  if (loading && segments.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-100">
-        <Header
-          channelInfo={channelInfo}
-          channelName={channelName}
-          filters={filters}
-          formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)}
-          localSearchText={localSearchText}
-          setLocalSearchText={setLocalSearchText}
-          localSearchIn={localSearchIn}
-          setLocalSearchIn={setLocalSearchIn}
-          handleSearch={handleSearch}
-          handleClearSearch={handleClearSearch}
-        />
-
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-24">
-          {[...Array(3)].map((_, i) => (
-            <SegmentShimmer key={i} />
-          ))}
-        </main>
-      </div>
-    );
-  }
+  // Removed early return for loading state - FilterPanel should always be visible
+  // Loading state is now handled within the main content area only
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -1441,9 +1419,22 @@ const AudioSegmentsPage = () => {
           )}
 
           {/* Segments Grid */}
-          <div className={`space-y-4 ${currentPlayingId ? 'pb-56' : ''}`}>
-            {loading ? (
-              // Show shimmer loaders for all expected segments when loading
+          <div className={`space-y-4 ${currentPlayingId ? 'pb-56' : ''} relative`}>
+            {/* Loading overlay when refreshing with existing segments */}
+            {loading && segments.length > 0 && (
+              <div className="absolute inset-0 bg-white bg-opacity-60 z-10 flex items-start justify-center pt-20">
+                <div className="bg-white rounded-lg shadow-lg p-4 flex items-center space-x-3">
+                  <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="text-gray-700 font-medium">Updating segments...</span>
+                </div>
+              </div>
+            )}
+
+            {loading && segments.length === 0 ? (
+              // Show shimmer loaders when loading and no segments yet
               Array.from({ length: 10 }).map((_, i) => (
                 <SegmentShimmer key={`shimmer-${i}`} />
               ))
