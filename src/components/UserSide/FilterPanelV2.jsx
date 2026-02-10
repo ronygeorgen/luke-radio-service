@@ -94,12 +94,23 @@ const FilterPanelV2 = ({
   const hasAppliedDefaultRef = useRef(!initialPreference.hasSaved);
   const hasSyncedSavedPreferenceToRedux = useRef(false);
 
-  // Sync saved preference to Redux once on mount so the first fetch uses it
+  // Sync saved preference to Redux once on mount ONLY if Redux state is uninitialized
   useEffect(() => {
+    // Don't sync if we've already done it, or if there's no saved preference
     if (!initialPreference.hasSaved || hasSyncedSavedPreferenceToRedux.current) return;
+
+    // CRITICAL: Only sync saved preference if Redux state is null (uninitialized)
+    // If Redux already has a value (even empty array), it means user has made a selection
+    if (filters.contentTypes !== null) {
+      console.log('⏭️ Skipping saved preference sync - Redux already has value:', filters.contentTypes);
+      hasSyncedSavedPreferenceToRedux.current = true; // Mark as synced to prevent future attempts
+      return;
+    }
+
+    console.log('📥 Syncing saved preference to Redux:', initialPreference.selectedContentTypes);
     hasSyncedSavedPreferenceToRedux.current = true;
     dispatch(setFilter({ contentTypes: initialPreference.selectedContentTypes || [] }));
-  }, []);
+  }, [filters.contentTypes, dispatch, initialPreference.hasSaved, initialPreference.selectedContentTypes]);
 
   // Save current filter state as user preference (only when user clicks "Save preference")
   const handleSavePreference = () => {
@@ -181,9 +192,27 @@ const FilterPanelV2 = ({
   // Also persist this default to localStorage so sync effects don't overwrite user toggles.
   useEffect(() => {
     const contentTypes = contentTypePrompt?.contentTypes;
+
+    // Only apply default if all these conditions are met:
+    // 1. hasAppliedDefaultRef is true (meaning we haven't applied default yet)
+    // 2. contentTypes are loaded from API
+    // 3. filters.contentTypes is null (uninitialized)
+    // 4. No saved preference exists
     if (!hasAppliedDefaultRef.current || !contentTypes || contentTypes.length === 0) return;
+
+    // CRITICAL: Don't apply default if filters.contentTypes is already set (not null)
+    if (filters.contentTypes !== null) {
+      console.log('⏭️ Skipping default application - filters.contentTypes already set:', filters.contentTypes);
+      return;
+    }
+
     const saved = localStorage.getItem('filterV2_savedPreference');
-    if (saved) return; // User has a saved preference, already loaded
+    if (saved) {
+      console.log('⏭️ Skipping default application - saved preference exists');
+      return;
+    }
+
+    console.log('🎯 Applying default content type (first time only):', contentTypes[0]);
     hasAppliedDefaultRef.current = false;
     const firstType = contentTypes[0];
     const defaultPreference = { selectedContentTypes: [firstType] };
@@ -194,7 +223,7 @@ const FilterPanelV2 = ({
     } catch (err) {
       console.error('Error persisting default filter preference:', err);
     }
-  }, [contentTypePrompt?.contentTypes, dispatch]);
+  }, [contentTypePrompt?.contentTypes, filters.contentTypes, dispatch]);
 
   // Initialize Redux on mount: if no saved preference, set contentTypes [] so sync effects don't overwrite toggles; set onlyActive when needed.
   const hasInitializedDefaults = useRef(false);
@@ -203,7 +232,7 @@ const FilterPanelV2 = ({
     const saved = localStorage.getItem('filterV2_savedPreference');
     if (!saved) {
       dispatch(setFilter({
-        contentTypes: [],
+        contentTypes: null,
         ...(filters.onlyActive === undefined && { onlyActive: true, status: 'active' })
       }));
     } else if (filters.onlyActive === undefined) {
@@ -234,7 +263,7 @@ const FilterPanelV2 = ({
         setOnlyActive(false);
         setActiveStatus('all');
         // Clear Redux state
-        dispatch(setFilter({ contentTypes: [], onlyActive: false, status: null }));
+        dispatch(setFilter({ contentTypes: null, onlyActive: false, status: null }));
         // Clear saved filter preference for new channel
         try {
           localStorage.removeItem('filterV2_savedPreference');
@@ -770,6 +799,7 @@ const FilterPanelV2 = ({
   };
 
   const handleContentTypeToggle = (contentType, checked) => {
+    console.log('🔄 handleContentTypeToggle called:', { contentType, checked });
     isManuallyUpdatingContentTypes.current = true;
     setSelectedContentTypes(prev => {
       let updatedContentTypes;
@@ -780,6 +810,8 @@ const FilterPanelV2 = ({
         // Remove the content type
         updatedContentTypes = prev.filter(type => type !== contentType);
       }
+
+      console.log('📝 Updated content types:', updatedContentTypes);
 
       // Update Redux state immediately with the new content types
       dispatch(setFilter({ contentTypes: updatedContentTypes }));
