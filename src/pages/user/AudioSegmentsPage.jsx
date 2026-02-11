@@ -1121,31 +1121,6 @@ const AudioSegmentsPage = () => {
     });
   };
 
-  if (loading && segments.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-100">
-        <Header
-          channelInfo={channelInfo}
-          channelName={channelName}
-          filters={filters}
-          formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)}
-          localSearchText={localSearchText}
-          setLocalSearchText={setLocalSearchText}
-          localSearchIn={localSearchIn}
-          setLocalSearchIn={setLocalSearchIn}
-          handleSearch={handleSearch}
-          handleClearSearch={handleClearSearch}
-        />
-
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-24">
-          {[...Array(3)].map((_, i) => (
-            <SegmentShimmer key={i} />
-          ))}
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-100">
       <div
