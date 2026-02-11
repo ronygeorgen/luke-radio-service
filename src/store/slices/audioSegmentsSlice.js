@@ -317,10 +317,16 @@ export const fetchContentTypePrompt = createAsyncThunk(
         ? '/v2/filter/options/'
         : '/api/v2/filter/options/';
 
+      const channelId = localStorage.getItem('channelId');
+      const params = {};
+      if (channelId) {
+        params.channel_id = channelId;
+      }
+
       console.log('Fetching content type prompt from:', endpoint);
       console.log('Base URL:', baseURL);
 
-      const response = await axiosInstance.get(endpoint);
+      const response = await axiosInstance.get(endpoint, { params });
       console.log('Content Type Prompt Response:', response.data);
       return response.data;
     } catch (err) {

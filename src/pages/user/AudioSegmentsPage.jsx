@@ -175,7 +175,7 @@ const AudioSegmentsPage = () => {
             let statusParam = null;
             if (filtersToUse.onlyActive === true) statusParam = 'active';
             else if (filtersToUse.status === 'active' || filtersToUse.status === 'inactive') statusParam = filtersToUse.status;
-            const contentTypesToUse = Array.isArray(filtersToUse.contentTypes) ? filtersToUse.contentTypes : [];
+            const contentTypesToUse = (filtersToUse.contentTypes && filtersToUse.contentTypes.length > 0) ? filtersToUse.contentTypes : [];
             dispatch(fetchAudioSegmentsV2({
               channelId: newChannelId,
               startDatetime,
@@ -266,7 +266,7 @@ const AudioSegmentsPage = () => {
         onlyActive: filters.onlyActive !== undefined ? filters.onlyActive : true, // Default to true
         onlyAnnouncers: filters.onlyAnnouncers !== undefined ? filters.onlyAnnouncers : true, // Default to true
       };
-
+      
       dispatch(setFilter(defaultV2Filters));
 
       setLocalStartTime('');
@@ -363,8 +363,7 @@ const AudioSegmentsPage = () => {
         statusParam = filtersToUse.status;
       }
 
-      // Use filters.contentTypes directly - if it's an array, use it; if null, use empty array
-      const contentTypesToUse = Array.isArray(filtersToUse.contentTypes)
+      const contentTypesToUse = (filtersToUse.contentTypes && filtersToUse.contentTypes.length > 0)
         ? filtersToUse.contentTypes
         : [];
 
@@ -398,8 +397,6 @@ const AudioSegmentsPage = () => {
   }, [filters]);
 
   // Auto-switch to a page with data if current page has no segments - works for both V1 and V2
-  // Auto-switch logic removed to prevent unwanted page jumps
-  /*
   useEffect(() => {
     // Only check after initial load and when not loading
     if (!hasInitialFiltersSet.current || loading) {
@@ -418,8 +415,7 @@ const AudioSegmentsPage = () => {
         if (!currentPageHasData && !hasAutoSwitchedPage.current) {
           // Switch to the first page with data
           const firstPageWithData = pagesWithData[0].page;
-          const targetPage = pagesWithData.find(p => p.page > currentPage)?.page || firstPageWithData;
-          console.log(`🔄 Auto-switching from page ${currentPage} (no data) to page ${targetPage} (has data)`);
+          console.log(`🔄 Auto-switching from page ${currentPage} (no data) to page ${firstPageWithData} (has data)`);
 
           hasAutoSwitchedPage.current = true;
 
@@ -453,7 +449,7 @@ const AudioSegmentsPage = () => {
               channelId,
               startDatetime,
               endDatetime,
-              page: targetPage,
+              page: firstPageWithData,
               shiftId: filters.shiftId || null,
               predefinedFilterId: filters.predefinedFilterId || null,
               contentTypes: contentTypesToUse,
@@ -468,15 +464,9 @@ const AudioSegmentsPage = () => {
       hasAutoSwitchedPage.current = false;
     }
   }, [segments.length, pagination, currentPage, loading, channelId, filters, dispatch]);
-  */
 
   const handlePageChange = (pageNumber) => {
     hasAutoSwitchedPage.current = false;
-
-    console.log('📄 handlePageChange called for page:', pageNumber);
-    console.log('📊 Current filters.contentTypes:', filters.contentTypes);
-    console.log('📊 Current filters.onlyActive:', filters.onlyActive);
-    console.log('📊 Current filters.status:', filters.status);
 
     let startDatetime = null;
     let endDatetime = null;
@@ -499,14 +489,9 @@ const AudioSegmentsPage = () => {
         statusParam = filters.status;
       }
 
-      // CRITICAL FIX: Use filters.contentTypes directly from Redux
-      // If it's null (uninitialized), use empty array (All)
-      // If it's an array (even empty), use it as-is (user's selection)
-      const contentTypesToUse = Array.isArray(filters.contentTypes)
+      const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0)
         ? filters.contentTypes
         : [];
-
-      console.log('🚀 Dispatching fetchAudioSegmentsV2 with contentTypes:', contentTypesToUse);
 
       dispatch(fetchAudioSegmentsV2({
         channelId,
@@ -548,7 +533,7 @@ const AudioSegmentsPage = () => {
           let statusParam = null;
           if (filters.onlyActive === true) statusParam = 'active';
           else if (filters.status === 'active' || filters.status === 'inactive') statusParam = filters.status;
-          const contentTypesToUse = Array.isArray(filters.contentTypes) ? filters.contentTypes : [];
+          const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0) ? filters.contentTypes : [];
           dispatch(fetchAudioSegmentsV2({
             channelId,
             startDatetime,
@@ -1070,7 +1055,7 @@ const AudioSegmentsPage = () => {
         let statusParam = null;
         if (filters.onlyActive === true) statusParam = 'active';
         else if (filters.status === 'active' || filters.status === 'inactive') statusParam = filters.status;
-        const contentTypesToUse = Array.isArray(filters.contentTypes) ? filters.contentTypes : [];
+        const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0) ? filters.contentTypes : [];
         dispatch(fetchAudioSegmentsV2({
           channelId,
           startDatetime,
@@ -1136,8 +1121,30 @@ const AudioSegmentsPage = () => {
     });
   };
 
-  // Removed early return for loading state - FilterPanel should always be visible
-  // Loading state is now handled within the main content area only
+  if (loading && segments.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <Header
+          channelInfo={channelInfo}
+          channelName={channelName}
+          filters={filters}
+          formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)}
+          localSearchText={localSearchText}
+          setLocalSearchText={setLocalSearchText}
+          localSearchIn={localSearchIn}
+          setLocalSearchIn={setLocalSearchIn}
+          handleSearch={handleSearch}
+          handleClearSearch={handleClearSearch}
+        />
+
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-24">
+          {[...Array(3)].map((_, i) => (
+            <SegmentShimmer key={i} />
+          ))}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -1419,22 +1426,9 @@ const AudioSegmentsPage = () => {
           )}
 
           {/* Segments Grid */}
-          <div className={`space-y-4 ${currentPlayingId ? 'pb-56' : ''} relative`}>
-            {/* Loading overlay when refreshing with existing segments */}
-            {loading && segments.length > 0 && (
-              <div className="absolute inset-0 bg-white bg-opacity-60 z-10 flex items-start justify-center pt-20">
-                <div className="bg-white rounded-lg shadow-lg p-4 flex items-center space-x-3">
-                  <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span className="text-gray-700 font-medium">Updating segments...</span>
-                </div>
-              </div>
-            )}
-
-            {loading && segments.length === 0 ? (
-              // Show shimmer loaders when loading and no segments yet
+          <div className={`space-y-4 ${currentPlayingId ? 'pb-56' : ''}`}>
+            {loading ? (
+              // Show shimmer loaders for all expected segments when loading
               Array.from({ length: 10 }).map((_, i) => (
                 <SegmentShimmer key={`shimmer-${i}`} />
               ))
