@@ -27,8 +27,6 @@ const AdminLayout = () => {
     const [isChannelSelectionOpen, setIsChannelSelectionOpen] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [pendingNavigation, setPendingNavigation] = useState(null);
-    // Force header to re-read channel name when channel is switched (e.g. on Settings page)
-    const [channelHeaderKey, setChannelHeaderKey] = useState(0);
 
     // Fetch user channels when on /admin/channels, /admin/settings, or /admin/users pages
     useEffect(() => {
@@ -52,8 +50,8 @@ const AdminLayout = () => {
     };
     const pageName = getPageName();
     const channelName = localStorage.getItem('channelName') || '';
-    const isChannelScopedPage = location.pathname.includes('/admin/settings') ||
-        location.pathname.includes('/admin/custom-flags') ||
+    // Show channel name below user only on Custom Flags and Content Type Deactivation (not on General Settings)
+    const isChannelScopedPage = location.pathname.includes('/admin/custom-flags') ||
         location.pathname.includes('/admin/content-type-deactivation');
 
     const handleLogout = () => {
@@ -196,10 +194,10 @@ const AdminLayout = () => {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header - Matching Website Format */}
-            <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40 min-h-16 py-3 pb-5">
+            <header className={`bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40 min-h-16 py-3 ${isChannelScopedPage && channelName ? 'pb-5' : 'pb-3'}`}>
                 <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
                     <div className="flex items-center justify-between h-full space-x-4">
-                        {/* Page Info - page name, then user, then channel name (like other channel-scoped pages) */}
+                        {/* Page Info - page name, then user; channel name only on Custom Flags / Content Type Deactivation */}
                         <div className="flex-1 min-w-0">
                             <h1 className="text-lg font-bold text-gray-900 truncate">
                                 {pageName}
@@ -245,7 +243,6 @@ const AdminLayout = () => {
                                             // Trigger custom event for audio page to handle
                                             window.dispatchEvent(new CustomEvent('channelChanged', { detail: channel }));
                                         } else if (path.includes('/admin/settings')) {
-                                            setChannelHeaderKey(k => k + 1);
                                             dispatch(fetchSettings(channel?.id));
                                         }
                                     }} />

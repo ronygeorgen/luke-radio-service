@@ -146,9 +146,9 @@ const GeneralSettings = () => {
         />
       )}
 
-      <div className="space-y-8 pt-12">
+      <div className="space-y-8">
         {/* Save Button - Fixed at top right so it stays visible when scrolling */}
-        <div className="fixed top-32 right-6 sm:right-8 lg:right-10 z-30 flex justify-end">
+        <div className="fixed top-24 right-6 sm:right-8 lg:right-10 z-30 flex justify-end">
           <button
             onClick={handleSaveAll}
             disabled={!hasChanges || isSaving}
