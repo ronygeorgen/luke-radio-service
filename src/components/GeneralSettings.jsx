@@ -3,11 +3,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchSettings, updateSetting, clearError } from '../store/slices/settingsSlice';
 import SettingField from './SettingField';
 import BucketManager from './BucketManager';
-import { Save } from 'lucide-react';
+import { Save, Radio } from 'lucide-react';
 import Toast from './UserSide/Toast';
 
 const GeneralSettings = () => {
   const dispatch = useDispatch();
+  const channelId = localStorage.getItem('channelId');
   const { settings, loading } = useSelector(state => state.settings);
   const [changedSettings, setChangedSettings] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -15,8 +16,10 @@ const GeneralSettings = () => {
   const [successToast, setSuccessToast] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchSettings());
-  }, [dispatch]);
+    if (channelId) {
+      dispatch(fetchSettings(channelId));
+    }
+  }, [dispatch, channelId]);
 
   const handleValueChange = (key, value) => {
     // Track which settings have changed
@@ -72,6 +75,17 @@ const GeneralSettings = () => {
   };
 
   const hasChanges = Object.keys(changedSettings).length > 0;
+
+  if (!channelId) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Radio className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-500">Please select a channel to view and edit general settings.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading && Object.keys(settings).length === 0) {
     return (
@@ -132,9 +146,9 @@ const GeneralSettings = () => {
         />
       )}
 
-      <div className="space-y-8">
-        {/* Save Button - Fixed at top right */}
-        <div className="sticky top-20 z-30 flex justify-end mb-4">
+      <div className="space-y-8 pt-12">
+        {/* Save Button - Fixed at top right so it stays visible when scrolling */}
+        <div className="fixed top-32 right-6 sm:right-8 lg:right-10 z-30 flex justify-end">
           <button
             onClick={handleSaveAll}
             disabled={!hasChanges || isSaving}

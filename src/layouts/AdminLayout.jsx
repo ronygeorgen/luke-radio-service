@@ -9,6 +9,7 @@ import ChannelSwitcher from '../components/ChannelSwitcher';
 import { fetchCustomFlags } from '../store/slices/customFlagSlice';
 import { fetchContentTypeDeactivationRules } from '../store/slices/contentTypeDeactivationSlice';
 import { fetchUserChannels, selectUserChannels } from '../store/slices/channelSlice';
+import { fetchSettings } from '../store/slices/settingsSlice';
 import SimpleChannelSelectionModal from '../pages/user/SimpleChannelSelectionModal';
 import UploadCustomAudioModal from '../components/UploadCustomAudioModal';
 
@@ -26,6 +27,8 @@ const AdminLayout = () => {
     const [isChannelSelectionOpen, setIsChannelSelectionOpen] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [pendingNavigation, setPendingNavigation] = useState(null);
+    // Force header to re-read channel name when channel is switched (e.g. on Settings page)
+    const [channelHeaderKey, setChannelHeaderKey] = useState(0);
 
     // Fetch user channels when on /admin/channels, /admin/settings, or /admin/users pages
     useEffect(() => {
@@ -36,7 +39,7 @@ const AdminLayout = () => {
         }
     }, [dispatch, location.pathname]);
 
-    // Get current page name from route
+    // Get current page name from route (channel name shown separately below user, like other pages)
     const getPageName = () => {
         const path = location.pathname;
         if (path.includes('/admin/users')) return 'User Management';
@@ -47,6 +50,11 @@ const AdminLayout = () => {
         if (path.includes('/admin/content-type-deactivation')) return 'Content Type Deactivation';
         return 'Admin Panel';
     };
+    const pageName = getPageName();
+    const channelName = localStorage.getItem('channelName') || '';
+    const isChannelScopedPage = location.pathname.includes('/admin/settings') ||
+        location.pathname.includes('/admin/custom-flags') ||
+        location.pathname.includes('/admin/content-type-deactivation');
 
     const handleLogout = () => {
         dispatch(logout());
@@ -72,20 +80,20 @@ const AdminLayout = () => {
             return;
         }
 
-        // Don't require channel for /admin/settings page - navigate directly
-        if (path.includes('/admin/settings')) {
-            navigate(path);
-            setIsDropdownOpen(false);
-            return;
-        }
-
         const channelId = localStorage.getItem('channelId');
 
         if (channelId) {
             // If channel ID exists, navigate directly
             navigate(path);
         } else {
-            // If currently on /admin/channels, /admin/settings, or /admin/users page, show modal
+            // General Settings (and other channel-scoped targets): always open channel selector modal, never navigate to a blank page
+            if (path.includes('/admin/settings')) {
+                setPendingNavigation(path);
+                setIsChannelSelectionOpen(true);
+                setIsDropdownOpen(false);
+                return;
+            }
+            // If currently on /admin/channels or /admin/users page, show modal for other targets
             if (location.pathname.includes('/admin/channels') ||
                 location.pathname.includes('/admin/settings') ||
                 location.pathname.includes('/admin/users')) {
@@ -188,13 +196,13 @@ const AdminLayout = () => {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header - Matching Website Format */}
-            <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40 h-16">
+            <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40 min-h-16 py-3 pb-5">
                 <div className="w-full px-4 sm:px-6 lg:px-8 h-full">
                     <div className="flex items-center justify-between h-full space-x-4">
-                        {/* Page Info */}
+                        {/* Page Info - page name, then user, then channel name (like other channel-scoped pages) */}
                         <div className="flex-1 min-w-0">
                             <h1 className="text-lg font-bold text-gray-900 truncate">
-                                {getPageName()}
+                                {pageName}
                             </h1>
                             <div className="flex items-center space-x-4 text-sm text-gray-600">
                                 <span className="flex items-center">
@@ -204,13 +212,17 @@ const AdminLayout = () => {
                                     {user?.email || 'Admin User'}
                                 </span>
                             </div>
+                            {isChannelScopedPage && channelName && (
+                                <div className="text-sm text-gray-500 mt-0.5 mb-1 truncate">
+                                    {channelName}
+                                </div>
+                            )}
                         </div>
 
                         {/* Channel Switcher and Settings Dropdown */}
                         <div className="flex items-center space-x-2">
-                            {/* Hide channel switcher on /admin/channels, /admin/settings, and /admin/users pages */}
+                            {/* Hide channel switcher on /admin/channels and /admin/users pages */}
                             {!location.pathname.includes('/admin/channels') &&
-                                !location.pathname.includes('/admin/settings') &&
                                 !location.pathname.includes('/admin/users') && (
                                     <ChannelSwitcher onChannelChange={(channel) => {
                                         // Fetch data based on current route without reloading
@@ -232,6 +244,9 @@ const AdminLayout = () => {
                                         } else if (path.includes('/admin/audio')) {
                                             // Trigger custom event for audio page to handle
                                             window.dispatchEvent(new CustomEvent('channelChanged', { detail: channel }));
+                                        } else if (path.includes('/admin/settings')) {
+                                            setChannelHeaderKey(k => k + 1);
+                                            dispatch(fetchSettings(channel?.id));
                                         }
                                     }} />
                                 )}
@@ -301,7 +316,7 @@ const AdminLayout = () => {
                                                         <Music className="w-4 h-4 mr-3 text-gray-500" />
                                                         Audio Management
                                                     </button>
-                                                    <button onClick={() => { navigate("/admin/settings"); setIsDropdownOpen(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                                                    <button onClick={() => { handleNavigation("/admin/settings"); setIsDropdownOpen(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                                                         <Layers className="w-4 h-4 mr-3 text-gray-500" />
                                                         General Settings
                                                     </button>

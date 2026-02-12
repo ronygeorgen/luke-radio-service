@@ -64,36 +64,44 @@ const convertBucketsToApiFormat = (buckets) => {
 // Async thunks
 export const fetchSettings = createAsyncThunk(
   'settings/fetchSettings',
-  async () => {
-    const response = await axiosInstance.get('/settings');
+  async (channelId, { rejectWithValue }) => {
+    if (!channelId) {
+      return rejectWithValue('Channel ID is required');
+    }
+    const response = await axiosInstance.get('/settings', {
+      params: { channel_id: channelId }
+    });
+    const data = response.data;
+    const settingsData = data.settings || data;
+    const bucketsData = data.buckets || [];
     return {
-      settingsId: response.data.settings_id,
+      settingsId: settingsData.id,
       settings: {
-        openAiTranscriptionApi: response.data.settings.openai_api_key || '',
-        openAiOrganisationalId: response.data.settings.openai_org_id || '',
-        googleCloudClientId: response.data.settings.google_client_id || '',
-        googleCloudClientSecret: response.data.settings.google_client_secret || '',
-        // assemblyAiUser: response.data.settings.assemblyai_user || '',
-        // assemblyAiPassword: response.data.settings.assemblyai_password || '',
-        // assemblyAiApi: response.data.settings.assemblyai_api_key || '',
-        acrCloudApi: response.data.settings.acr_cloud_api_key || '',
-        revAiAccessToken: response.data.settings.revai_access_token || '',
-        revAiAuthorization: response.data.settings.revai_authorization || '',
-        summariseTranscript: response.data.settings.summarize_transcript_prompt || '',
-        sentimentAnalysis: response.data.settings.sentiment_analysis_prompt || '',
-        generalTopicsPrompt: response.data.settings.general_topics_prompt || '',
-        iabTopicsPrompt: response.data.settings.iab_topics_prompt || '',
-        bucketPrompt: response.data.settings.bucket_prompt || '',
-        determineRadioContentType: response.data.settings.content_type_prompt || '',
-        determineRadioContentTypePrompt: response.data.settings.determine_radio_content_type_prompt || '',
-        bucketDefinitionErrorRate: response.data.settings.bucket_definition_error_rate || response.data.settings.bucket_error_rate || '',
-        chatGptModel: response.data.settings.chatgpt_model || '',
-        chatGptTemperature: response.data.settings.chatgpt_temperature || '',
-        chatGptTopP: response.data.settings.chatgpt_top_p || '',
-        radioSegmentErrorRate: response.data.settings.radio_segment_error_rate || '',
+        openAiTranscriptionApi: settingsData.openai_api_key || '',
+        openAiOrganisationalId: settingsData.openai_org_id || '',
+        googleCloudClientId: settingsData.google_client_id || '',
+        googleCloudClientSecret: settingsData.google_client_secret || '',
+        // assemblyAiUser: settingsData.assemblyai_user || '',
+        // assemblyAiPassword: settingsData.assemblyai_password || '',
+        // assemblyAiApi: settingsData.assemblyai_api_key || '',
+        acrCloudApi: settingsData.acr_cloud_api_key || '',
+        revAiAccessToken: settingsData.revai_access_token || '',
+        revAiAuthorization: settingsData.revai_authorization || '',
+        summariseTranscript: settingsData.summarize_transcript_prompt || '',
+        sentimentAnalysis: settingsData.sentiment_analysis_prompt || '',
+        generalTopicsPrompt: settingsData.general_topics_prompt || '',
+        iabTopicsPrompt: settingsData.iab_topics_prompt || '',
+        bucketPrompt: settingsData.bucket_prompt || '',
+        determineRadioContentType: settingsData.content_type_prompt || '',
+        determineRadioContentTypePrompt: settingsData.determine_radio_content_type_prompt || '',
+        bucketDefinitionErrorRate: settingsData.bucket_definition_error_rate || settingsData.bucket_error_rate || '',
+        chatGptModel: settingsData.chatgpt_model || '',
+        chatGptTemperature: settingsData.chatgpt_temperature || '',
+        chatGptTopP: settingsData.chatgpt_top_p || '',
+        radioSegmentErrorRate: settingsData.radio_segment_error_rate || '',
       },
-      buckets: response.data.buckets
-        .filter(bucket => !bucket.is_deleted) // Filter out deleted buckets from frontend state
+      buckets: bucketsData
+        .filter(b => !b.is_deleted) // Filter out deleted buckets from frontend state
         .map(bucket => ({
           id: bucket.id,
           name: bucket.title,
@@ -109,8 +117,11 @@ export const fetchSettings = createAsyncThunk(
 export const updateSetting = createAsyncThunk(
   'settings/updateSetting',
   async ({ key, value }, { getState, rejectWithValue, dispatch }) => {
-    const { settings, settingsId, buckets } = getState().settings;
-    
+    const { settings, settingsId, buckets, channelId } = getState().settings;
+    if (!channelId) {
+      return rejectWithValue('Channel ID is required');
+    }
+
     // Update the setting in frontend format
     const updatedFrontendSettings = { ...settings, [key]: value };
 
@@ -122,9 +133,11 @@ export const updateSetting = createAsyncThunk(
 
     try {
       const response = await axiosInstance.post('/settings', {
+        channel_id: channelId,
         settings: {
           ...apiSettings,
-          id: settingsId   
+          id: settingsId,
+          channel_id: Number(channelId)
         },
         buckets: apiBuckets
       });
@@ -132,7 +145,7 @@ export const updateSetting = createAsyncThunk(
       const result = { key, value };
       
       // Refetch settings to ensure UI is in sync with backend
-      dispatch(fetchSettings());
+      dispatch(fetchSettings(channelId));
       
       return result;
     } catch (error) {
@@ -206,7 +219,7 @@ export const updateSetting = createAsyncThunk(
       }
       
       // Refetch settings even on error to ensure UI is in sync
-      dispatch(fetchSettings());
+      dispatch(fetchSettings(channelId));
       
       return rejectWithValue(errorMessage);
     }
@@ -216,7 +229,10 @@ export const updateSetting = createAsyncThunk(
 export const addBucket = createAsyncThunk(
   'settings/addBucket',
   async (bucketData, { getState, rejectWithValue, dispatch }) => {
-    const { settings, settingsId, buckets } = getState().settings;
+    const { settings, settingsId, buckets, channelId } = getState().settings;
+    if (!channelId) {
+      return rejectWithValue('Channel ID is required');
+    }
     
     const newBucket = {
       title: bucketData.name,
@@ -244,9 +260,11 @@ export const addBucket = createAsyncThunk(
 
     try {
       const response = await axiosInstance.post('/settings', {
+        channel_id: channelId,
         settings: {
           ...apiSettings,
-          id: settingsId
+          id: settingsId,
+          channel_id: Number(channelId)
         },
         buckets: [
           ...existingApiBuckets,
@@ -291,7 +309,7 @@ export const addBucket = createAsyncThunk(
       };
       
       // Refetch settings to ensure UI is in sync with backend
-      dispatch(fetchSettings());
+      dispatch(fetchSettings(channelId));
       
       return result;
     } catch (error) {
@@ -365,7 +383,7 @@ export const addBucket = createAsyncThunk(
       }
       
       // Refetch settings even on error to ensure UI is in sync
-      dispatch(fetchSettings());
+      dispatch(fetchSettings(channelId));
       
       return rejectWithValue(errorMessage);
     }
@@ -375,7 +393,10 @@ export const addBucket = createAsyncThunk(
 export const updateBucket = createAsyncThunk(
   'settings/updateBucket',
   async ({ id, name, value, category, prompt }, { getState, rejectWithValue, dispatch }) => {
-    const { settings, settingsId, buckets } = getState().settings;
+    const { settings, settingsId, buckets, channelId } = getState().settings;
+    if (!channelId) {
+      return rejectWithValue('Channel ID is required');
+    }
     
     // Convert all settings to API format
     const apiSettings = convertSettingsToApiFormat(settings);
@@ -399,9 +420,11 @@ export const updateBucket = createAsyncThunk(
     
     try {
       await axiosInstance.post('/settings', {
+        channel_id: channelId,
         settings: {
           ...apiSettings,
-          id: settingsId
+          id: settingsId,
+          channel_id: Number(channelId)
         },
         buckets: apiBuckets
       });
@@ -409,7 +432,7 @@ export const updateBucket = createAsyncThunk(
       const result = { id, name, value, category: category || '', prompt };
       
       // Refetch settings to ensure UI is in sync with backend
-      dispatch(fetchSettings());
+      dispatch(fetchSettings(channelId));
       
       return result;
     } catch (error) {
@@ -483,7 +506,7 @@ export const updateBucket = createAsyncThunk(
       }
       
       // Refetch settings even on error to ensure UI is in sync
-      dispatch(fetchSettings());
+      dispatch(fetchSettings(channelId));
       
       return rejectWithValue(errorMessage);
     }
@@ -493,7 +516,10 @@ export const updateBucket = createAsyncThunk(
 export const deleteBucket = createAsyncThunk(
   'settings/deleteBucket',
   async (bucketId, { getState, rejectWithValue, dispatch }) => {
-    const { settings, settingsId, buckets } = getState().settings;
+    const { settings, settingsId, buckets, channelId } = getState().settings;
+    if (!channelId) {
+      return rejectWithValue('Channel ID is required');
+    }
     
     // Convert all settings to API format
     const apiSettings = convertSettingsToApiFormat(settings);
@@ -514,15 +540,17 @@ export const deleteBucket = createAsyncThunk(
     
     try {
       await axiosInstance.post('/settings', {
+        channel_id: channelId,
         settings: {
           ...apiSettings,
-          id: settingsId
+          id: settingsId,
+          channel_id: Number(channelId)
         },
         buckets: apiBuckets
       });
 
       // Refetch settings to ensure UI is in sync with backend
-      dispatch(fetchSettings());
+      dispatch(fetchSettings(channelId));
       
       return bucketId;
     } catch (error) {
@@ -596,7 +624,7 @@ export const deleteBucket = createAsyncThunk(
       }
       
       // Refetch settings even on error to ensure UI is in sync
-      dispatch(fetchSettings());
+      dispatch(fetchSettings(channelId));
       
       return rejectWithValue(errorMessage);
     }
@@ -609,6 +637,7 @@ const settingsSlice = createSlice({
     settings: {},
     settingsId: null,
     buckets: [],
+    channelId: null,
     loading: false,
     error: null,
   },
@@ -626,6 +655,7 @@ const settingsSlice = createSlice({
       })
       .addCase(fetchSettings.fulfilled, (state, action) => {
         state.loading = false;
+        state.channelId = action.meta.arg ?? state.channelId;
         state.settingsId = action.payload.settingsId;
         state.settings = action.payload.settings;
         state.buckets = action.payload.buckets;
