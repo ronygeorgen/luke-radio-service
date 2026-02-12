@@ -42,8 +42,17 @@ const ChannelCard = ({ channel, onEdit }) => {
 
   const handleToggle = async () => {
     setIsToggling(true);
-    await dispatch(toggleChannel(channel.id));
-    setIsToggling(false);
+    try {
+      await dispatch(toggleChannel({
+        channelId: channel.id,
+        isActive: !channel.isActive
+      })).unwrap();
+    } catch (err) {
+      setToastMessage(err || 'Failed to update channel status');
+      setToastType('error');
+    } finally {
+      setIsToggling(false);
+    }
   };
 
   const handleReanalyze = async () => {

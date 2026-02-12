@@ -124,8 +124,21 @@ export const deleteChannel = createAsyncThunk(
 
 export const toggleChannel = createAsyncThunk(
   'channels/toggleChannel',
-  async (channelId) => {
-    return channelId;
+  async ({ channelId, isActive }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.patch('/channels', {
+        id: Number(channelId),
+        is_active: isActive
+      });
+      const updated = response.data?.channel ?? response.data;
+      const newIsActive = updated?.is_active ?? isActive;
+      return { channelId: String(channelId), isActive: newIsActive };
+    } catch (err) {
+      if (err.response?.data?.error) {
+        return rejectWithValue(err.response.data.error);
+      }
+      return rejectWithValue(err.message || 'Failed to update channel status');
+    }
   }
 );
 
@@ -296,11 +309,10 @@ const channelSlice = createSlice({
       })
       .addCase(toggleChannel.fulfilled, (state, action) => {
         state.loading = false;
-        const channel = state.channels.find(
-          channel => channel.id === action.payload.toString()
-        );
+        const { channelId, isActive } = action.payload;
+        const channel = state.channels.find(c => c.id === channelId);
         if (channel) {
-          channel.isActive = !channel.isActive;
+          channel.isActive = isActive;
         }
       })
       .addCase(toggleChannel.rejected, (state, action) => {
