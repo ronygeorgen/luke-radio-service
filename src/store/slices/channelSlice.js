@@ -187,7 +187,7 @@ const channelSlice = createSlice({
           rssUrl: channel.rss_url || '',
           rssStartDate: channel.rss_start_date || '',
           createdAt: channel.created_at,
-          isActive: !channel.is_deleted
+          isActive: channel.is_active === true
         }));
       })
       .addCase(fetchChannels.rejected, (state, action) => {
