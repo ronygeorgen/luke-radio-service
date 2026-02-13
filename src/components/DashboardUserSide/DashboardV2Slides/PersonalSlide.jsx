@@ -234,13 +234,13 @@ const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false 
               <div className="relative pl-8">
                 {/* Chart area - bars start from 0% level */}
                 <div className="h-64 relative">
-                  {/* Y-axis labels on the left */}
+                  {/* Y-axis labels on the left (0–100% scale) */}
                   <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-500 w-8">
-                    <span className="transition-opacity duration-500" style={{ opacity: isVisible ? 1 : 0 }}>25%</span>
-                    <span className="transition-opacity duration-500" style={{ opacity: isVisible ? 1 : 0, transitionDelay: '100ms' }}>20%</span>
-                    <span className="transition-opacity duration-500" style={{ opacity: isVisible ? 1 : 0, transitionDelay: '200ms' }}>15%</span>
-                    <span className="transition-opacity duration-500" style={{ opacity: isVisible ? 1 : 0, transitionDelay: '300ms' }}>10%</span>
-                    <span className="transition-opacity duration-500" style={{ opacity: isVisible ? 1 : 0, transitionDelay: '400ms' }}>5%</span>
+                    <span className="transition-opacity duration-500" style={{ opacity: isVisible ? 1 : 0 }}>100%</span>
+                    <span className="transition-opacity duration-500" style={{ opacity: isVisible ? 1 : 0, transitionDelay: '100ms' }}>80%</span>
+                    <span className="transition-opacity duration-500" style={{ opacity: isVisible ? 1 : 0, transitionDelay: '200ms' }}>60%</span>
+                    <span className="transition-opacity duration-500" style={{ opacity: isVisible ? 1 : 0, transitionDelay: '300ms' }}>40%</span>
+                    <span className="transition-opacity duration-500" style={{ opacity: isVisible ? 1 : 0, transitionDelay: '400ms' }}>20%</span>
                     <span className="transition-opacity duration-500" style={{ opacity: isVisible ? 1 : 0, transitionDelay: '500ms' }}>0%</span>
                   </div>
 
@@ -259,7 +259,7 @@ const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false 
                         <div
                           className="w-full rounded-t origin-bottom overflow-hidden cursor-pointer"
                           style={{
-                            height: isVisible ? `${(item.value / 25) * 100}%` : '0%',
+                            height: isVisible ? `${item.value}%` : '0%',
                             backgroundColor: item.color,
                             transition: `height 1.5s cubic-bezier(0.4, 0, 0.2, 1) ${index * 200 + 400}ms`,
                             minHeight: '2px',
