@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Radio, Mic, Heart } from 'lucide-react';
 import { dashboardApi } from '../../../services/dashboardApi';
 
-const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting: false }, reportFolderId = null }) => {
+const TOPICS_LIMIT_HIDE_UI = 8;
+
+const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting: false }, reportFolderId = null, hideUI = false }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -91,10 +93,12 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
     return (
       <div className="min-h-screen p-8">
         <div className="max-w-7xl mx-auto">
+          {!hideUI && (
           <div className="flex items-center justify-between mb-8">
             <div className="h-10 w-64 bg-gray-300/50 rounded-lg animate-pulse"></div>
             <div className="h-6 w-40 bg-gray-300/50 rounded-lg animate-pulse"></div>
           </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="bg-white rounded-2xl p-4 shadow-xl">
@@ -152,35 +156,39 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
       data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
     >
       <div className="max-w-7xl mx-auto">
-        <div className="relative flex items-center justify-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">Entity Comparison</h2>
+        {/* Slide header and Show All Topics toggle — hidden when hideUI=true to reduce height */}
+        {!hideUI && (
+          <div className="relative flex items-center justify-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900">Entity Comparison</h2>
 
-          {/* Toggle Button for Show All Topics */}
-          <div className="absolute right-0 flex items-center space-x-3">
-            <span className="text-sm text-gray-700 font-medium">Show All Topics</span>
-            <button
-              onClick={handleToggleShowAllTopics}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${showAllTopics ? 'bg-blue-600' : 'bg-gray-300'
-                }`}
-              role="switch"
-              aria-checked={showAllTopics}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAllTopics ? 'translate-x-6' : 'translate-x-1'
+            {/* Toggle Button for Show All Topics */}
+            <div className="absolute right-0 flex items-center space-x-3">
+              <span className="text-sm text-gray-700 font-medium">Show All Topics</span>
+              <button
+                onClick={handleToggleShowAllTopics}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${showAllTopics ? 'bg-blue-600' : 'bg-gray-300'
                   }`}
-              />
-            </button>
-            <span className="text-xs text-gray-500">
-              {showAllTopics ? 'On' : 'Off'}
-            </span>
+                role="switch"
+                aria-checked={showAllTopics}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAllTopics ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                />
+              </button>
+              <span className="text-xs text-gray-500">
+                {showAllTopics ? 'On' : 'Off'}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Top Section - Shift Cards with Topics */}
         {shifts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {shifts.map((shift, shiftIndex) => {
-              const shiftTopics = shift.topics || [];
+              const rawTopics = shift.topics || [];
+              const shiftTopics = hideUI ? rawTopics.slice(0, TOPICS_LIMIT_HIDE_UI) : rawTopics;
               const shiftTotalCount = shift.total_count || 0;
 
               return (

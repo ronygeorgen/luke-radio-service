@@ -774,6 +774,7 @@ function DashboardV2() {
             currentShiftId={currentShiftId}
             setCurrentShiftId={setCurrentShiftId}
             reportFolderId={reportFolderId}
+            hideUI={hideUI}
           />
         </div>
       </div>
