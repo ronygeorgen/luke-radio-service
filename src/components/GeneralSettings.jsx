@@ -1,15 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchSettings, updateSetting, clearError } from '../store/slices/settingsSlice';
+import { fetchChannels, setDefaultSettings } from '../store/slices/channelSlice';
 import SettingField from './SettingField';
 import BucketManager from './BucketManager';
-import { Save, Radio } from 'lucide-react';
+import { Save, Radio, Star } from 'lucide-react';
 import Toast from './UserSide/Toast';
 
 const GeneralSettings = () => {
   const dispatch = useDispatch();
   const channelId = localStorage.getItem('channelId');
   const { settings, loading } = useSelector(state => state.settings);
+  const channels = useSelector(state => state.channels.channels);
+  const currentChannel = channelId ? channels.find(c => c.id === channelId) : null;
+  const isDefaultSettings = currentChannel?.isDefaultSettings === true;
+  const [defaultSettingsLoading, setDefaultSettingsLoading] = useState(false);
   const [changedSettings, setChangedSettings] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [errorToast, setErrorToast] = useState(null);
@@ -18,8 +23,29 @@ const GeneralSettings = () => {
   useEffect(() => {
     if (channelId) {
       dispatch(fetchSettings(channelId));
+      dispatch(fetchChannels());
     }
   }, [dispatch, channelId]);
+
+  const handleDefaultSettingsToggle = async () => {
+    if (!channelId) return;
+    setDefaultSettingsLoading(true);
+    setErrorToast(null);
+    setSuccessToast(null);
+    try {
+      const result = await dispatch(setDefaultSettings({
+        channelId,
+        isDefaultSettings: !isDefaultSettings
+      })).unwrap();
+      setSuccessToast(result?.is_default_settings
+        ? 'This channel is now your default settings channel.'
+        : 'Default settings removed from this channel.');
+    } catch (err) {
+      setErrorToast(err || 'Failed to update default settings.');
+    } finally {
+      setDefaultSettingsLoading(false);
+    }
+  };
 
   const handleValueChange = (key, value) => {
     // Track which settings have changed
@@ -147,8 +173,30 @@ const GeneralSettings = () => {
       )}
 
       <div className="space-y-8">
-        {/* Save Button - Fixed at top right so it stays visible when scrolling */}
-        <div className="fixed top-24 right-6 sm:right-8 lg:right-10 z-30 flex justify-end">
+        {/* Default settings + Save - Fixed at top right so they stay visible when scrolling */}
+        <div className="fixed top-24 right-6 sm:right-8 lg:right-10 z-30 flex justify-end items-center gap-3">
+          <button
+            type="button"
+            onClick={handleDefaultSettingsToggle}
+            disabled={defaultSettingsLoading}
+            className={`
+              flex items-center space-x-2 px-4 py-2.5 rounded-lg font-medium shadow-lg transition-all duration-200
+              ${isDefaultSettings
+                ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/50'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300'
+              }
+              ${defaultSettingsLoading ? 'opacity-70 cursor-not-allowed' : ''}
+            `}
+          >
+            <Star className={`h-4 w-4 ${isDefaultSettings ? 'fill-current' : ''}`} />
+            <span>
+              {defaultSettingsLoading
+                ? 'Updating...'
+                : isDefaultSettings
+                  ? 'Remove as default settings'
+                  : 'Make default settings'}
+            </span>
+          </button>
           <button
             onClick={handleSaveAll}
             disabled={!hasChanges || isSaving}

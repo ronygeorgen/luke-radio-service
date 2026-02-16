@@ -159,6 +159,24 @@ export const reanalyzeRSS = createAsyncThunk(
   }
 );
 
+export const setDefaultSettings = createAsyncThunk(
+  'channels/setDefaultSettings',
+  async ({ channelId, isDefaultSettings }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post('/channels/default-settings', {
+        channel_id: Number(channelId),
+        is_default_settings: !!isDefaultSettings
+      });
+      return response.data.channel;
+    } catch (err) {
+      if (err.response?.data?.error) {
+        return rejectWithValue(err.response.data.error);
+      }
+      return rejectWithValue(err.message || 'Failed to update default settings');
+    }
+  }
+);
+
 const channelSlice = createSlice({
   name: 'channels',
   initialState: {
@@ -200,7 +218,8 @@ const channelSlice = createSlice({
           rssUrl: channel.rss_url || '',
           rssStartDate: channel.rss_start_date || '',
           createdAt: channel.created_at,
-          isActive: channel.is_active === true
+          isActive: channel.is_active === true,
+          isDefaultSettings: channel.is_default_settings === true
         }));
       })
       .addCase(fetchChannels.rejected, (state, action) => {
@@ -241,17 +260,19 @@ const channelSlice = createSlice({
       })
       .addCase(addChannel.fulfilled, (state, action) => {
         state.loading = false;
+        const p = action.payload;
         state.channels.push({
-          id: action.payload.id.toString(),
-          channelType: action.payload.channel_type || 'broadcast',
-          channelId: action.payload.channel_id,
-          projectId: action.payload.project_id,
-          name: action.payload.name || '',
-          timezone: action.payload.timezone,
-          rssUrl: action.payload.rss_url || '',
-          rssStartDate: action.payload.rss_start_date || '',
-          createdAt: action.payload.created_at,
-          isActive: !action.payload.is_deleted
+          id: p.id.toString(),
+          channelType: p.channel_type || 'broadcast',
+          channelId: p.channel_id,
+          projectId: p.project_id,
+          name: p.name || '',
+          timezone: p.timezone,
+          rssUrl: p.rss_url || '',
+          rssStartDate: p.rss_start_date || '',
+          createdAt: p.created_at,
+          isActive: !p.is_deleted,
+          isDefaultSettings: p.is_default_settings === true
         });
       })
       .addCase(addChannel.rejected, (state, action) => {
@@ -269,17 +290,19 @@ const channelSlice = createSlice({
           channel => channel.id === action.payload.id.toString()
         );
         if (index !== -1) {
+          const p = action.payload;
           state.channels[index] = {
-            id: action.payload.id.toString(),
-            channelType: action.payload.channel_type || 'broadcast',
-            channelId: action.payload.channel_id,
-            projectId: action.payload.project_id,
-            name: action.payload.name || '',
-            timezone: action.payload.timezone,
-            rssUrl: action.payload.rss_url || '',
-            rssStartDate: action.payload.rss_start_date || '',
-            createdAt: action.payload.created_at,
-            isActive: !action.payload.is_deleted
+            id: p.id.toString(),
+            channelType: p.channel_type || 'broadcast',
+            channelId: p.channel_id,
+            projectId: p.project_id,
+            name: p.name || '',
+            timezone: p.timezone,
+            rssUrl: p.rss_url || '',
+            rssStartDate: p.rss_start_date || '',
+            createdAt: p.created_at,
+            isActive: !p.is_deleted,
+            isDefaultSettings: p.is_default_settings === true
           };
         }
       })
@@ -318,6 +341,15 @@ const channelSlice = createSlice({
       .addCase(toggleChannel.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message;
+      })
+      // Set default settings
+      .addCase(setDefaultSettings.fulfilled, (state, action) => {
+        const payload = action.payload;
+        const id = payload.id.toString();
+        const channel = state.channels.find(c => c.id === id);
+        if (channel) {
+          channel.isDefaultSettings = payload.is_default_settings === true;
+        }
       });
   },
 });
