@@ -18,6 +18,7 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
     rssUrl: '',
     rssStartDate: '',
     rssStartTime: '00:00',
+    replicateDefaultSettings: true,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,6 +40,7 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
         rssUrl: channelToEdit.rssUrl || '',
         rssStartDate: channelToEdit.rssStartDate ? channelToEdit.rssStartDate.split('T')[0] : '',
         rssStartTime: channelToEdit.rssStartDate ? channelToEdit.rssStartDate.split('T')[1]?.substring(0, 5) || '00:00' : '00:00',
+        replicateDefaultSettings: true,
       });
       
       if (channelToEdit.timezone) {
@@ -58,6 +60,7 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
         rssUrl: '',
         rssStartDate: '',
         rssStartTime: '00:00',
+        replicateDefaultSettings: true,
       });
       setSelectedTimezone({});
     }
@@ -129,6 +132,7 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
       
       // When creating new channel, include all required fields
       if (!formData.id) {
+        payload.replicateDefaultSettings = formData.replicateDefaultSettings !== false;
         if (formData.channelType === 'broadcast') {
           const channelId = String(formData.channelId || '').trim();
           const projectId = String(formData.projectId || '').trim();
@@ -180,6 +184,7 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
         rssUrl: '',
         rssStartDate: '',
         rssStartTime: '00:00',
+        replicateDefaultSettings: true,
       });
       setSelectedTimezone({});
       setIsSubmitting(false);
@@ -515,6 +520,23 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
                   </span>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Replicate default settings - only when creating a new channel */}
+          {!formData.id && (
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="replicateDefaultSettings"
+                name="replicateDefaultSettings"
+                checked={formData.replicateDefaultSettings !== false}
+                onChange={(e) => setFormData(prev => ({ ...prev, replicateDefaultSettings: e.target.checked }))}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="replicateDefaultSettings" className="text-sm font-medium text-gray-700">
+                Copy default settings to this channel
+              </label>
             </div>
           )}
 

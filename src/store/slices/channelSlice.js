@@ -28,7 +28,8 @@ export const addChannel = createAsyncThunk(
       let payload = {
         channel_type: channelType,
         name: channelData.name || '',
-        timezone: channelData.timezone
+        timezone: channelData.timezone,
+        replicate_default_settings: channelData.replicateDefaultSettings !== false
       };
 
       if (channelType === 'broadcast') {
