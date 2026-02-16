@@ -80,8 +80,18 @@ const ChannelCard = ({ channel, onEdit }) => {
     <div className="sw-card p-4 sm:p-6 hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
         <div className="flex-1 min-w-0">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 break-words">
-            {channel.name || (channel.channelType === 'podcast' ? 'Podcast Channel' : channel.channelType === 'custom_audio' ? 'Custom Audio' : `Channel: ${channel.channelId}`)}
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 break-words flex flex-wrap items-center gap-2">
+            <span>
+              {channel.name || (channel.channelType === 'podcast' ? 'Podcast Channel' : channel.channelType === 'custom_audio' ? 'Custom Audio' : `Channel: ${channel.channelId}`)}
+            </span>
+            {(channel.is_default_settings || channel.isDefaultSettings) && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200"
+                title="Default settings channel for this user"
+              >
+                Default settings
+              </span>
+            )}
           </h3>
           {channel.channelType === 'podcast' ? (
             <>
