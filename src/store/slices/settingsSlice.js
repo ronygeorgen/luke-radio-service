@@ -35,6 +35,57 @@ const convertSettingsToApiFormat = (frontendSettings) => {
   return apiSettings;
 };
 
+// Helper: convert API version response (snake_case settings) to frontend format for preview
+const convertApiVersionToFrontend = (apiVersion) => {
+  const apiToFrontendKey = {
+    openai_api_key: 'openAiTranscriptionApi',
+    openai_org_id: 'openAiOrganisationalId',
+    google_client_id: 'googleCloudClientId',
+    google_client_secret: 'googleCloudClientSecret',
+    acr_cloud_api_key: 'acrCloudApi',
+    revai_access_token: 'revAiAccessToken',
+    revai_authorization: 'revAiAuthorization',
+    summarize_transcript_prompt: 'summariseTranscript',
+    sentiment_analysis_prompt: 'sentimentAnalysis',
+    general_topics_prompt: 'generalTopicsPrompt',
+    iab_topics_prompt: 'iabTopicsPrompt',
+    bucket_prompt: 'bucketPrompt',
+    content_type_prompt: 'determineRadioContentType',
+    determine_radio_content_type_prompt: 'determineRadioContentTypePrompt',
+    bucket_definition_error_rate: 'bucketDefinitionErrorRate',
+    chatgpt_model: 'chatGptModel',
+    chatgpt_temperature: 'chatGptTemperature',
+    chatgpt_top_p: 'chatGptTopP',
+    radio_segment_error_rate: 'radioSegmentErrorRate',
+  };
+  const apiSettings = apiVersion.settings || {};
+  const settings = {};
+  Object.keys(apiToFrontendKey).forEach(apiKey => {
+    if (apiSettings[apiKey] !== undefined && apiSettings[apiKey] !== null) {
+      settings[apiToFrontendKey[apiKey]] = apiSettings[apiKey];
+    }
+  });
+  const buckets = (apiVersion.buckets || [])
+    .filter(b => !b.is_deleted)
+    .map(b => ({
+      id: b.id,
+      name: b.title,
+      value: b.description,
+      category: b.category || '',
+      prompt: b.prompt,
+    }));
+  return {
+    id: apiVersion.id,
+    version: apiVersion.version,
+    is_active: apiVersion.is_active,
+    created_at: apiVersion.created_at,
+    change_reason: apiVersion.change_reason,
+    created_by: apiVersion.created_by,
+    settings,
+    buckets,
+  };
+};
+
 // Helper function to convert buckets to API format
 const convertBucketsToApiFormat = (buckets) => {
   return buckets.map(bucket => {
@@ -111,6 +162,37 @@ export const fetchSettings = createAsyncThunk(
           createdAt: bucket.created_at || new Date().toISOString()
         }))
     };
+  }
+);
+
+// List settings versions for revert UI
+export const fetchSettingsVersions = createAsyncThunk(
+  'settings/fetchSettingsVersions',
+  async (channelId, { rejectWithValue }) => {
+    if (!channelId) {
+      return rejectWithValue('Channel ID is required');
+    }
+    const response = await axiosInstance.get('/settings/revert', {
+      params: { channel_id: channelId }
+    });
+    const versions = response.data.versions || [];
+    return versions.map(v => convertApiVersionToFrontend(v));
+  }
+);
+
+// Revert to an older settings version
+export const revertToVersion = createAsyncThunk(
+  'settings/revertToVersion',
+  async ({ channelId, targetVersionNumber }, { rejectWithValue, dispatch }) => {
+    if (!channelId || targetVersionNumber == null) {
+      return rejectWithValue('Channel ID and target version are required');
+    }
+    await axiosInstance.post('/settings/revert', {
+      channel_id: Number(channelId),
+      target_version_number: Number(targetVersionNumber)
+    });
+    await dispatch(fetchSettings(channelId));
+    return { channelId, targetVersionNumber };
   }
 );
 
