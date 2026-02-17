@@ -116,7 +116,7 @@ export const fetchSettings = createAsyncThunk(
 
 export const updateSetting = createAsyncThunk(
   'settings/updateSetting',
-  async ({ key, value }, { getState, rejectWithValue, dispatch }) => {
+  async ({ key, value, change_reason }, { getState, rejectWithValue, dispatch }) => {
     const { settings, settingsId, buckets, channelId } = getState().settings;
     if (!channelId) {
       return rejectWithValue('Channel ID is required');
@@ -131,16 +131,21 @@ export const updateSetting = createAsyncThunk(
     // Convert buckets to API format
     const apiBuckets = convertBucketsToApiFormat(buckets);
 
+    const payload = {
+      channel_id: channelId,
+      settings: {
+        ...apiSettings,
+        id: settingsId,
+        channel_id: Number(channelId)
+      },
+      buckets: apiBuckets
+    };
+    if (change_reason != null && String(change_reason).trim() !== '') {
+      payload.change_reason = String(change_reason).trim();
+    }
+
     try {
-      const response = await axiosInstance.post('/settings', {
-        channel_id: channelId,
-        settings: {
-          ...apiSettings,
-          id: settingsId,
-          channel_id: Number(channelId)
-        },
-        buckets: apiBuckets
-      });
+      const response = await axiosInstance.post('/settings', payload);
 
       const result = { key, value };
       

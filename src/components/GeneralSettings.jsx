@@ -4,7 +4,7 @@ import { fetchSettings, updateSetting, clearError } from '../store/slices/settin
 import { fetchChannels, setDefaultSettings } from '../store/slices/channelSlice';
 import SettingField from './SettingField';
 import BucketManager from './BucketManager';
-import { Save, Radio, Star } from 'lucide-react';
+import { Save, Radio, Star, X } from 'lucide-react';
 import Toast from './UserSide/Toast';
 
 const GeneralSettings = () => {
@@ -19,6 +19,8 @@ const GeneralSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [errorToast, setErrorToast] = useState(null);
   const [successToast, setSuccessToast] = useState(null);
+  const [showSaveReasonModal, setShowSaveReasonModal] = useState(false);
+  const [changeReason, setChangeReason] = useState('');
 
   useEffect(() => {
     if (channelId) {
@@ -61,21 +63,32 @@ const GeneralSettings = () => {
     }
   };
 
-  const handleSaveAll = async () => {
+  const handleSaveAll = async (changeReasonValue) => {
     if (Object.keys(changedSettings).length === 0) {
       setErrorToast('No changes to save');
       return;
     }
 
+    setShowSaveReasonModal(false);
+    setChangeReason('');
     setIsSaving(true);
     setErrorToast(null);
     setSuccessToast(null);
     dispatch(clearError());
 
+    const reasonToSend = changeReasonValue != null && String(changeReasonValue).trim() !== ''
+      ? String(changeReasonValue).trim()
+      : undefined;
+
     try {
-      // Save each changed setting
-      const savePromises = Object.entries(changedSettings).map(([key, value]) =>
-        dispatch(updateSetting({ key, value }))
+      // Save each changed setting (pass change_reason on first call; API uses it for the save action)
+      const entries = Object.entries(changedSettings);
+      const savePromises = entries.map(([key, value], index) =>
+        dispatch(updateSetting({
+          key,
+          value,
+          ...(index === 0 && reasonToSend ? { change_reason: reasonToSend } : {})
+        }))
       );
 
       const results = await Promise.all(savePromises);
@@ -98,6 +111,23 @@ const GeneralSettings = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSaveClick = () => {
+    if (Object.keys(changedSettings).length === 0) {
+      setErrorToast('No changes to save');
+      return;
+    }
+    setShowSaveReasonModal(true);
+  };
+
+  const handleSaveReasonConfirm = () => {
+    handleSaveAll(changeReason);
+  };
+
+  const handleSaveReasonCancel = () => {
+    setShowSaveReasonModal(false);
+    setChangeReason('');
   };
 
   const hasChanges = Object.keys(changedSettings).length > 0;
@@ -172,6 +202,59 @@ const GeneralSettings = () => {
         />
       )}
 
+      {/* Save Change Reason Modal */}
+      {showSaveReasonModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]"
+          onClick={(e) => e.target === e.currentTarget && handleSaveReasonCancel()}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Save settings</h3>
+              <button
+                type="button"
+                onClick={handleSaveReasonCancel}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mb-4">
+              <label htmlFor="changeReason" className="block text-sm font-medium text-gray-700 mb-1">
+                Change reason (optional)
+              </label>
+              <textarea
+                id="changeReason"
+                value={changeReason}
+                onChange={(e) => setChangeReason(e.target.value)}
+                placeholder="e.g. Initial setup, Updated prompts..."
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleSaveReasonCancel}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveReasonConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-8">
         {/* Default settings + Save - Fixed at top right so they stay visible when scrolling */}
         <div className="fixed top-24 right-6 sm:right-8 lg:right-10 z-30 flex justify-end items-center gap-3">
@@ -198,7 +281,7 @@ const GeneralSettings = () => {
             </span>
           </button>
           <button
-            onClick={handleSaveAll}
+            onClick={handleSaveClick}
             disabled={!hasChanges || isSaving}
             className={`
               flex items-center space-x-2 px-6 py-2.5 rounded-lg font-medium shadow-lg transition-all duration-200
