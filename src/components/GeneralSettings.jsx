@@ -4,7 +4,7 @@ import { fetchSettings, updateSetting, clearError, fetchSettingsVersions, revert
 import { fetchChannels, setDefaultSettings } from '../store/slices/channelSlice';
 import SettingField from './SettingField';
 import BucketManager from './BucketManager';
-import { Save, Radio, Star, X, History, RotateCcw, MoreVertical } from 'lucide-react';
+import { Save, Radio, Star, X, History, RotateCcw, MoreVertical, ChevronDown } from 'lucide-react';
 import Toast from './UserSide/Toast';
 import dayjs from 'dayjs';
 
@@ -30,6 +30,7 @@ const GeneralSettings = () => {
   const [revertConfirmVersion, setRevertConfirmVersion] = useState(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const settingsMenuRef = useRef(null);
+  const [expandedBucketId, setExpandedBucketId] = useState(null);
 
   useEffect(() => {
     if (channelId) {
@@ -158,7 +159,13 @@ const GeneralSettings = () => {
     setSelectedVersion(null);
     setRevertConfirmVersion(null);
     setVersions([]);
+    setExpandedBucketId(null);
   };
+
+  // Collapse bucket when switching version
+  useEffect(() => {
+    setExpandedBucketId(null);
+  }, [selectedVersion?.id]);
 
   const handleRevertClick = () => {
     if (selectedVersion) setRevertConfirmVersion(selectedVersion.version);
@@ -471,16 +478,37 @@ const GeneralSettings = () => {
                           ))}
                           <div>
                             <h4 className="text-sm font-medium text-gray-700 mb-2">Buckets ({selectedVersion.buckets?.length ?? 0})</h4>
-                            <ul className="space-y-1 text-sm text-gray-600">
-                              {(selectedVersion.buckets || []).slice(0, 15).map((b) => (
-                                <li key={b.id} className="truncate">
-                                  {b.name}
-                                  {b.category ? ` · ${b.category}` : ''}
-                                </li>
-                              ))}
-                              {(selectedVersion.buckets?.length || 0) > 15 && (
-                                <li className="text-gray-400">+ {(selectedVersion.buckets?.length || 0) - 15} more</li>
-                              )}
+                            <ul className="space-y-1">
+                              {(selectedVersion.buckets || []).map((b) => {
+                                const isExpanded = expandedBucketId === b.id;
+                                const hasContent = b.value && String(b.value).trim().length > 0;
+                                return (
+                                  <li key={b.id} className="rounded-lg border border-gray-200 overflow-hidden">
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedBucketId(isExpanded ? null : b.id)}
+                                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm bg-gray-50 hover:bg-gray-100 transition-colors"
+                                    >
+                                      <span className="font-medium text-gray-800 truncate">
+                                        {b.name}
+                                        {b.category ? (
+                                          <span className="font-normal text-gray-500 ml-1">· {b.category}</span>
+                                        ) : null}
+                                      </span>
+                                      <ChevronDown
+                                        className={`h-4 w-4 flex-shrink-0 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                      />
+                                    </button>
+                                    {isExpanded && (
+                                      <div className="px-3 py-2.5 bg-white border-t border-gray-100">
+                                        <p className="text-xs text-gray-600 whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
+                                          {hasContent ? b.value : 'No description'}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </li>
+                                );
+                              })}
                             </ul>
                           </div>
                         </div>
