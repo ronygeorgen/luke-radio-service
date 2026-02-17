@@ -176,7 +176,8 @@ export const fetchSettingsVersions = createAsyncThunk(
       params: { channel_id: channelId }
     });
     const versions = response.data.versions || [];
-    return versions.map(v => convertApiVersionToFrontend(v));
+    // Only keep the most recent 8 versions for the UI
+    return versions.slice(0, 8).map(v => convertApiVersionToFrontend(v));
   }
 );
 
