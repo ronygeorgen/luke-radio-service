@@ -80,6 +80,11 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
     const name = formData.name ? String(formData.name).trim() : '';
     const timezone = String(formData.timezone || '').trim();
     
+    if (!name) {
+      alert('Please enter a channel name');
+      return;
+    }
+    
     if (!timezone) {
       alert('Please select a timezone');
       return;
@@ -460,7 +465,7 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
           {/* Common fields */}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Channel Name (Optional)
+              Channel Name *
             </label>
             <input
               type="text"
@@ -470,6 +475,7 @@ const OnboardModal = ({ isOpen, onClose, channelToEdit }) => {
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter channel name"
+              required
             />
           </div>
 
