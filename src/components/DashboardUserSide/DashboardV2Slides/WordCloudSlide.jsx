@@ -5,8 +5,8 @@ import { dashboardApi } from '../../../services/dashboardApi';
 const wordCountCache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '', reportFolderId = null }) => {
-  const [isVisible, setIsVisible] = useState(false);
+const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '', reportFolderId = null, hideUI = false }) => {
+  const [isVisible, setIsVisible] = useState(hideUI);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [wordCounts, setWordCounts] = useState({});
@@ -66,8 +66,12 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
         const cached = wordCountCache.get(cacheKey);
         if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
           setWordCounts(cached.data);
-          setIsVisible(false);
-          setTimeout(() => setIsVisible(true), 100);
+          if (!hideUI) {
+            setIsVisible(false);
+            setTimeout(() => setIsVisible(true), 100);
+          } else {
+            setIsVisible(true);
+          }
           setLoading(false);
           return;
         }
@@ -90,13 +94,14 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
 
         setWordCounts(wordCountsData);
 
-        // Reset and trigger animations with delay
-        setIsVisible(false);
-        const timer = setTimeout(() => {
+        // Reset and trigger animations with delay (skip when hideUI for instant display)
+        if (hideUI) {
           setIsVisible(true);
-        }, 100);
-
-        return () => clearTimeout(timer);
+        } else {
+          setIsVisible(false);
+          const timer = setTimeout(() => setIsVisible(true), 100);
+          return () => clearTimeout(timer);
+        }
       } catch (err) {
         console.error('Error fetching word counts:', err);
         setError(err.response?.data?.error || err.message || 'Failed to fetch word counts');
@@ -113,7 +118,7 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
         clearTimeout(fetchTimeoutRef.current);
       }
     };
-  }, [dateRange?.start, dateRange?.end, currentShiftId, reportFolderId]);
+  }, [dateRange?.start, dateRange?.end, currentShiftId, reportFolderId, hideUI]);
 
   // Mark slide as fully loaded (data + animations done) for PDF capture — backend waits for .dashboard-slide-ready
   useEffect(() => {
@@ -832,10 +837,13 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
     );
   }
 
+  const noTransition = hideUI;
+  const containerVisible = noTransition ? true : isVisible;
+
   return (
     <div
-      className={`min-h-screen p-8 transition-all duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'} ${isFullyLoaded ? 'dashboard-slide-ready' : ''}`}
-      data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
+      className={`min-h-screen p-8 ${noTransition ? '' : 'transition-all duration-700'} ${containerVisible ? 'opacity-100' : 'opacity-0'} ${isFullyLoaded ? 'dashboard-slide-ready' : ''}`}
+      data-loaded={!loading && !error && containerVisible ? 'true' : 'false'}
     >
       <div className="max-w-7xl mx-auto">
         <h2 className="text-3xl font-bold text-white mb-8 text-center">Word Cloud</h2>
@@ -849,18 +857,18 @@ const WordCloudSlide = ({ dateRange = { start: null, end: null, selecting: false
             layoutWords.map((item, index) => (
               <div
                 key={`${item.word}-${index}`}
-                className="absolute transition-all duration-700 cursor-pointer hover:scale-105"
+                className={`absolute cursor-pointer ${noTransition ? '' : 'transition-all duration-700 hover:scale-105'}`}
                 style={{
                   left: `${item.x}%`,
                   top: `${item.y}%`,
                   fontSize: `${item.fontSize}px`,
                   color: item.color,
                   fontWeight: 'normal',
-                  opacity: isVisible ? 1 : 0,
-                  transform: isVisible
+                  opacity: containerVisible ? 1 : 0,
+                  transform: containerVisible
                     ? `translate(-50%, -50%) ${item.isVertical ? 'rotate(90deg)' : 'rotate(0deg)'} scale(1)`
                     : `translate(-50%, -50%) ${item.isVertical ? 'rotate(90deg)' : 'rotate(0deg)'} scale(0)`,
-                  transitionDelay: `${index * 2}ms`,
+                  ...(noTransition ? {} : { transitionDelay: `${index * 2}ms` }),
                   transformOrigin: 'center',
                   textShadow: `0 0 8px ${item.color}60, 0 0 4px ${item.color}40`,
                   whiteSpace: 'nowrap',
