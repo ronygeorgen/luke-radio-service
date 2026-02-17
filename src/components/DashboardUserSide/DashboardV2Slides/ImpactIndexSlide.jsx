@@ -284,47 +284,64 @@ const ImpactIndexSlide = ({ dateRange = { start: null, end: null, selecting: fal
             <h3 className="text-xl font-bold text-white mb-6 text-center">Circles of Wellbeing</h3>
             <div className="relative w-64 h-64 mx-auto">
               <svg className="transform -rotate-90 w-64 h-64">
-                {[...circlesData].reverse().map((circle, index) => {
-                  const startAngle = (index * 120) - 90;
-                  const endAngle = ((index + 1) * 120) - 90;
-                  const startRad = (startAngle * Math.PI) / 180;
-                  const endRad = (endAngle * Math.PI) / 180;
+                {(() => {
+                  const totalPercent = circlesData.reduce((sum, c) => sum + c.value, 0);
                   const radius = 100;
-                  const x1 = 128 + radius * Math.cos(startRad);
-                  const y1 = 128 + radius * Math.sin(startRad);
-                  const x2 = 128 + radius * Math.cos(endRad);
-                  const y2 = 128 + radius * Math.sin(endRad);
-                  const largeArc = 120 > 180 ? 1 : 0;
-                  const midAngle = ((startAngle + endAngle) / 2) * Math.PI / 180;
+                  const cx = 128;
+                  const cy = 128;
+                  let cumulativeDeg = 0;
 
-                  return (
-                    <g key={circle.name}>
-                      <path
-                        d={`M 128 128 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                        fill={circle.color}
-                        className="transition-all duration-1000"
-                        style={{
-                          opacity: isVisible ? 1 : 0,
-                          transitionDelay: `${index * 200}ms`
-                        }}
-                      />
-                      <text
-                        x={128 + (radius * 0.7) * Math.cos(midAngle)}
-                        y={128 + (radius * 0.7) * Math.sin(midAngle)}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        className="text-2xl font-bold fill-white transition-opacity duration-1000"
-                        transform={`rotate(90 ${128 + (radius * 0.7) * Math.cos(midAngle)} ${128 + (radius * 0.7) * Math.sin(midAngle)})`}
-                        style={{
-                          opacity: isVisible ? 1 : 0,
-                          transitionDelay: `${index * 200 + 300}ms`
-                        }}
-                      >
-                        {circle.value}%
-                      </text>
-                    </g>
-                  );
-                })}
+                  return circlesData.map((circle, index) => {
+                    // Use actual percentage for slice size; if total is 0, use equal shares
+                    const sliceDeg = totalPercent > 0
+                      ? (circle.value / 100) * 360
+                      : 360 / circlesData.length;
+                    const startDeg = cumulativeDeg;
+                    const endDeg = cumulativeDeg + sliceDeg;
+                    cumulativeDeg = endDeg;
+
+                    const startRad = (startDeg * Math.PI) / 180;
+                    const endRad = (endDeg * Math.PI) / 180;
+                    const x1 = cx + radius * Math.cos(startRad);
+                    const y1 = cy + radius * Math.sin(startRad);
+                    const x2 = cx + radius * Math.cos(endRad);
+                    const y2 = cy + radius * Math.sin(endRad);
+                    const largeArc = sliceDeg > 180 ? 1 : 0;
+                    const midDeg = (startDeg + endDeg) / 2;
+                    const midRad = (midDeg * Math.PI) / 180;
+                    const labelRadius = radius * 0.7;
+                    const labelX = cx + labelRadius * Math.cos(midRad);
+                    const labelY = cy + labelRadius * Math.sin(midRad);
+
+                    return (
+                      <g key={circle.name}>
+                        <path
+                          d={`M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                          fill={circle.color}
+                          className="transition-all duration-1000"
+                          style={{
+                            opacity: isVisible ? 1 : 0,
+                            transitionDelay: `${index * 200}ms`
+                          }}
+                        />
+                        <text
+                          x={labelX}
+                          y={labelY}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          className="text-2xl font-bold fill-white transition-opacity duration-1000"
+                          transform={`rotate(90 ${labelX} ${labelY})`}
+                          style={{
+                            opacity: isVisible ? 1 : 0,
+                            transitionDelay: `${index * 200 + 300}ms`
+                          }}
+                        >
+                          {circle.value}%
+                        </text>
+                      </g>
+                    );
+                  });
+                })()}
               </svg>
             </div>
             <div className="mt-6 space-y-3">
