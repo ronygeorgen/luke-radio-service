@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchSettings, updateSetting, clearError, fetchSettingsVersions, revertToVersion } from '../store/slices/settingsSlice';
 import { fetchChannels, setDefaultSettings } from '../store/slices/channelSlice';
 import SettingField from './SettingField';
 import BucketManager from './BucketManager';
-import { Save, Radio, Star, X, History, RotateCcw } from 'lucide-react';
+import { Save, Radio, Star, X, History, RotateCcw, MoreVertical } from 'lucide-react';
 import Toast from './UserSide/Toast';
 import dayjs from 'dayjs';
 
@@ -28,6 +28,8 @@ const GeneralSettings = () => {
   const [selectedVersion, setSelectedVersion] = useState(null);
   const [revertLoading, setRevertLoading] = useState(false);
   const [revertConfirmVersion, setRevertConfirmVersion] = useState(null);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const settingsMenuRef = useRef(null);
 
   useEffect(() => {
     if (channelId) {
@@ -183,6 +185,17 @@ const GeneralSettings = () => {
   };
 
   const hasChanges = Object.keys(changedSettings).length > 0;
+
+  // Close settings menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target)) {
+        setSettingsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (!channelId) {
     return (
@@ -487,38 +500,8 @@ const GeneralSettings = () => {
       )}
 
       <div className="space-y-8">
-        {/* Default settings + Save - Fixed at top right so they stay visible when scrolling */}
-        <div className="fixed top-24 right-6 sm:right-8 lg:right-10 z-30 flex justify-end items-center gap-3">
-          <button
-            type="button"
-            onClick={handleOpenVersionsPanel}
-            className="flex items-center space-x-2 px-4 py-2.5 rounded-lg font-medium shadow-lg transition-all duration-200 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
-          >
-            <History className="h-4 w-4" />
-            <span>Revert to older version</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleDefaultSettingsToggle}
-            disabled={defaultSettingsLoading}
-            className={`
-              flex items-center space-x-2 px-4 py-2.5 rounded-lg font-medium shadow-lg transition-all duration-200
-              ${isDefaultSettings
-                ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/50'
-                : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300'
-              }
-              ${defaultSettingsLoading ? 'opacity-70 cursor-not-allowed' : ''}
-            `}
-          >
-            <Star className={`h-4 w-4 ${isDefaultSettings ? 'fill-current' : ''}`} />
-            <span>
-              {defaultSettingsLoading
-                ? 'Updating...'
-                : isDefaultSettings
-                  ? 'Remove as default settings'
-                  : 'Make default settings'}
-            </span>
-          </button>
+        {/* Save + three-dots menu - fixed at top right */}
+        <div ref={settingsMenuRef} className="fixed top-24 right-6 sm:right-8 lg:right-10 z-30 flex items-center gap-1">
           <button
             onClick={handleSaveClick}
             disabled={!hasChanges || isSaving}
@@ -535,6 +518,52 @@ const GeneralSettings = () => {
               {isSaving ? 'Saving...' : hasChanges ? `Save ${Object.keys(changedSettings).length} Change(s)` : 'No Changes'}
             </span>
           </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setSettingsMenuOpen(prev => !prev)}
+              className="flex items-center justify-center w-10 h-10 rounded-lg font-medium shadow-lg transition-all duration-200 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300"
+              aria-label="Settings options"
+            >
+              <MoreVertical className="h-5 w-5" />
+            </button>
+            {settingsMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 w-56 py-1 bg-white rounded-lg shadow-lg border border-gray-200 z-40">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleOpenVersionsPanel();
+                    setSettingsMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <History className="h-4 w-4 flex-shrink-0" />
+                  <span>Revert to older version</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDefaultSettingsToggle();
+                    setSettingsMenuOpen(false);
+                  }}
+                  disabled={defaultSettingsLoading}
+                  className={`
+                    flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm transition-colors
+                    ${defaultSettingsLoading ? 'opacity-60 cursor-not-allowed text-gray-500' : 'text-gray-700 hover:bg-gray-100'}
+                  `}
+                >
+                  <Star className={`h-4 w-4 flex-shrink-0 ${isDefaultSettings ? 'fill-amber-500 text-amber-500' : ''}`} />
+                  <span>
+                    {defaultSettingsLoading
+                      ? 'Updating...'
+                      : isDefaultSettings
+                        ? 'Remove as default settings'
+                        : 'Make default settings'}
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {settingGroups.map(group => (
