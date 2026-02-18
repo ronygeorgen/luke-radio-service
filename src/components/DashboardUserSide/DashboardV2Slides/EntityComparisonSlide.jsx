@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Radio, Mic, Heart } from 'lucide-react';
 import { dashboardApi } from '../../../services/dashboardApi';
 
-const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting: false }, reportFolderId = null }) => {
+const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting: false }, reportFolderId = null, hideUI = false }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -152,29 +152,31 @@ const EntityComparisonSlide = ({ dateRange = { start: null, end: null, selecting
       data-loaded={!loading && !error && isVisible ? 'true' : 'false'}
     >
       <div className="max-w-7xl mx-auto">
-        <div className="relative flex items-center justify-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">Entity Comparison</h2>
+        {!hideUI && (
+          <div className="relative flex items-center justify-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900">Entity Comparison</h2>
 
-          {/* Toggle Button for Show All Topics */}
-          <div className="absolute right-0 flex items-center space-x-3">
-            <span className="text-sm text-gray-700 font-medium">Show All Topics</span>
-            <button
-              onClick={handleToggleShowAllTopics}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${showAllTopics ? 'bg-blue-600' : 'bg-gray-300'
-                }`}
-              role="switch"
-              aria-checked={showAllTopics}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAllTopics ? 'translate-x-6' : 'translate-x-1'
+            {/* Toggle Button for Show All Topics */}
+            <div className="absolute right-0 flex items-center space-x-3">
+              <span className="text-sm text-gray-700 font-medium">Show All Topics</span>
+              <button
+                onClick={handleToggleShowAllTopics}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${showAllTopics ? 'bg-blue-600' : 'bg-gray-300'
                   }`}
-              />
-            </button>
-            <span className="text-xs text-gray-500">
-              {showAllTopics ? 'On' : 'Off'}
-            </span>
+                role="switch"
+                aria-checked={showAllTopics}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAllTopics ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                />
+              </button>
+              <span className="text-xs text-gray-500">
+                {showAllTopics ? 'On' : 'Off'}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Top Section - Shift Cards with Topics */}
         {shifts.length > 0 ? (
