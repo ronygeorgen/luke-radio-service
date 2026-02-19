@@ -1,19 +1,25 @@
 import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchSettings, updateSetting, clearError, fetchSettingsVersions, revertToVersion } from '../store/slices/settingsSlice';
-import { fetchChannels, setDefaultSettings } from '../store/slices/channelSlice';
+import { fetchChannels, fetchUserChannels, setDefaultSettings, selectUserChannels } from '../store/slices/channelSlice';
 import SettingField from './SettingField';
 import BucketManager from './BucketManager';
+import SimpleChannelSelectionModal from '../pages/user/SimpleChannelSelectionModal';
 import { Save, Radio, Star, X, History, RotateCcw, MoreVertical, ChevronDown } from 'lucide-react';
 import Toast from './UserSide/Toast';
 import dayjs from 'dayjs';
 
 const GeneralSettings = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const channelId = localStorage.getItem('channelId');
   const { settings, loading } = useSelector(state => state.settings);
   const channels = useSelector(state => state.channels.channels);
+  const userChannels = useSelector(selectUserChannels);
   const currentChannel = channelId ? channels.find(c => c.id === channelId) : null;
+  const [, setChannelSelectedVersion] = useState(0);
+  const justSelectedChannelRef = useRef(false);
   const isDefaultSettings = currentChannel?.isDefaultSettings === true;
   const [defaultSettingsLoading, setDefaultSettingsLoading] = useState(false);
   const [changedSettings, setChangedSettings] = useState({});
@@ -38,6 +44,13 @@ const GeneralSettings = () => {
       dispatch(fetchChannels());
     }
   }, [dispatch, channelId]);
+
+  // When no channel selected, fetch user channels for the selection modal
+  useEffect(() => {
+    if (!channelId && userChannels.length === 0) {
+      dispatch(fetchUserChannels());
+    }
+  }, [dispatch, channelId, userChannels.length]);
 
   const handleDefaultSettingsToggle = async () => {
     if (!channelId) return;
@@ -204,14 +217,29 @@ const GeneralSettings = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // No channel selected: show channel selection modal first (same UX as dashboard)
+  // Modal calls onClose() after selection too — only navigate back when user cancels
+  const handleChannelModalClose = () => {
+    if (justSelectedChannelRef.current) {
+      justSelectedChannelRef.current = false;
+      return;
+    }
+    navigate(-1);
+  };
+  const handleChannelSelect = () => {
+    justSelectedChannelRef.current = true;
+    setChannelSelectedVersion(n => n + 1);
+  };
   if (!channelId) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Radio className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">Please select a channel to view and edit general settings.</p>
-        </div>
-      </div>
+      <SimpleChannelSelectionModal
+        isOpen={true}
+        onClose={handleChannelModalClose}
+        onChannelSelect={handleChannelSelect}
+        channels={userChannels}
+        title="Select a Channel"
+        description="Choose a channel to view and edit general settings"
+      />
     );
   }
 
