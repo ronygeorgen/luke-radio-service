@@ -218,7 +218,7 @@ const Header = ({
                           className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
                         >
                           <Upload className="w-4 h-4 mr-3 text-gray-500" />
-                          Upload Custom Audio
+                          ACR Custom File Upload
                         </button>
                         <button onClick={() => { navigate("/dashboard/settings"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                           <Settings className="w-4 h-4 mr-3 text-gray-500" />

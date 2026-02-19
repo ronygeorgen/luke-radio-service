@@ -670,7 +670,7 @@ function DashboardV2() {
                             className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}
                           >
                             <Upload className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} />
-                            Upload Custom Audio
+                            ACR Custom Audio Upload
                           </button>
                           <button onClick={() => handleNavigation('/dashboard/settings')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
                             <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
