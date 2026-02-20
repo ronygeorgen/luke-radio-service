@@ -19,10 +19,17 @@ const AudioPlayer = ({ segment, onClose }) => {
   
   if (!segment) return null;
   
-  // Use audio_url if available (for podcast segments), otherwise use file_path
-  const fullSrc = segment.audio_url 
-    ? segment.audio_url 
-    : `${import.meta.env.VITE_API_URL}/${segment.file_path}`;
+  // Determine source by audio_location_type first, then use matching field.
+  const fullSrc = (() => {
+    if (segment.audio_location_type === 'audio_url') {
+      return segment.audio_url || '';
+    }
+    if (segment.audio_location_type === 'file_path') {
+      return segment.file_path ? `${import.meta.env.VITE_API_URL}/${segment.file_path}` : '';
+    }
+    // Fallback for older data where audio_location_type may be missing
+    return segment.audio_url || (segment.file_path ? `${import.meta.env.VITE_API_URL}/${segment.file_path}` : '');
+  })();
 
 function formatDateTime(dateTimeString) {
   if (!dateTimeString) return "N/A";
@@ -83,8 +90,8 @@ function formatDateTime(dateTimeString) {
         return;
       }
       
-      // For external URLs (audio_url), we need to handle CORS
-      const isExternalUrl = segment.audio_url && fullSrc === segment.audio_url;
+      // For external URLs, we need to handle CORS
+      const isExternalUrl = segment.audio_location_type === 'audio_url' && !!segment.audio_url;
       
       // For external URLs, try to fetch with CORS mode
       // Note: Many external audio servers don't allow CORS, so this might fail
@@ -192,7 +199,7 @@ function formatDateTime(dateTimeString) {
       setIsPreloading(false);
       
       // For external URLs with CORS issues, don't show error - just disable seeking
-      if (segment.audio_url && fullSrc === segment.audio_url) {
+      if (segment.audio_location_type === 'audio_url' && !!segment.audio_url) {
         console.warn("Cannot preload external audio due to CORS. Seeking disabled.");
         setIsSeekable(false);
       } else {
@@ -242,7 +249,7 @@ function formatDateTime(dateTimeString) {
           console.warn("Audio appears not seekable. Checking if preload is needed...");
           // For external URLs, wait a bit longer before preloading
           // Sometimes the browser needs time to determine seekability
-          const isExternalUrl = segment.audio_url && fullSrc === segment.audio_url;
+          const isExternalUrl = segment.audio_location_type === 'audio_url' && !!segment.audio_url;
           if (isExternalUrl) {
             // Give external URLs more time - they might support range requests
             // Also test if seeking actually works by trying to set currentTime
@@ -288,7 +295,7 @@ function formatDateTime(dateTimeString) {
         }
       } else {
         // No seekable ranges yet - might need to wait or preload
-        const isExternalUrl = segment.audio_url && fullSrc === segment.audio_url;
+        const isExternalUrl = segment.audio_location_type === 'audio_url' && !!segment.audio_url;
         if (isExternalUrl) {
           // For external URLs, wait a bit to see if ranges become available
           setTimeout(() => {
@@ -386,7 +393,7 @@ function formatDateTime(dateTimeString) {
 
     // Check if server supports range requests
     const checkRangeSupport = async () => {
-      const isExternalUrl = segment.audio_url && fullSrc === segment.audio_url;
+      const isExternalUrl = segment.audio_location_type === 'audio_url' && !!segment.audio_url;
       
       // For external URLs, don't check range support via HEAD request
       // (CORS might block it, but GET requests with Range headers might still work)
