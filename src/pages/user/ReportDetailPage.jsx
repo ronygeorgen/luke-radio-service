@@ -42,6 +42,7 @@ import {
   clearInsightsError
 } from '../../store/slices/reportSlice';
 import { logout } from '../../store/slices/authSlice';
+import { fetchUserChannels, selectUserChannels } from '../../store/slices/channelSlice';
 import { setCurrentPlaying, setIsPlaying } from '../../store/slices/audioSegmentsSlice';
 import AddInsightModal from '../../components/UserSide/AddInsightModal';
 import SummaryModal from './SummaryModal';
@@ -51,7 +52,7 @@ import ReportAudioPlayer from './ReportAudioPlayer';
 import SimpleChannelSelectionModal from './SimpleChannelSelectionModal';
 import FlagIcon from '../../components/UserSide/FlagIcon';
 import SegmentShimmer from '../../components/UserSide/SegmentShimmer';
-import UploadCustomAudioModal from '../../components/UploadCustomAudioModal';
+import ACRCustomFileUploadModal from '../../components/ACRCustomFileUploadModal';
 
 const ReportDetailPage = () => {
   const { id } = useParams();
@@ -74,9 +75,22 @@ const ReportDetailPage = () => {
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
   const [selectedSegment, setSelectedSegment] = useState(null);
   const [isChannelSelectionOpen, setIsChannelSelectionOpen] = useState(false);
+  const [pendingACRUpload, setPendingACRUpload] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const userChannels = [];
+  const userChannels = useSelector(selectUserChannels);
+
   const handleChannelSelect = (channel) => {
+    if (pendingACRUpload && channel) {
+      try {
+        if (channel?.id) localStorage.setItem('channelId', String(channel.id));
+        if (channel?.name) localStorage.setItem('channelName', channel.name);
+        localStorage.setItem('channelTimezone', channel?.timezone || 'Australia/Melbourne');
+      } catch (e) {}
+      setPendingACRUpload(false);
+      setIsChannelSelectionOpen(false);
+      setIsUploadModalOpen(true);
+      return;
+    }
     try {
       if (channel?.id) localStorage.setItem('channelId', String(channel.id));
       if (channel?.name) localStorage.setItem('channelName', channel.name);
@@ -399,13 +413,20 @@ const ReportDetailPage = () => {
                             <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Settings</div>
                             <button
                               onClick={() => {
-                                setIsUploadModalOpen(true);
+                                const channelId = localStorage.getItem('channelId');
+                                if (channelId) {
+                                  setIsUploadModalOpen(true);
+                                } else {
+                                  setPendingACRUpload(true);
+                                  setIsChannelSelectionOpen(true);
+                                  dispatch(fetchUserChannels());
+                                }
                                 setIsDropdownOpen(false);
                               }}
                               className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
                             >
                               <Upload className="w-4 h-4 mr-3 text-gray-500" />
-                              Upload Custom Audio
+                              ACR Custom File Upload
                             </button>
                             <button onClick={() => { navigate("/dashboard/settings"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                               <Settings className="w-4 h-4 mr-3 text-gray-500" />
@@ -810,10 +831,21 @@ const ReportDetailPage = () => {
           )}
         </main>
 
-        {/* Upload Custom Audio Modal */}
-        <UploadCustomAudioModal
+        {/* Channel selection for ACR when no channel selected */}
+        <SimpleChannelSelectionModal
+          isOpen={isChannelSelectionOpen}
+          onClose={() => { setIsChannelSelectionOpen(false); setPendingACRUpload(false); }}
+          onChannelSelect={handleChannelSelect}
+          channels={userChannels}
+          title="Select a Channel"
+          description="Choose a channel for ACR Custom File Upload"
+        />
+
+        {/* ACR Custom File Upload Modal (hamburger menu only) */}
+        <ACRCustomFileUploadModal
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
+          channelId={localStorage.getItem('channelId')}
         />
       </div>
     </>

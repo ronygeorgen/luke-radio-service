@@ -16,7 +16,9 @@ import EntityComparisonSlide from './DashboardV2Slides/EntityComparisonSlide';
 import WordCloudSlide from './DashboardV2Slides/WordCloudSlide';
 import DashboardV2Filters from './DashboardV2Filters';
 import ChannelSwitcher from '../ChannelSwitcher';
-import UploadCustomAudioModal from '../UploadCustomAudioModal';
+import ACRCustomFileUploadModal from '../ACRCustomFileUploadModal';
+import SimpleChannelSelectionModal from '../../pages/user/SimpleChannelSelectionModal';
+import { fetchUserChannels, selectUserChannels } from '../../store/slices/channelSlice';
 
 const slides = [
   {
@@ -124,7 +126,10 @@ function DashboardV2() {
   const [showFilters, setShowFilters] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isChannelSelectionOpen, setIsChannelSelectionOpen] = useState(false);
+  const [pendingACRUpload, setPendingACRUpload] = useState(false);
   const dropdownRef = useRef(null);
+  const userChannels = useSelector(selectUserChannels);
   const isNavigatingRef = useRef(false);
   const slideContentRef = useRef(null);
   const navigate = useNavigate();
@@ -664,13 +669,20 @@ function DashboardV2() {
                           <div className={`px-2 pb-1 text-xs font-semibold ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'} uppercase`}>Settings</div>
                           <button
                             onClick={() => {
-                              setIsUploadModalOpen(true);
+                              const cid = channelId || localStorage.getItem('channelId');
+                              if (cid) {
+                                setIsUploadModalOpen(true);
+                              } else {
+                                setPendingACRUpload(true);
+                                setIsChannelSelectionOpen(true);
+                                dispatch(fetchUserChannels());
+                              }
                               setIsDropdownOpen(false);
                             }}
                             className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}
                           >
                             <Upload className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} />
-                            Upload Custom Audio
+                            ACR Custom File Upload
                           </button>
                           <button onClick={() => handleNavigation('/dashboard/settings')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
                             <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -914,10 +926,35 @@ function DashboardV2() {
         </div>
       )}
 
-      {/* Upload Custom Audio Modal */}
-      <UploadCustomAudioModal
+      {/* Channel selection for ACR when no channel selected */}
+      <SimpleChannelSelectionModal
+        isOpen={isChannelSelectionOpen}
+        onClose={() => { setIsChannelSelectionOpen(false); setPendingACRUpload(false); }}
+        onChannelSelect={(channel) => {
+          if (pendingACRUpload && channel) {
+            try {
+              if (channel?.id) localStorage.setItem('channelId', String(channel.id));
+              if (channel?.name) localStorage.setItem('channelName', channel.name);
+              localStorage.setItem('channelTimezone', channel?.timezone || 'Australia/Melbourne');
+            } catch (e) {}
+            setPendingACRUpload(false);
+            setIsChannelSelectionOpen(false);
+            setIsUploadModalOpen(true);
+          }
+        }}
+        channels={userChannels}
+        title="Select a Channel"
+        description="Choose a channel for ACR Custom File Upload"
+        headerBg={currentSlideConfig.headerBg}
+        headerText={currentSlideConfig.headerText}
+        headerBorder={currentSlideConfig.headerBorder}
+      />
+
+      {/* ACR Custom File Upload Modal (hamburger menu only) */}
+      <ACRCustomFileUploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
+        channelId={channelId || localStorage.getItem('channelId')}
       />
     </div>
   );

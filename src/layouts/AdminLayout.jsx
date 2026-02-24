@@ -11,7 +11,7 @@ import { fetchContentTypeDeactivationRules } from '../store/slices/contentTypeDe
 import { fetchUserChannels, selectUserChannels } from '../store/slices/channelSlice';
 import { fetchSettings } from '../store/slices/settingsSlice';
 import SimpleChannelSelectionModal from '../pages/user/SimpleChannelSelectionModal';
-import UploadCustomAudioModal from '../components/UploadCustomAudioModal';
+import ACRCustomFileUploadModal from '../components/ACRCustomFileUploadModal';
 
 const AdminLayout = () => {
     const navigate = useNavigate();
@@ -107,6 +107,17 @@ const AdminLayout = () => {
 
     // Handle channel selection from modal (when on /admin/channels page)
     const handleChannelSelect = (channel) => {
+        if (pendingNavigation === 'ACR_UPLOAD') {
+            try {
+                if (channel?.id) localStorage.setItem('channelId', String(channel.id));
+                if (channel?.name) localStorage.setItem('channelName', channel.name);
+                localStorage.setItem('channelTimezone', channel?.timezone || 'Australia/Melbourne');
+            } catch (e) {}
+            setPendingNavigation(null);
+            setIsChannelSelectionOpen(false);
+            setIsUploadModalOpen(true);
+            return;
+        }
         if (pendingNavigation === 'SEARCH') {
             // Handle search navigation specifically
             const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
@@ -289,13 +300,20 @@ const AdminLayout = () => {
                                                     <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Settings</div>
                                                     <button
                                                         onClick={() => {
-                                                            setIsUploadModalOpen(true);
+                                                            const channelId = localStorage.getItem('channelId');
+                                                            if (channelId) {
+                                                                setIsUploadModalOpen(true);
+                                                            } else {
+                                                                setPendingNavigation('ACR_UPLOAD');
+                                                                setIsChannelSelectionOpen(true);
+                                                                dispatch(fetchUserChannels());
+                                                            }
                                                             setIsDropdownOpen(null);
                                                         }}
                                                         className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
                                                     >
                                                         <Upload className="w-4 h-4 mr-3 text-gray-500" />
-                                                        Upload Custom Audio
+                                                        ACR Custom File Upload
                                                     </button>
                                                     <button onClick={() => { handleNavigation("/dashboard/settings"); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                                                         <Settings className="w-4 h-4 mr-3 text-gray-500" />
@@ -364,24 +382,23 @@ const AdminLayout = () => {
                 <Outlet />
             </div>
 
-            {/* Channel Selection Modal - Show when on /admin/channels, /admin/settings, or /admin/users pages and navigating to pages that require channel */}
-            {(location.pathname.includes('/admin/channels') ||
-                location.pathname.includes('/admin/settings') ||
-                location.pathname.includes('/admin/users')) && (
-                    <SimpleChannelSelectionModal
-                        isOpen={isChannelSelectionOpen}
-                        onClose={handleCloseChannelSelection}
-                        onChannelSelect={handleChannelSelect}
-                        channels={userChannels}
-                        title="Select a Channel"
-                        description="Choose a channel to access the selected feature"
-                    />
-                )}
+            {/* Channel Selection Modal - when navigating to channel-scoped feature or ACR upload */}
+            {isChannelSelectionOpen && (
+                <SimpleChannelSelectionModal
+                    isOpen={isChannelSelectionOpen}
+                    onClose={handleCloseChannelSelection}
+                    onChannelSelect={handleChannelSelect}
+                    channels={userChannels}
+                    title="Select a Channel"
+                    description={pendingNavigation === 'ACR_UPLOAD' ? 'Choose a channel for ACR Custom File Upload' : 'Choose a channel to access the selected feature'}
+                />
+            )}
 
-            {/* Upload Custom Audio Modal */}
-            <UploadCustomAudioModal
+            {/* ACR Custom File Upload Modal (hamburger menu only) */}
+            <ACRCustomFileUploadModal
                 isOpen={isUploadModalOpen}
                 onClose={() => setIsUploadModalOpen(false)}
+                channelId={localStorage.getItem('channelId')}
             />
         </div>
     );
