@@ -271,6 +271,7 @@ const GeneralSettings = () => {
         { key: 'bucketPrompt', label: 'Bucket Prompt', isTextarea: true, disableEdit: true },
         { key: 'determineRadioContentType', label: 'Content Type(Comma Separated)', isTextarea: true },
         { key: 'determineRadioContentTypePrompt', label: 'Determine Radio Content Type Prompt', isTextarea: true },
+        { key: 'customVocabulary', label: 'Custom Vocabulary (comma-separated)', isTextarea: true },
       ]
     },
     {

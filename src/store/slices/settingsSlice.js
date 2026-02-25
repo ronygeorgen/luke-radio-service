@@ -19,6 +19,7 @@ const convertSettingsToApiFormat = (frontendSettings) => {
     bucketPrompt: 'bucket_prompt',
     determineRadioContentType: 'content_type_prompt',
     determineRadioContentTypePrompt: 'determine_radio_content_type_prompt',
+    customVocabulary: 'custom_vocabulary',
     bucketDefinitionErrorRate: 'bucket_definition_error_rate',
     chatGptModel: 'chatgpt_model',
     chatGptTemperature: 'chatgpt_temperature',
@@ -29,7 +30,11 @@ const convertSettingsToApiFormat = (frontendSettings) => {
   const apiSettings = {};
   Object.keys(frontendSettings).forEach(frontendKey => {
     const apiKey = keyMapping[frontendKey] || frontendKey;
-    apiSettings[apiKey] = frontendSettings[frontendKey];
+    let value = frontendSettings[frontendKey];
+    if (frontendKey === 'customVocabulary' && typeof value === 'string') {
+      value = value.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    apiSettings[apiKey] = value;
   });
 
   return apiSettings;
@@ -52,6 +57,7 @@ const convertApiVersionToFrontend = (apiVersion) => {
     bucket_prompt: 'bucketPrompt',
     content_type_prompt: 'determineRadioContentType',
     determine_radio_content_type_prompt: 'determineRadioContentTypePrompt',
+    custom_vocabulary: 'customVocabulary',
     bucket_definition_error_rate: 'bucketDefinitionErrorRate',
     chatgpt_model: 'chatGptModel',
     chatgpt_temperature: 'chatGptTemperature',
@@ -61,8 +67,12 @@ const convertApiVersionToFrontend = (apiVersion) => {
   const apiSettings = apiVersion.settings || {};
   const settings = {};
   Object.keys(apiToFrontendKey).forEach(apiKey => {
-    if (apiSettings[apiKey] !== undefined && apiSettings[apiKey] !== null) {
-      settings[apiToFrontendKey[apiKey]] = apiSettings[apiKey];
+    if (apiSettings[apiKey] === undefined || apiSettings[apiKey] === null) return;
+    const frontendKey = apiToFrontendKey[apiKey];
+    if (apiKey === 'custom_vocabulary' && Array.isArray(apiSettings[apiKey])) {
+      settings[frontendKey] = apiSettings[apiKey].join(', ');
+    } else {
+      settings[frontendKey] = apiSettings[apiKey];
     }
   });
   const buckets = (apiVersion.buckets || [])
@@ -145,6 +155,9 @@ export const fetchSettings = createAsyncThunk(
         bucketPrompt: settingsData.bucket_prompt || '',
         determineRadioContentType: settingsData.content_type_prompt || '',
         determineRadioContentTypePrompt: settingsData.determine_radio_content_type_prompt || '',
+        customVocabulary: Array.isArray(settingsData.custom_vocabulary)
+          ? settingsData.custom_vocabulary.join(', ')
+          : (settingsData.custom_vocabulary || ''),
         bucketDefinitionErrorRate: settingsData.bucket_definition_error_rate || settingsData.bucket_error_rate || '',
         chatGptModel: settingsData.chatgpt_model || '',
         chatGptTemperature: settingsData.chatgpt_temperature || '',
