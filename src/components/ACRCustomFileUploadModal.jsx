@@ -120,7 +120,11 @@ const ACRCustomFileUploadModal = ({ isOpen, onClose, channelId }) => {
                                 <option value="">{loadingBuckets ? 'Loading...' : 'Select bucket'}</option>
                                 {buckets.map((b) => {
                                     const id = b.id ?? b.bucket_id;
-                                    const label = b.name ?? b.title ?? String(id);
+                                    const name = b.name ?? b.title ?? String(id);
+                                    const region = b.region ?? '';
+                                    const label = region
+                                        ? `${name} (ID: ${id}, ${region})`
+                                        : `${name} (ID: ${id})`;
                                     return (
                                         <option key={id} value={id}>
                                             {label}
