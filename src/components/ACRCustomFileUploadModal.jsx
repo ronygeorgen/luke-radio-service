@@ -8,7 +8,7 @@ const ACRCustomFileUploadModal = ({ isOpen, onClose, channelId }) => {
     const [buckets, setBuckets] = useState([]);
     const [formData, setFormData] = useState({
         bucket_id: '',
-        url: '',
+        file: null,
         title: ''
     });
     const [errors, setErrors] = useState({});
@@ -39,7 +39,7 @@ const ACRCustomFileUploadModal = ({ isOpen, onClose, channelId }) => {
     const validate = () => {
         const next = {};
         if (!formData.bucket_id) next.bucket_id = 'Select a bucket';
-        if (!formData.url?.trim()) next.url = 'URL is required';
+        if (!formData.file) next.file = 'File is required';
         if (!formData.title?.trim()) next.title = 'Title is required';
         setErrors(next);
         return Object.keys(next).length === 0;
@@ -50,12 +50,15 @@ const ACRCustomFileUploadModal = ({ isOpen, onClose, channelId }) => {
         if (!validate() || !effectiveChannelId) return;
         setSubmitting(true);
         try {
-            await axiosInstance.post('/acr-cloud/upload-file/', null, {
-                params: {
-                    bucket_id: formData.bucket_id,
-                    url: formData.url.trim(),
-                    title: formData.title.trim(),
-                    channel_id: effectiveChannelId
+            const payload = new FormData();
+            payload.append('bucket_id', formData.bucket_id);
+            payload.append('title', formData.title.trim());
+            payload.append('channel_id', effectiveChannelId);
+            payload.append('file', formData.file);
+
+            await axiosInstance.post('/acr-cloud/upload-file/', payload, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
                 }
             });
             alert('File uploaded successfully.');
@@ -69,7 +72,7 @@ const ACRCustomFileUploadModal = ({ isOpen, onClose, channelId }) => {
     };
 
     const handleClose = () => {
-        setFormData({ bucket_id: '', url: '', title: '' });
+        setFormData({ bucket_id: '', file: null, title: '' });
         setErrors({});
         onClose();
     };
@@ -78,6 +81,12 @@ const ACRCustomFileUploadModal = ({ isOpen, onClose, channelId }) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
         if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files?.[0] || null;
+        setFormData((prev) => ({ ...prev, file }));
+        if (errors.file) setErrors((prev) => ({ ...prev, file: '' }));
     };
 
     if (!isOpen) return null;
@@ -104,9 +113,9 @@ const ACRCustomFileUploadModal = ({ isOpen, onClose, channelId }) => {
                 {!effectiveChannelId ? (
                     <div className="p-6 text-sm text-gray-600">Select a channel first.</div>
                 ) : (
-                    <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                        <div>
-                            <label htmlFor="bucket_id" className="block text-sm font-semibold text-gray-700 mb-2">
+                    <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                        <div className="space-y-2">
+                            <label htmlFor="bucket_id" className="block text-sm font-medium text-slate-700">
                                 ACR Bucket <span className="text-red-500">*</span>
                             </label>
                             <select
@@ -115,7 +124,7 @@ const ACRCustomFileUploadModal = ({ isOpen, onClose, channelId }) => {
                                 value={formData.bucket_id}
                                 onChange={handleChange}
                                 disabled={loadingBuckets || submitting}
-                                className={`w-full px-4 py-2.5 border ${errors.bucket_id ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                                className={`w-full px-4 py-2.5 border ${errors.bucket_id ? 'border-red-500' : 'border-slate-200'} rounded-xl bg-slate-50 text-slate-800 shadow-sm transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:bg-white`}
                             >
                                 <option value="">{loadingBuckets ? 'Loading...' : 'Select bucket'}</option>
                                 {buckets.map((b) => {
@@ -132,28 +141,27 @@ const ACRCustomFileUploadModal = ({ isOpen, onClose, channelId }) => {
                                     );
                                 })}
                             </select>
-                            {errors.bucket_id && <p className="mt-1 text-sm text-red-500">{errors.bucket_id}</p>}
+                            {errors.bucket_id && <p className="text-sm text-red-500">{errors.bucket_id}</p>}
                         </div>
 
-                        <div>
-                            <label htmlFor="url" className="block text-sm font-semibold text-gray-700 mb-2">
-                                URL <span className="text-red-500">*</span>
+                        <div className="space-y-2">
+                            <label htmlFor="file" className="block text-sm font-medium text-slate-700">
+                                File <span className="text-red-500">*</span>
                             </label>
                             <input
-                                type="url"
-                                id="url"
-                                name="url"
-                                value={formData.url}
-                                onChange={handleChange}
-                                placeholder="https://example.com/audio.mp3"
+                                type="file"
+                                id="file"
+                                name="file"
+                                onChange={handleFileChange}
                                 disabled={submitting}
-                                className={`w-full px-4 py-2.5 border ${errors.url ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                                className={`w-full px-3 py-2 border ${errors.file ? 'border-red-500' : 'border-slate-200'} rounded-xl bg-slate-50 text-slate-700 shadow-sm transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:cursor-pointer cursor-pointer`}
                             />
-                            {errors.url && <p className="mt-1 text-sm text-red-500">{errors.url}</p>}
+                            {formData.file && <p className="text-xs text-slate-500">Selected: {formData.file.name}</p>}
+                            {errors.file && <p className="text-sm text-red-500">{errors.file}</p>}
                         </div>
 
-                        <div>
-                            <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-2">
+                        <div className="space-y-2">
+                            <label htmlFor="title" className="block text-sm font-medium text-slate-700">
                                 Title <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -164,9 +172,9 @@ const ACRCustomFileUploadModal = ({ isOpen, onClose, channelId }) => {
                                 onChange={handleChange}
                                 placeholder="My Audio File"
                                 disabled={submitting}
-                                className={`w-full px-4 py-2.5 border ${errors.title ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                                className={`w-full px-4 py-2.5 border ${errors.title ? 'border-red-500' : 'border-slate-200'} rounded-xl bg-slate-50 text-slate-800 shadow-sm transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:bg-white`}
                             />
-                            {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title}</p>}
+                            {errors.title && <p className="text-sm text-red-500">{errors.title}</p>}
                         </div>
 
                         <div className="flex items-center justify-end space-x-3 pt-4">
