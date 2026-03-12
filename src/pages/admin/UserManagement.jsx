@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Users, RefreshCw, Mail, User, Shield, Key, CheckCircle, XCircle, Plus, Edit, Send, Radio, Search, Trash2 } from 'lucide-react';
-import { fetchUsers, assignChannelToUser, deleteUser, clearAssignError, resetAssignState, clearDeleteState } from '../../store/slices/userManagementSlice';
+import { fetchUsers, assignChannelToUser, fetchUserAssignedChannels, unassignChannelFromUser, deleteUser, clearAssignError, resetAssignState, clearDeleteState, clearUserAssignedChannels } from '../../store/slices/userManagementSlice';
 import { fetchChannels } from '../../store/slices/channelSlice';
 import { resendMagicLinkAdmin } from '../../store/slices/authSlice';
 import AssignChannelModal from './AssignChannelModal';
@@ -12,7 +12,7 @@ import Toast from '../../components/UserSide/Toast';
 
 const UserManagement = () => {
   const dispatch = useDispatch();
-  const { users, loading, error, assignLoading, assignError, assignSuccess, deleteLoading, deleteError, deleteSuccess } = useSelector(state => state.userManagement);
+  const { users, loading, error, assignLoading, assignError, assignSuccess, userAssignedChannels, userAssignedChannelsLoading, unassignLoading, deleteLoading, deleteError, deleteSuccess } = useSelector(state => state.userManagement);
   const { channels } = useSelector(state => state.channels);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -31,14 +31,23 @@ const UserManagement = () => {
   }, [dispatch]);
 
   useEffect(() => {
+    if (isAssignModalOpen && selectedUser) {
+      dispatch(fetchUserAssignedChannels(selectedUser.id));
+    }
+  }, [isAssignModalOpen, selectedUser?.id, dispatch]);
+
+  useEffect(() => {
     if (assignSuccess) {
-      // Close modal after successful assignment
+      // Refetch assigned channels and close modal after successful assignment
+      if (selectedUser) {
+        dispatch(fetchUserAssignedChannels(selectedUser.id));
+      }
       setTimeout(() => {
         setIsAssignModalOpen(false);
         dispatch(resetAssignState());
       }, 2000);
     }
-  }, [assignSuccess, dispatch]);
+  }, [assignSuccess, dispatch, selectedUser?.id]);
 
   useEffect(() => {
     if (deleteSuccess) {
@@ -74,6 +83,16 @@ const UserManagement = () => {
     setIsAssignModalOpen(false);
     setSelectedUser(null);
     dispatch(resetAssignState());
+    dispatch(clearUserAssignedChannels());
+  };
+
+  const handleUnassignChannel = (channelId) => {
+    if (selectedUser) {
+      dispatch(unassignChannelFromUser({
+        user_id: selectedUser.id,
+        channel_id: channelId
+      }));
+    }
   };
 
   const handleAssignSubmit = (channelId) => {
@@ -372,10 +391,14 @@ const UserManagement = () => {
         onClose={handleCloseAssignModal}
         user={selectedUser}
         channels={channels}
+        assignedChannels={userAssignedChannels}
+        assignedChannelsLoading={userAssignedChannelsLoading}
         onSubmit={handleAssignSubmit}
+        onUnassign={handleUnassignChannel}
         loading={assignLoading}
         error={assignError}
         success={assignSuccess}
+        unassignLoading={unassignLoading}
       />
 
       {toastMessage && (

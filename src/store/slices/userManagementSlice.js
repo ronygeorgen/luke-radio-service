@@ -29,6 +29,43 @@ export const assignChannelToUser = createAsyncThunk(
   }
 );
 
+// Fetch channels assigned to a specific user (uses user_id param for admin context)
+export const fetchUserAssignedChannels = createAsyncThunk(
+  'userManagement/fetchUserAssignedChannels',
+  async (userId, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.get('/accounts/user/channels/', {
+        params: { user_id: userId }
+      });
+      return response.data;
+    } catch (err) {
+      if (err.response && err.response.data) {
+        return rejectWithValue(err.response.data);
+      }
+      return rejectWithValue(err.message || 'Something went wrong');
+    }
+  }
+);
+
+// Unassign channel from user
+export const unassignChannelFromUser = createAsyncThunk(
+  'userManagement/unassignChannelFromUser',
+  async ({ user_id, channel_id }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.post('/accounts/admin/unassign-channel/', {
+        user_id: parseInt(user_id, 10),
+        channel_id: parseInt(channel_id, 10)
+      });
+      return response.data;
+    } catch (err) {
+      if (err.response && err.response.data) {
+        return rejectWithValue(err.response.data);
+      }
+      return rejectWithValue(err.message || 'Something went wrong');
+    }
+  }
+);
+
 export const deleteUser = createAsyncThunk(
   'userManagement/deleteUser',
   async (user_id, { rejectWithValue }) => {
@@ -53,6 +90,10 @@ const userManagementSlice = createSlice({
     assignLoading: false,
     assignError: null,
     assignSuccess: false,
+    userAssignedChannels: [],
+    userAssignedChannelsLoading: false,
+    userAssignedChannelsError: null,
+    unassignLoading: null, // channel id being unassigned
     deleteLoading: false,
     deleteError: null,
     deleteSuccess: null
@@ -69,6 +110,11 @@ const userManagementSlice = createSlice({
       state.assignLoading = false;
       state.assignError = null;
       state.assignSuccess = false;
+    },
+    clearUserAssignedChannels: (state) => {
+      state.userAssignedChannels = [];
+      state.userAssignedChannelsLoading = false;
+      state.userAssignedChannelsError = null;
     },
     clearDeleteState: (state) => {
       state.deleteLoading = false;
@@ -113,6 +159,51 @@ const userManagementSlice = createSlice({
         state.assignError = action.payload || action.error.message;
         state.assignSuccess = false;
       })
+      // Fetch user assigned channels
+      .addCase(fetchUserAssignedChannels.pending, (state) => {
+        state.userAssignedChannelsLoading = true;
+        state.userAssignedChannelsError = null;
+      })
+      .addCase(fetchUserAssignedChannels.fulfilled, (state, action) => {
+        state.userAssignedChannelsLoading = false;
+        const data = action.payload;
+        const requestedUserId = action.meta.arg;
+
+        // Handle both response formats:
+        // Postman: [{ channel: {...}, assigned_at: "..." }]
+        // Backend: { user: {...}, channels: [raw channel objects] }
+        let rawChannels = Array.isArray(data) ? data : (data.channels || data.results || []);
+
+        // If backend returns wrong user's data (ignores user_id param), filter to empty until backend is fixed
+        if (data.user && data.user.id !== requestedUserId) {
+          rawChannels = [];
+        }
+
+        state.userAssignedChannels = rawChannels.map((item) => {
+          if (item.channel) return item; // Postman format
+          return { channel: item, assigned_at: item.assigned_at || null }; // Normalize raw channel
+        });
+      })
+      .addCase(fetchUserAssignedChannels.rejected, (state, action) => {
+        state.userAssignedChannelsLoading = false;
+        state.userAssignedChannelsError = action.payload || action.error.message;
+        state.userAssignedChannels = [];
+      })
+      // Unassign channel from user
+      .addCase(unassignChannelFromUser.pending, (state, action) => {
+        state.unassignLoading = action.meta.arg.channel_id;
+      })
+      .addCase(unassignChannelFromUser.fulfilled, (state, action) => {
+        state.unassignLoading = null;
+        const channelId = action.meta.arg.channel_id;
+        state.userAssignedChannels = state.userAssignedChannels.filter((item) => {
+          const id = item.channel?.id ?? item.id;
+          return Number(id) !== Number(channelId);
+        });
+      })
+      .addCase(unassignChannelFromUser.rejected, (state, action) => {
+        state.unassignLoading = null;
+      })
       // Delete user
       .addCase(deleteUser.pending, (state) => {
         state.deleteLoading = true;
@@ -133,5 +224,5 @@ const userManagementSlice = createSlice({
   },
 });
 
-export const { clearError, clearAssignError, resetAssignState, clearDeleteState } = userManagementSlice.actions;
+export const { clearError, clearAssignError, resetAssignState, clearDeleteState, clearUserAssignedChannels } = userManagementSlice.actions;
 export default userManagementSlice.reducer;
