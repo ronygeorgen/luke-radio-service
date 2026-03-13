@@ -225,17 +225,11 @@ const FilterPanelV2 = ({
     }
   }, [contentTypePrompt?.contentTypes, filters.contentTypes, dispatch]);
 
-  // Initialize Redux on mount: if no saved preference, set contentTypes [] so sync effects don't overwrite toggles; set onlyActive when needed.
+  // Only set onlyActive/status on mount if needed. Do NOT touch contentTypes - page hydrates it from localStorage.
   const hasInitializedDefaults = useRef(false);
   useEffect(() => {
     if (hasInitializedDefaults.current) return;
-    const saved = localStorage.getItem('filterV2_savedPreference');
-    if (!saved) {
-      dispatch(setFilter({
-        contentTypes: null,
-        ...(filters.onlyActive === undefined && { onlyActive: true, status: 'active' })
-      }));
-    } else if (filters.onlyActive === undefined) {
+    if (filters.onlyActive === undefined) {
       dispatch(setFilter({ onlyActive: true, status: 'active' }));
     }
     hasInitializedDefaults.current = true;

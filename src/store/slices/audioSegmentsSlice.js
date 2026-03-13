@@ -475,8 +475,7 @@ const audioSegmentsSlice = createSlice({
       predefinedFilterId: null,
       duration: null, // Duration filter in seconds
       showFlaggedOnly: false, // Show flagged only when shift is selected
-      contentTypes: null, // V2: Array of selected content types
-      onlyAnnouncers: true, // V2: Only Announcers toggle state (default: true)
+      contentTypes: [], // V2: [] = all, [type, ...] = filter; single source of truth for fetch
       onlyActive: true, // V2: Only Active toggle state (default: true)
     },
     contentTypePrompt: {

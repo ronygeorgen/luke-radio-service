@@ -260,13 +260,24 @@ const AudioSegmentsPage = () => {
         predefinedFilterId: null
       };
 
-      // Set default V2 filter values if not already set
+      // Hydrate content types from saved preference (single source of truth). Empty array = fetch all.
+      let contentTypesToUse = [];
+      try {
+        const saved = localStorage.getItem('filterV2_savedPreference');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed.selectedContentTypes)) {
+            contentTypesToUse = parsed.selectedContentTypes;
+          }
+        }
+      } catch (_) {}
+
+      // Hydrate Redux immediately so all later code (pagination, panel) uses this value. No race with panel.
       const defaultV2Filters = {
         ...lastFilters.current,
-        onlyActive: filters.onlyActive !== undefined ? filters.onlyActive : true, // Default to true
-        onlyAnnouncers: filters.onlyAnnouncers !== undefined ? filters.onlyAnnouncers : true, // Default to true
+        onlyActive: filters.onlyActive !== undefined ? filters.onlyActive : true,
+        contentTypes: contentTypesToUse,
       };
-      
       dispatch(setFilter(defaultV2Filters));
 
       setLocalStartTime('');
@@ -274,10 +285,8 @@ const AudioSegmentsPage = () => {
       setLocalSearchText('');
       setLocalSearchIn('transcription');
 
-      // Set hasInitialFiltersSet to true after initial setup
       hasInitialFiltersSet.current = true;
 
-      // Use V2 API with default filter values
       const startDatetime = convertLocalToUTC(today, '00:00:00');
       const endDatetime = convertLocalToUTC(today, '23:59:59');
 
@@ -286,13 +295,6 @@ const AudioSegmentsPage = () => {
         statusParam = 'active';
       } else if (filters.status === 'active' || filters.status === 'inactive') {
         statusParam = filters.status;
-      }
-
-      let contentTypesToUse = [];
-      if (defaultV2Filters.onlyAnnouncers === true) {
-        contentTypesToUse = ['Announcer'];
-      } else if (filters.contentTypes && filters.contentTypes.length > 0) {
-        contentTypesToUse = filters.contentTypes;
       }
 
       dispatch(fetchAudioSegmentsV2({
@@ -927,9 +929,8 @@ const AudioSegmentsPage = () => {
       shiftId: null,
       predefinedFilterId: null,
       duration: null,
-      onlyActive: true, // Reset to default: true
-      onlyAnnouncers: true, // Reset to default: true
-      contentTypes: [],
+      onlyActive: true,
+      contentTypes: [], // Reset to "all"
       showFlaggedOnly: false
     };
 
@@ -947,12 +948,6 @@ const AudioSegmentsPage = () => {
 
     hasAutoSwitchedPage.current = false;
 
-    try {
-      localStorage.removeItem('filterV2_contentTypes');
-    } catch (err) {
-      console.error('Error clearing filter state from localStorage:', err);
-    }
-
     const startDatetime = convertLocalToUTC(today, defaultStartTime);
     const endDatetime = convertLocalToUTC(today, defaultEndTime);
 
@@ -963,7 +958,7 @@ const AudioSegmentsPage = () => {
       page: 1,
       shiftId: null,
       predefinedFilterId: null,
-      contentTypes: ['Announcer'],
+      contentTypes: [], // Reset = show all
       status: 'active',
       searchText: null,
       searchIn: null
