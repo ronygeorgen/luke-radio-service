@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Loader } from 'lucide-react';
+import { X, Upload, Loader, ExternalLink, Cloud } from 'lucide-react';
 import { axiosInstance } from '../services/api';
 
 const ACRCustomFileUploadModal = ({ isOpen, onClose, channelId }) => {
@@ -109,6 +109,17 @@ const ACRCustomFileUploadModal = ({ isOpen, onClose, channelId }) => {
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
+
+                <a
+                    href="https://acrsync.reloop.pro/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mx-6 mt-4 flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm text-blue-800 transition-colors hover:border-blue-200 hover:bg-blue-100"
+                >
+                    <Cloud className="w-4 h-4 shrink-0 text-blue-600" />
+                    <span className="font-medium">Sync from Google Drive to ACR Cloud</span>
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0 text-blue-500" />
+                </a>
 
                 {!effectiveChannelId ? (
                     <div className="p-6 text-sm text-gray-600">Select a channel first.</div>
