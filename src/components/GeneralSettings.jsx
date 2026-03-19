@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchSettings, updateSetting, clearError, fetchSettingsVersions, revertToVersion } from '../store/slices/settingsSlice';
+import { fetchSettings, updateSettingsBulk, clearError, fetchSettingsVersions, revertToVersion } from '../store/slices/settingsSlice';
 import { fetchChannels, fetchUserChannels, setDefaultSettings, selectUserChannels } from '../store/slices/channelSlice';
 import SettingField from './SettingField';
 import BucketManager from './BucketManager';
@@ -104,31 +104,15 @@ const GeneralSettings = () => {
       : undefined;
 
     try {
-      // Save each changed setting (pass change_reason on first call; API uses it for the save action)
-      const entries = Object.entries(changedSettings);
-      const savePromises = entries.map(([key, value], index) =>
-        dispatch(updateSetting({
-          key,
-          value,
-          ...(index === 0 && reasonToSend ? { change_reason: reasonToSend } : {})
-        }))
-      );
+      await dispatch(updateSettingsBulk({
+        settingsUpdates: { ...changedSettings },
+        change_reason: reasonToSend
+      })).unwrap();
 
-      const results = await Promise.all(savePromises);
-
-      // Check if any failed
-      const failures = results.filter(result => updateSetting.rejected.match(result));
-
-      if (failures.length > 0) {
-        const errorMessages = failures.map(f => f.payload || 'Failed to update setting').join('; ');
-        setErrorToast(errorMessages);
-        dispatch(clearError());
-      } else {
-        setSuccessToast(`Successfully saved ${Object.keys(changedSettings).length} setting(s)`);
-        setChangedSettings({});
-      }
+      setSuccessToast(`Successfully saved ${Object.keys(changedSettings).length} setting(s)`);
+      setChangedSettings({});
     } catch (error) {
-      const errorMessage = error?.message || 'Failed to save settings';
+      const errorMessage = error || 'Failed to save settings';
       setErrorToast(errorMessage);
       dispatch(clearError());
     } finally {
