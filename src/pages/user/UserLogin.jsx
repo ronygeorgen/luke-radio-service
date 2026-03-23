@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, Radio, Eye, EyeOff, ArrowRight, Waves, Signal, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, Radio, Eye, EyeOff, ArrowRight, Waves, Signal, ArrowLeft, X } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, clearError, resendMagicLink } from '../../store/slices/authSlice';
 import Toast from '../../components/UserSide/Toast';
+import { formatAuthError } from '../../utils/authErrors';
+
 const UserLogin = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -21,7 +23,7 @@ const UserLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const { isLoading, error, isAuthenticated, user, resendMagicLinkLoading } = useSelector((state) => state.auth);
+  const { isLoggingIn, error, isAuthenticated, user, resendMagicLinkLoading } = useSelector((state) => state.auth);
   
   const from = location.state?.from?.pathname || '/user-channels';
 
@@ -33,14 +35,12 @@ const UserLogin = () => {
 
   useEffect(() => {
     if (error && !showForgotPassword) {
-      setErrors(prev => ({
-        ...prev,
-        submit: error.error || error.detail || 'Login failed. Please check your credentials and try again.'
-      }));
+      const msg = formatAuthError(error);
+      setErrors(prev => ({ ...prev, submit: msg }));
     } else if (error && showForgotPassword) {
       setErrors(prev => ({
         ...prev,
-        email: error.error || error.detail || 'Failed to send magic link. Please try again.'
+        email: formatAuthError(error, 'Failed to send magic link. Please try again.')
       }));
     }
   }, [error, showForgotPassword]);
@@ -58,14 +58,12 @@ const UserLogin = () => {
         [name]: ''
       }));
     }
-    
-    if (errors.submit) {
-      dispatch(clearError());
-      setErrors(prev => ({
-        ...prev,
-        submit: ''
-      }));
-    }
+  };
+
+  const dismissLoginError = () => {
+    dispatch(clearError());
+    setErrors(prev => ({ ...prev, submit: '' }));
+    setToastMessage(null);
   };
 
   const validateForm = () => {
@@ -329,10 +327,18 @@ const UserLogin = () => {
                 {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
               </div>
 
-              {/* Error Message */}
+              {/* Login error — stays until user dismisses (no auto-clear on typing) */}
               {errors.submit && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                  <p className="text-red-600 text-sm">{errors.submit}</p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex gap-3 items-start" role="alert">
+                  <p className="text-red-700 text-sm flex-1">{errors.submit}</p>
+                  <button
+                    type="button"
+                    onClick={dismissLoginError}
+                    className="flex-shrink-0 p-1 rounded text-red-600 hover:bg-red-100 transition-colors"
+                    aria-label="Dismiss error"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
               )}
 
@@ -366,10 +372,10 @@ const UserLogin = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoggingIn}
                 className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
-                {isLoading ? (
+                {isLoggingIn ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Logging in...

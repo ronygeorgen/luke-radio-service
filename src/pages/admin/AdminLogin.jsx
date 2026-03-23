@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, Radio, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Radio, Eye, EyeOff, X } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, clearError } from '../../store/slices/authSlice';
+import { formatAuthError } from '../../utils/authErrors';
 
 const AdminLogin = () => {
   const [formData, setFormData] = useState({
@@ -15,7 +16,7 @@ const AdminLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { isLoading, error, isAuthenticated, user } = useSelector((state) => state.auth);
+  const { isLoggingIn, error, isAuthenticated, user } = useSelector((state) => state.auth);
 
   const from = location.state?.from?.pathname || '/admin/channels';
 
@@ -29,7 +30,7 @@ const AdminLogin = () => {
     if (error) {
       setErrors(prev => ({
         ...prev,
-        submit: error.error || error.detail || 'Login failed. Please try again.'
+        submit: formatAuthError(error, 'Login failed. Please try again.')
       }));
     }
   }, [error]);
@@ -47,14 +48,11 @@ const AdminLogin = () => {
         [name]: ''
       }));
     }
-    
-    if (errors.submit) {
-      dispatch(clearError());
-      setErrors(prev => ({
-        ...prev,
-        submit: ''
-      }));
-    }
+  };
+
+  const dismissLoginError = () => {
+    dispatch(clearError());
+    setErrors(prev => ({ ...prev, submit: '' }));
   };
 
   const validateForm = () => {
@@ -173,20 +171,28 @@ const AdminLogin = () => {
               {errors.password && <p className="text-red-300 text-sm">{errors.password}</p>}
             </div>
 
-            {/* Error Message */}
+            {/* Login error — stays until user dismisses */}
             {errors.submit && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-red-600 text-sm">{errors.submit}</p>
+              <div className="bg-red-500/20 border border-red-400/50 rounded-lg p-3 flex gap-3 items-start" role="alert">
+                <p className="text-red-100 text-sm flex-1">{errors.submit}</p>
+                <button
+                  type="button"
+                  onClick={dismissLoginError}
+                  className="flex-shrink-0 p-1 rounded text-red-100 hover:bg-white/10 transition-colors"
+                  aria-label="Dismiss error"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             )}
 
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoggingIn}
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
             >
-              {isLoading ? (
+              {isLoggingIn ? (
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Logging in...

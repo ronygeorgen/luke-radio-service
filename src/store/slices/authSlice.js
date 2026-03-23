@@ -220,6 +220,8 @@ const initialState = {
   refreshToken: localStorage.getItem('refreshToken'),
   isAuthenticated: false,
   isLoading: false,
+  /** True only while email/password login request is in flight — does not block PublicRoute (avoids full-page spinner on wrong password). */
+  isLoggingIn: false,
   error: null,
   magicLinkData: null, // Stores data from magic link verification
   resendMagicLinkLoading: false, // Separate loading state for resend magic link
@@ -250,13 +252,19 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Login
+      // Login — use isLoggingIn only so PublicRoute doesn't show full-page spinner; clear stale tokens so checkAuth won't run after failed login
       .addCase(loginUser.pending, (state) => {
-        state.isLoading = true;
+        state.isLoggingIn = true;
         state.error = null;
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        state.accessToken = null;
+        state.refreshToken = null;
+        state.user = null;
+        state.isAuthenticated = false;
       })
       .addCase(loginUser.fulfilled, (state, action) => {
-        state.isLoading = false;
+        state.isLoggingIn = false;
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
@@ -264,7 +272,7 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(loginUser.rejected, (state, action) => {
-        state.isLoading = false;
+        state.isLoggingIn = false;
         state.error = action.payload;
         state.isAuthenticated = false;
       })

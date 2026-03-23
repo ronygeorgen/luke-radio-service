@@ -1,15 +1,14 @@
 import React, { useEffect } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 
-const Toast = ({ message, onClose, type = 'error' }) => {
+const Toast = ({ message, onClose, type = 'error', persistent = false }) => {
   useEffect(() => {
-    // Auto-close after 5 seconds
+    if (persistent) return undefined;
     const timer = setTimeout(() => {
       onClose();
     }, 5000);
-
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, [onClose, persistent]);
 
   const bgColor = type === 'error' ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200';
   const textColor = type === 'error' ? 'text-red-800' : 'text-green-800';
