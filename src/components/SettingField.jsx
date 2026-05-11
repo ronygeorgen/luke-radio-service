@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 const SettingField = ({ label, settingKey, value, isTextarea = false, disableEdit = false, onValueChange }) => {
   const [localValue, setLocalValue] = useState(value);
   const [isEditing, setIsEditing] = useState(false);
+  const isZeroToOneField = ['chatGptTemperature', 'chatGptTopP'].includes(settingKey);
 
   // Update local value when prop value changes (e.g., after save or reset)
   useEffect(() => {
@@ -14,6 +15,26 @@ const SettingField = ({ label, settingKey, value, isTextarea = false, disableEdi
   };
 
   const handleChange = (newValue) => {
+    if (isZeroToOneField) {
+      // Allow clearing, and only keep values between 0 and 1.
+      if (newValue === '') {
+        setLocalValue('');
+        if (onValueChange) {
+          onValueChange(settingKey, '');
+        }
+        return;
+      }
+
+      if (!/^(\d+(\.\d*)?|\.\d+)$/.test(newValue)) {
+        return;
+      }
+
+      const parsedValue = Number(newValue);
+      if (Number.isNaN(parsedValue) || parsedValue < 0 || parsedValue > 1) {
+        return;
+      }
+    }
+
     setLocalValue(newValue);
     // Notify parent component of the change
     if (onValueChange) {
@@ -63,9 +84,12 @@ const SettingField = ({ label, settingKey, value, isTextarea = false, disableEdi
             />
           ) : (
             <input
-              type="text"
+              type={isZeroToOneField ? 'number' : 'text'}
               value={localValue}
               onChange={(e) => handleChange(e.target.value)}
+              min={isZeroToOneField ? 0 : undefined}
+              max={isZeroToOneField ? 1 : undefined}
+              step={isZeroToOneField ? '0.01' : undefined}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             />
           )}

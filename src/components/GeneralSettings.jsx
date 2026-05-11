@@ -239,7 +239,7 @@ const GeneralSettings = () => {
     {
       title: 'API Keys',
       settings: [
-        { key: 'openAiTranscriptionApi', label: 'OpenAI - Transcription API' },
+        { key: 'openAiTranscriptionApi', label: 'OpenRouter - Transcription API' },
         { key: 'openAiOrganisationalId', label: 'OpenAI - Organisational ID' },
         { key: 'acrCloudApi', label: 'ACR Cloud - API Key' },
         { key: 'revAiAccessToken', label: 'Rev.ai Access Token' },
@@ -262,9 +262,9 @@ const GeneralSettings = () => {
       title: 'Configuration',
       settings: [
         { key: 'bucketDefinitionErrorRate', label: 'Bucket Definition Error Rate' },
-        { key: 'chatGptModel', label: 'ChatGPT Model' },
-        { key: 'chatGptTemperature', label: 'ChatGPT Temperature' },
-        { key: 'chatGptTopP', label: 'ChatGPT Top P' },
+        { key: 'chatGptModel', label: 'Model' },
+        { key: 'chatGptTemperature', label: 'Model Temperature' },
+        { key: 'chatGptTopP', label: 'Model Top P' },
         { key: 'radioSegmentErrorRate', label: 'Radio Segment Error Rate' },
       ]
     }
