@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { formatDateForDisplay } from "../../utils/formatters";
 import { useNavigate } from "react-router-dom";
-import { Menu, Settings, ArrowLeft, FileText, BarChart3, Search, Layers, UserCog, Music, Plus, LifeBuoy, Clock, Filter, Radio, Flag, Ban, Upload } from "lucide-react";
+import { Menu, Settings, ArrowLeft, FileText, BarChart3, Search, Layers, UserCog, Music, Plus, LifeBuoy, Clock, Filter, Radio, Flag, Ban, Upload, ArrowLeftRight } from "lucide-react";
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from "../../store/slices/authSlice";
 import { fetchUserChannels, selectUserChannels } from "../../store/slices/channelSlice";
@@ -69,6 +69,16 @@ const Header = ({
 
   const handleLogout = () => {
     reduxDispatch(logout());
+  };
+
+  const handleTranscriptCompareNavigation = () => {
+    setIsDropdownOpen(false);
+    const activeChannelId = localStorage.getItem('channelId');
+    if (!activeChannelId) {
+      navigate('/user-channels');
+      return;
+    }
+    navigate(`/channels/${activeChannelId}/transcript-compare`);
   };
 
   // Close dropdown when clicking outside
@@ -207,6 +217,13 @@ const Header = ({
                       >
                         <Search className="w-4 h-4 mr-3 text-gray-500" />
                         Search
+                      </button>
+                      <button
+                        onClick={handleTranscriptCompareNavigation}
+                        className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                      >
+                        <ArrowLeftRight className="w-4 h-4 mr-3 text-gray-500" />
+                        Transcript Compare
                       </button>
                       <button onClick={() => { navigate("/dashboard"); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                         <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />

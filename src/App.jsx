@@ -12,6 +12,7 @@ import DashboardV2 from './components/DashboardUserSide/DashboardV2';
 import DashboardSettingsPage from './components/DashboardUserSide/DashboardSettingsPage';
 import ReportsPage from './pages/user/ReportsPage';
 import ReportDetailPage from './pages/user/ReportDetailPage';
+import TranscriptComparePage from './pages/user/TranscriptComparePage';
 import AdminLogin from './pages/admin/AdminLogin';
 import CreatePassword from './pages/user/Createpassword';
 import UserLogin from './pages/user/UserLogin';
@@ -70,6 +71,11 @@ function App() {
             <Route path="/channels/:channelId/segments" element={
               <ProtectedRoute>
                 <UserAudioSegmentsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/channels/:channelId/transcript-compare" element={
+              <ProtectedRoute>
+                <TranscriptComparePage />
               </ProtectedRoute>
             } />
 

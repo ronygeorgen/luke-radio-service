@@ -1,6 +1,6 @@
 // Updated AdminLayout.js
 import { Outlet, useLocation } from 'react-router-dom';
-import { Menu, Settings, Layers, Users, Plus, UserCog, Music, BarChart3, FileText, Search, LifeBuoy, Clock, Filter, Radio, Flag, Ban, Upload } from 'lucide-react';
+import { Menu, Settings, Layers, Users, Plus, UserCog, Music, BarChart3, FileText, Search, LifeBuoy, Clock, Filter, Radio, Flag, Ban, Upload, ArrowLeftRight } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
@@ -124,6 +124,10 @@ const AdminLayout = () => {
             navigate(`/channels/${channel.id}/segments?date=${today}&hour=0&name=${encodeURIComponent(channel.name)}`);
             setPendingNavigation(null);
             setIsChannelSelectionOpen(false);
+        } else if (pendingNavigation === 'TRANSCRIPT_COMPARE') {
+            navigate(`/channels/${channel.id}/transcript-compare`);
+            setPendingNavigation(null);
+            setIsChannelSelectionOpen(false);
         } else if (pendingNavigation) {
             let finalPath = pendingNavigation;
 
@@ -158,6 +162,25 @@ const AdminLayout = () => {
                 // Otherwise, navigate to user channels to select one
                 navigate('/user-channels');
             }
+        }
+    };
+
+    const handleTranscriptCompareNavigation = () => {
+        setIsDropdownOpen(false);
+        const channelId = localStorage.getItem('channelId');
+
+        if (channelId) {
+            navigate(`/channels/${channelId}/transcript-compare`);
+            return;
+        }
+
+        if (location.pathname.includes('/admin/channels') ||
+            location.pathname.includes('/admin/settings') ||
+            location.pathname.includes('/admin/users')) {
+            setPendingNavigation('TRANSCRIPT_COMPARE');
+            setIsChannelSelectionOpen(true);
+        } else {
+            navigate('/user-channels');
         }
     };
 
@@ -280,6 +303,11 @@ const AdminLayout = () => {
                                                     className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                                                     <Search className="w-4 h-4 mr-3 text-gray-500" />
                                                     Search
+                                                </button>
+                                                <button onClick={handleTranscriptCompareNavigation}
+                                                    className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                                                    <ArrowLeftRight className="w-4 h-4 mr-3 text-gray-500" />
+                                                    Transcript Compare
                                                 </button>
                                                 <button onClick={() => { handleNavigation("/dashboard"); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                                                     <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
