@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Settings, BarChart3, FileText, Search, LifeBuoy, Music, Layers, UserCog, Plus, Clock, Filter, LogOut, Radio, Flag, Ban, Upload } from 'lucide-react';
+import { Menu, Settings, BarChart3, FileText, Search, LifeBuoy, Music, Layers, UserCog, Plus, Clock, Filter, LogOut, Radio, Flag, Ban, Upload, ArrowLeftRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
@@ -125,6 +125,21 @@ const CommonHeader = ({ title, subtitle, children }) => {
                         >
                           <Search className="w-4 h-4 mr-3 text-gray-500" />
                           Search
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsDropdownOpen(false);
+                            const channelId = localStorage.getItem('channelId');
+                            if (channelId) {
+                              navigate(`/channels/${channelId}/transcript-compare`);
+                            } else {
+                              navigate('/user-channels');
+                            }
+                          }}
+                          className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                        >
+                          <ArrowLeftRight className="w-4 h-4 mr-3 text-gray-500" />
+                          Transcript Compare
                         </button>
                         <button onClick={() => handleNavigation('/dashboard')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                           <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />

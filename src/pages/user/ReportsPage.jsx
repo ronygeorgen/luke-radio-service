@@ -33,6 +33,7 @@ import {
   Flag,
   Ban,
   Upload,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { logout } from '../../store/slices/authSlice';
 import { fetchUserChannels, selectUserChannels } from '../../store/slices/channelSlice';
@@ -238,6 +239,21 @@ const ReportsPage = () => {
                         >
                           <Search className="w-4 h-4 mr-3 text-gray-500" />
                           Search
+                        </button>
+                        <button
+                          onClick={() => {
+                            setMenuOpenId(null);
+                            const channelId = localStorage.getItem('channelId');
+                            if (channelId) {
+                              navigate(`/channels/${channelId}/transcript-compare`);
+                            } else {
+                              navigate('/user-channels');
+                            }
+                          }}
+                          className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                        >
+                          <ArrowLeftRight className="w-4 h-4 mr-3 text-gray-500" />
+                          Transcript Compare
                         </button>
                         <button onClick={() => { navigate("/dashboard"); setMenuOpenId(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                           <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />

@@ -13,7 +13,8 @@ import {
   Pencil,
   Radio
 } from 'lucide-react';
-import Header from '../../components/UserSide/Header';
+import CommonHeader from '../../components/DashboardUserSide/CommonHeader';
+import ChannelSwitcher from '../../components/ChannelSwitcher';
 import { axiosInstance } from '../../services/api';
 import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 
@@ -67,8 +68,6 @@ const TranscriptComparePage = () => {
   const [isComparing, setIsComparing] = useState(false);
   const [compareResult, setCompareResult] = useState(null);
   const [compareError, setCompareError] = useState('');
-  const [headerSearchText, setHeaderSearchText] = useState('');
-  const [headerSearchIn, setHeaderSearchIn] = useState('transcription');
 
   useEffect(() => {
     if (!selectedPromptId && prompts.length > 0) {
@@ -93,6 +92,11 @@ const TranscriptComparePage = () => {
     { step: 2, title: 'Choose Prompt', description: 'Pick or manage prompt' },
     { step: 3, title: 'Run Compare', description: 'Review and execute' }
   ];
+
+  const handleCompareChannelChange = (channel) => {
+    if (!channel?.id) return;
+    navigate(`/channels/${channel.id}/transcript-compare`);
+  };
 
   const fetchPrompts = async () => {
     setLoadingPrompts(true);
@@ -133,7 +137,7 @@ const TranscriptComparePage = () => {
         start_datetime: convertLocalToUTC(startDate, '00:00:00'),
         end_datetime: convertLocalToUTC(endDate, '23:59:59'),
         transcribed_only: transcribedOnly,
-        limit: 200
+        limit: 50
       };
       if (segmentIdSearch.trim()) {
         params.id = segmentIdSearch.trim();
@@ -325,21 +329,9 @@ const TranscriptComparePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header
-        channelInfo={null}
-        channelName={localStorage.getItem('channelName') || ''}
-        filters={{}}
-        formatTimeDisplay={() => new Date().toLocaleTimeString()}
-        localSearchText={headerSearchText}
-        setLocalSearchText={setHeaderSearchText}
-        localSearchIn={headerSearchIn}
-        setLocalSearchIn={setHeaderSearchIn}
-        handleSearch={() => {}}
-        handleClearSearch={() => {
-          setHeaderSearchText('');
-          setHeaderSearchIn('transcription');
-        }}
-      />
+      <CommonHeader title="Transcript Compare">
+        <ChannelSwitcher onChannelChange={handleCompareChannelChange} />
+      </CommonHeader>
 
       <main className="w-full px-4 sm:px-6 lg:px-8 pt-24 pb-8">
         <div className="max-w-7xl mx-auto space-y-6">
