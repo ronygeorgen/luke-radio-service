@@ -53,7 +53,7 @@ const TranscriptComparePage = () => {
   const [selectedSegmentIds, setSelectedSegmentIds] = useState(new Set());
 
   const [activeStep, setActiveStep] = useState(1);
-  const [selectedPromptId, setSelectedPromptId] = useState('');
+  const [selectedPromptIds, setSelectedPromptIds] = useState(new Set());
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   const [promptName, setPromptName] = useState('');
   const [promptBody, setPromptBody] = useState('');
@@ -70,14 +70,25 @@ const TranscriptComparePage = () => {
   const [compareError, setCompareError] = useState('');
 
   useEffect(() => {
-    if (!selectedPromptId && prompts.length > 0) {
-      setSelectedPromptId(prompts[0].id);
+    if (prompts.length === 0) {
+      setSelectedPromptIds(new Set());
+      return;
     }
-  }, [prompts, selectedPromptId]);
 
-  const selectedPrompt = useMemo(
-    () => prompts.find((p) => p.id === selectedPromptId) || null,
-    [prompts, selectedPromptId]
+    setSelectedPromptIds((prev) => {
+      if (prev.size === 0) {
+        return new Set(prompts.map((prompt) => prompt.id));
+      }
+
+      const validPromptIds = new Set(prompts.map((prompt) => prompt.id));
+      const next = new Set([...prev].filter((id) => validPromptIds.has(id)));
+      return next.size > 0 ? next : new Set(prompts.map((prompt) => prompt.id));
+    });
+  }, [prompts]);
+
+  const selectedPrompts = useMemo(
+    () => prompts.filter((prompt) => selectedPromptIds.has(prompt.id)),
+    [prompts, selectedPromptIds]
   );
 
   const selectedSegments = useMemo(
@@ -86,7 +97,7 @@ const TranscriptComparePage = () => {
   );
 
   const canContinueToPrompt = selectedSegmentIds.size >= 2;
-  const canRunCompare = canContinueToPrompt && Boolean(selectedPrompt);
+  const canRunCompare = canContinueToPrompt && selectedPromptIds.size > 0;
   const stepItems = [
     { step: 1, title: 'Select Segments', description: 'Choose 2+ transcripts' },
     { step: 2, title: 'Choose Prompt', description: 'Pick or manage prompt' },
@@ -105,9 +116,6 @@ const TranscriptComparePage = () => {
       const response = await axiosInstance.get('/prompts/');
       const rows = Array.isArray(response?.data) ? response.data : [];
       setPrompts(rows);
-      if (rows.length > 0 && !rows.some((item) => item.id === selectedPromptId)) {
-        setSelectedPromptId(rows[0].id);
-      }
     } catch (error) {
       const message =
         error?.response?.data?.detail ||
@@ -187,6 +195,18 @@ const TranscriptComparePage = () => {
     });
   };
 
+  const togglePromptSelection = (promptId) => {
+    setSelectedPromptIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(promptId)) {
+        next.delete(promptId);
+      } else {
+        next.add(promptId);
+      }
+      return next;
+    });
+  };
+
   const openCreatePrompt = () => {
     setEditingPromptId(null);
     setPromptName('');
@@ -253,9 +273,6 @@ const TranscriptComparePage = () => {
     try {
       await axiosInstance.delete(`/prompts/${promptId}/`);
       await fetchPrompts();
-      if (selectedPromptId === promptId) {
-        setSelectedPromptId('');
-      }
       setPromptNotice('Prompt deleted successfully.');
     } catch (error) {
       const message =
@@ -287,7 +304,7 @@ const TranscriptComparePage = () => {
       }).length;
       setCompareResult({
         runAt: new Date().toISOString(),
-        summary: `Compared ${selectedSegments.length} segment(s) using "${selectedPrompt.name}". ${transcriptCount} segment(s) had transcript text available.`,
+        summary: `Compared ${selectedSegments.length} segment(s) using ${selectedPrompts.length} prompt(s). ${transcriptCount} segment(s) had transcript text available.`,
         highlights: [
           'Topic overlap appears in multiple segments (placeholder result).',
           'Tone shifts were detected between at least two selected segments (placeholder result).',
@@ -535,14 +552,32 @@ const TranscriptComparePage = () => {
               <>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-gray-900">2. Prompt Selection</h2>
-                  <button
-                    type="button"
-                    onClick={openCreatePrompt}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 text-white text-sm hover:bg-black transition-colors"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Prompt
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPromptIds(new Set(prompts.map((prompt) => prompt.id)))}
+                      disabled={prompts.length === 0}
+                      className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                    >
+                      Select all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPromptIds(new Set())}
+                      disabled={prompts.length === 0}
+                      className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                    >
+                      Clear all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openCreatePrompt}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 text-white text-sm hover:bg-black transition-colors"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Prompt
+                    </button>
+                  </div>
                 </div>
 
                 {loadingPrompts && (
@@ -569,16 +604,15 @@ const TranscriptComparePage = () => {
                     <div
                       key={prompt.id}
                       className={`rounded-xl border p-4 transition-colors ${
-                        selectedPromptId === prompt.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        selectedPromptIds.has(prompt.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <label className="flex items-start gap-3 cursor-pointer flex-1">
                           <input
-                            type="radio"
-                            name="selectedPrompt"
-                            checked={selectedPromptId === prompt.id}
-                            onChange={() => setSelectedPromptId(prompt.id)}
+                            type="checkbox"
+                            checked={selectedPromptIds.has(prompt.id)}
+                            onChange={() => togglePromptSelection(prompt.id)}
                             className="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                           <div>
@@ -662,10 +696,21 @@ const TranscriptComparePage = () => {
                   </div>
                   <div className="rounded-xl border border-gray-200 p-4 bg-gray-50">
                     <div className="text-sm text-gray-500 mb-1">Selected prompt</div>
-                    <div className="text-base font-semibold text-gray-900">
-                      {selectedPrompt?.name || 'No prompt selected'}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">Pick one predefined prompt.</div>
+                    <div className="text-2xl font-bold text-gray-900">{selectedPromptIds.size}</div>
+                    <div className="text-xs text-gray-500 mt-1">Select one or more prompts.</div>
+                    {selectedPrompts.length > 0 && (
+                      <div className="mt-3 max-h-40 overflow-auto rounded-lg border border-gray-200 bg-white">
+                        <ul className="divide-y divide-gray-100">
+                          {selectedPrompts.map((prompt) => (
+                            <li key={prompt.id} className="px-3 py-2">
+                              <div className="text-sm font-medium text-gray-900">
+                                #{prompt.id} - {prompt.name}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
 
