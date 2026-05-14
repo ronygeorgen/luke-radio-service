@@ -11,10 +11,12 @@ import {
   Trash2,
   X,
   Pencil,
-  Radio
+  Radio,
+  ExternalLink
 } from 'lucide-react';
 import CommonHeader from '../../components/DashboardUserSide/CommonHeader';
 import ChannelSwitcher from '../../components/ChannelSwitcher';
+import TranscriptionModal from './TranscriptionModal';
 import { axiosInstance } from '../../services/api';
 import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 
@@ -23,6 +25,12 @@ const formatDateTime = (value) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleString();
+};
+
+const getTranscriptText = (segment) => {
+  return (typeof segment?.transcription === 'string'
+    ? segment.transcription
+    : segment?.transcription?.transcript) || '';
 };
 
 const todayISO = () => new Date().toISOString().split('T')[0];
@@ -68,6 +76,8 @@ const TranscriptComparePage = () => {
   const [isComparing, setIsComparing] = useState(false);
   const [compareResult, setCompareResult] = useState(null);
   const [compareError, setCompareError] = useState('');
+  const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
+  const [selectedTranscript, setSelectedTranscript] = useState('');
 
   useEffect(() => {
     if (prompts.length === 0) {
@@ -207,6 +217,12 @@ const TranscriptComparePage = () => {
     });
   };
 
+  const handleTranscriptPreviewClick = (transcript) => {
+    if (!transcript) return;
+    setSelectedTranscript(transcript);
+    setShowTranscriptionModal(true);
+  };
+
   const openCreatePrompt = () => {
     setEditingPromptId(null);
     setPromptName('');
@@ -297,10 +313,7 @@ const TranscriptComparePage = () => {
       await new Promise((resolve) => setTimeout(resolve, 1200));
 
       const transcriptCount = selectedSegments.filter((s) => {
-        if (typeof s?.transcription === 'string') {
-          return s.transcription.trim().length > 0;
-        }
-        return Boolean(s?.transcription?.transcript);
+        return getTranscriptText(s).trim().length > 0;
       }).length;
       setCompareResult({
         runAt: new Date().toISOString(),
@@ -498,11 +511,7 @@ const TranscriptComparePage = () => {
                     ) : (
                       <ul className="divide-y divide-gray-200">
                         {segments.map((segment) => {
-                          const transcript =
-                            (typeof segment?.transcription === 'string'
-                              ? segment.transcription
-                              : segment?.transcription?.transcript) ||
-                            '';
+                          const transcript = getTranscriptText(segment);
                           return (
                             <li key={segment.id} className="p-4 hover:bg-gray-50 transition-colors">
                               <label className="flex items-start gap-3 cursor-pointer">
@@ -521,9 +530,30 @@ const TranscriptComparePage = () => {
                                   <div className="text-xs text-gray-500 mt-1">
                                     {segment.title || segment.title_before || segment.title_after || 'Untitled'} • {segment.duration_seconds || 0}s
                                   </div>
-                                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                    {transcript || 'No transcript available yet.'}
-                                  </p>
+                                  {transcript ? (
+                                    <>
+                                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                        {transcript}
+                                      </p>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleTranscriptPreviewClick(transcript);
+                                        }}
+                                        className="mt-2 inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-md hover:bg-gray-200 transition-colors"
+                                        title="Read full transcript"
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                        Read full transcript
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                      No transcript available yet.
+                                    </p>
+                                  )}
                                 </div>
                               </label>
                             </li>
@@ -763,6 +793,16 @@ const TranscriptComparePage = () => {
           </section>
         </div>
       </main>
+
+      {showTranscriptionModal && selectedTranscript && (
+        <TranscriptionModal
+          transcription={selectedTranscript}
+          onClose={() => {
+            setShowTranscriptionModal(false);
+            setSelectedTranscript('');
+          }}
+        />
+      )}
 
       {isPromptModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
