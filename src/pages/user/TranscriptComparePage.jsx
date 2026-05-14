@@ -79,6 +79,7 @@ const TranscriptComparePage = () => {
   const [isComparing, setIsComparing] = useState(false);
   const [compareResult, setCompareResult] = useState(null);
   const [compareError, setCompareError] = useState('');
+  const [selectedResponseId, setSelectedResponseId] = useState(null);
   const [showTokenConfig, setShowTokenConfig] = useState(false);
   const [maxTokensInput, setMaxTokensInput] = useState('1000');
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
@@ -114,6 +115,11 @@ const TranscriptComparePage = () => {
     () => new Map(prompts.map((prompt) => [Number(prompt.id), prompt.name])),
     [prompts]
   );
+  const canViewResponses = Boolean(compareResult && Array.isArray(compareResult.results) && compareResult.results.length > 0);
+  const selectedResponse = useMemo(() => {
+    if (!compareResult?.results?.length) return null;
+    return compareResult.results.find((item) => item.id === selectedResponseId) || compareResult.results[0];
+  }, [compareResult, selectedResponseId]);
   const compareLoadingMessage = 'Running prompt execution. This can take up to a minute.';
 
   const canContinueToPrompt = selectedSegmentIds.size >= 2;
@@ -121,7 +127,8 @@ const TranscriptComparePage = () => {
   const stepItems = [
     { step: 1, title: 'Select Segments', description: 'Choose 2+ transcripts' },
     { step: 2, title: 'Choose Prompt', description: 'Pick or manage prompt' },
-    { step: 3, title: 'Run Compare', description: 'Review and execute' }
+    { step: 3, title: 'Run Compare', description: 'Review and execute' },
+    { step: 4, title: 'Read Responses', description: 'View full AI outputs' }
   ];
 
   const handleCompareChannelChange = (channel) => {
@@ -205,6 +212,14 @@ const TranscriptComparePage = () => {
     fetchSegments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
+
+  useEffect(() => {
+    if (compareResult?.results?.length) {
+      setSelectedResponseId(compareResult.results[0].id);
+    } else {
+      setSelectedResponseId(null);
+    }
+  }, [compareResult]);
 
   const toggleSegmentSelection = (segmentId) => {
     setSelectedSegmentIds((prev) => {
@@ -343,7 +358,7 @@ const TranscriptComparePage = () => {
         completedCount,
         failedCount
       });
-      setActiveStep(3);
+      setActiveStep(results.length > 0 ? 4 : 3);
     } catch (error) {
       const responseData = error?.response?.data;
       let errorMessage = 'Comparison failed. Please try again.';
@@ -399,13 +414,14 @@ const TranscriptComparePage = () => {
               Select at least two audio segments, choose a predefined prompt, and run automated transcript comparison.
             </p>
             <div className="mt-5" role="tablist" aria-label="Transcript comparison steps">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                 {stepItems.map((item) => {
                   const isCurrent = activeStep === item.step;
                   const isReachable =
                     item.step === 1 ||
                     (item.step === 2 && canContinueToPrompt) ||
-                    (item.step === 3 && canRunCompare);
+                    (item.step === 3 && canRunCompare) ||
+                    (item.step === 4 && canViewResponses);
                   return (
                     <button
                       key={item.step}
@@ -418,7 +434,7 @@ const TranscriptComparePage = () => {
                       onClick={() => {
                         if (isReachable || item.step <= activeStep) setActiveStep(item.step);
                       }}
-                      className={`text-left px-4 py-3 rounded-lg border transition-colors ${
+                      className={`text-left px-3 py-2.5 rounded-lg border transition-colors ${
                         isCurrent
                           ? 'border-blue-500 bg-blue-50'
                           : isReachable || item.step <= activeStep
@@ -427,8 +443,8 @@ const TranscriptComparePage = () => {
                       }`}
                     >
                       <div className="text-xs text-gray-500">Step {item.step}</div>
-                      <div className="font-medium">{item.title}</div>
-                      <div className="text-xs mt-0.5">{item.description}</div>
+                      <div className="font-medium text-sm">{item.title}</div>
+                      <div className="text-[11px] mt-0.5">{item.description}</div>
                     </button>
                   );
                 })}
@@ -828,71 +844,18 @@ const TranscriptComparePage = () => {
                     <div className="text-xs text-emerald-700 mt-2 mb-3">
                       Run timestamp: {formatDateTime(compareResult.runAt)}
                     </div>
-
-                    <div className="space-y-3">
-                      {compareResult.results.length === 0 ? (
-                        <div className="text-sm text-emerald-900">No prompt results were returned.</div>
-                      ) : (
-                        compareResult.results.map((result) => {
-                          const status = String(result?.status || '').toLowerCase();
-                          const isCompleted = status === 'completed';
-                          return (
-                            <div key={result.id} className="rounded-lg border border-emerald-200 bg-white p-3">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="text-sm font-semibold text-gray-900">
-                                  #{result?.id ?? 'N/A'} · Prompt #{result?.prompt_id ?? 'N/A'}
-                                  {result?.prompt_id != null && promptNameById.get(Number(result.prompt_id))
-                                    ? ` (${promptNameById.get(Number(result.prompt_id))})`
-                                    : ''}
-                                </div>
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                  isCompleted
-                                    ? 'bg-emerald-100 text-emerald-700'
-                                    : 'bg-amber-100 text-amber-700'
-                                }`}>
-                                  {status || 'unknown'}
-                                </span>
-                              </div>
-                              {result?.response ? (
-                                <div className="mt-2 text-sm text-gray-700 break-words max-h-64 overflow-auto border border-gray-200 rounded-md p-3 bg-gray-50">
-                                  <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    components={{
-                                      h1: ({ children }) => <h1 className="text-base font-semibold mt-2 mb-1">{children}</h1>,
-                                      h2: ({ children }) => <h2 className="text-sm font-semibold mt-2 mb-1">{children}</h2>,
-                                      h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>,
-                                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                                      ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
-                                      ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
-                                      li: ({ children }) => <li>{children}</li>,
-                                      strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                                      em: ({ children }) => <em className="italic">{children}</em>,
-                                      code: ({ children }) => (
-                                        <code className="px-1 py-0.5 rounded bg-gray-200 text-xs">{children}</code>
-                                      )
-                                    }}
-                                  >
-                                    {result.response}
-                                  </ReactMarkdown>
-                                </div>
-                              ) : (
-                                <div className="mt-2 text-sm text-gray-500">No response content returned.</div>
-                              )}
-                              {result?.error_message ? (
-                                <div className="mt-2 text-sm text-red-600">
-                                  Error: {result.error_message}
-                                </div>
-                              ) : null}
-                              {result?.created_at ? (
-                                <div className="mt-2 text-xs text-gray-500">
-                                  Created: {formatDateTime(result.created_at)}
-                                </div>
-                              ) : null}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
+                    {canViewResponses ? (
+                      <button
+                        type="button"
+                        onClick={() => setActiveStep(4)}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                      >
+                        Read full responses
+                        <ChevronsRight className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <div className="text-sm text-emerald-900">No prompt results were returned.</div>
+                    )}
                   </div>
                 )}
 
@@ -903,6 +866,123 @@ const TranscriptComparePage = () => {
                     className="px-4 py-2.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
                   >
                     Back to Prompt
+                  </button>
+                </div>
+              </>
+            )}
+
+            {activeStep === 4 && (
+              <>
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">4. Read Responses</h2>
+
+                {!canViewResponses ? (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                    No responses available yet. Run comparison first.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <aside className="lg:col-span-4 rounded-xl border border-gray-200 bg-white overflow-hidden">
+                      <div className="px-4 py-3 border-b border-gray-200 text-sm font-medium text-gray-900">
+                        Responses ({compareResult.results.length})
+                      </div>
+                      <div className="max-h-[34rem] overflow-auto">
+                        <ul className="divide-y divide-gray-100">
+                          {compareResult.results.map((result) => {
+                            const status = String(result?.status || '').toLowerCase();
+                            const isCompleted = status === 'completed';
+                            const isSelected = selectedResponse?.id === result.id;
+                            return (
+                              <li key={result.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedResponseId(result.id)}
+                                  className={`w-full text-left px-4 py-3 transition-colors ${
+                                    isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="text-sm font-semibold text-gray-900 truncate">
+                                      Prompt #{result?.prompt_id ?? 'N/A'}
+                                      {result?.prompt_id != null && promptNameById.get(Number(result.prompt_id))
+                                        ? ` (${promptNameById.get(Number(result.prompt_id))})`
+                                        : ''}
+                                    </div>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                      isCompleted
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : 'bg-amber-100 text-amber-700'
+                                    }`}>
+                                      {status || 'unknown'}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    Result #{result?.id ?? 'N/A'}
+                                  </div>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    </aside>
+
+                    <section className="lg:col-span-8 rounded-xl border border-gray-200 bg-white overflow-hidden">
+                      <div className="px-4 py-3 border-b border-gray-200">
+                        <div className="text-sm font-semibold text-gray-900">
+                          Prompt #{selectedResponse?.prompt_id ?? 'N/A'}
+                          {selectedResponse?.prompt_id != null && promptNameById.get(Number(selectedResponse.prompt_id))
+                            ? ` (${promptNameById.get(Number(selectedResponse.prompt_id))})`
+                            : ''}
+                        </div>
+                        {selectedResponse?.created_at ? (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Created: {formatDateTime(selectedResponse.created_at)}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="p-4 max-h-[34rem] overflow-auto">
+                        {selectedResponse?.response ? (
+                          <div className="text-sm text-gray-700 break-words">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                h1: ({ children }) => <h1 className="text-base font-semibold mt-2 mb-1">{children}</h1>,
+                                h2: ({ children }) => <h2 className="text-sm font-semibold mt-2 mb-1">{children}</h2>,
+                                h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>,
+                                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                                ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                                ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                                li: ({ children }) => <li>{children}</li>,
+                                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                                em: ({ children }) => <em className="italic">{children}</em>,
+                                code: ({ children }) => (
+                                  <code className="px-1 py-0.5 rounded bg-gray-200 text-xs">{children}</code>
+                                )
+                              }}
+                            >
+                              {selectedResponse.response}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500">No response content returned.</div>
+                        )}
+                        {selectedResponse?.error_message ? (
+                          <div className="mt-3 text-sm text-red-600">
+                            Error: {selectedResponse.error_message}
+                          </div>
+                        ) : null}
+                      </div>
+                    </section>
+                  </div>
+                )}
+
+                <div className="mt-5 flex items-center justify-start">
+                  <button
+                    type="button"
+                    onClick={() => setActiveStep(3)}
+                    className="px-4 py-2.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                  >
+                    Back to Compare
                   </button>
                 </div>
               </>
