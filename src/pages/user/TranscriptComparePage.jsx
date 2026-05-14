@@ -12,11 +12,14 @@ import {
   X,
   Pencil,
   Radio,
-  ExternalLink
+  ExternalLink,
+  SlidersHorizontal
 } from 'lucide-react';
 import CommonHeader from '../../components/DashboardUserSide/CommonHeader';
 import ChannelSwitcher from '../../components/ChannelSwitcher';
 import TranscriptionModal from './TranscriptionModal';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { axiosInstance } from '../../services/api';
 import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 
@@ -76,6 +79,8 @@ const TranscriptComparePage = () => {
   const [isComparing, setIsComparing] = useState(false);
   const [compareResult, setCompareResult] = useState(null);
   const [compareError, setCompareError] = useState('');
+  const [showTokenConfig, setShowTokenConfig] = useState(false);
+  const [maxTokensInput, setMaxTokensInput] = useState('1000');
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
   const [selectedTranscript, setSelectedTranscript] = useState('');
 
@@ -105,6 +110,11 @@ const TranscriptComparePage = () => {
     () => segments.filter((segment) => selectedSegmentIds.has(segment.id)),
     [segments, selectedSegmentIds]
   );
+  const promptNameById = useMemo(
+    () => new Map(prompts.map((prompt) => [Number(prompt.id), prompt.name])),
+    [prompts]
+  );
+  const compareLoadingMessage = 'Running prompt execution. This can take up to a minute.';
 
   const canContinueToPrompt = selectedSegmentIds.size >= 2;
   const canRunCompare = canContinueToPrompt && selectedPromptIds.size > 0;
@@ -307,28 +317,46 @@ const TranscriptComparePage = () => {
     setCompareError('');
     setCompareResult(null);
     try {
-      // Placeholder until compare endpoint is ready.
-      // TODO: replace with backend call:
-      // await axiosInstance.post('/transcript-compare/run', { segment_ids, prompt_id });
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const parsedMaxTokens = Number.parseInt(maxTokensInput, 10);
+      const maxTokens = Number.isFinite(parsedMaxTokens) && parsedMaxTokens > 0 ? parsedMaxTokens : 1000;
+      if (!(Number.isFinite(parsedMaxTokens) && parsedMaxTokens > 0)) {
+        setMaxTokensInput('1000');
+      }
 
-      const transcriptCount = selectedSegments.filter((s) => {
-        return getTranscriptText(s).trim().length > 0;
-      }).length;
+      const payload = {
+        prompt_ids: Array.from(selectedPromptIds).map((id) => Number(id)).filter((id) => Number.isFinite(id)),
+        audio_segment_ids: Array.from(selectedSegmentIds).map((id) => Number(id)).filter((id) => Number.isFinite(id)),
+        max_tokens: maxTokens
+      };
+
+      const response = await axiosInstance.post('/prompts/execute/', payload);
+      const runData = response?.data || {};
+      const results = Array.isArray(runData.results) ? runData.results : [];
+
+      const completedCount = results.filter((item) => item?.status === 'completed').length;
+      const failedCount = results.filter((item) => item?.status && item.status !== 'completed').length;
       setCompareResult({
         runAt: new Date().toISOString(),
-        summary: `Compared ${selectedSegments.length} segment(s) using ${selectedPrompts.length} prompt(s). ${transcriptCount} segment(s) had transcript text available.`,
-        highlights: [
-          'Topic overlap appears in multiple segments (placeholder result).',
-          'Tone shifts were detected between at least two selected segments (placeholder result).',
-          'Recommend adding backend endpoint for final scoring and evidence snippets.'
-        ]
+        promptRunId: runData.prompt_run_id ?? null,
+        maxTokens: runData.max_tokens ?? maxTokens,
+        results,
+        completedCount,
+        failedCount
       });
       setActiveStep(3);
     } catch (error) {
-      setCompareError(
-        error?.response?.data?.message || 'Comparison failed. Please try again.'
-      );
+      const responseData = error?.response?.data;
+      let errorMessage = 'Comparison failed. Please try again.';
+      if (typeof responseData === 'string') {
+        errorMessage = responseData;
+      } else if (responseData?.detail) {
+        errorMessage = responseData.detail;
+      } else if (responseData?.message) {
+        errorMessage = responseData.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      setCompareError(errorMessage);
     } finally {
       setIsComparing(false);
     }
@@ -759,22 +787,111 @@ const TranscriptComparePage = () => {
                     Please select at least two segments and one prompt before running comparison.
                   </p>
                 )}
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowTokenConfig((prev) => !prev)}
+                    className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                    {showTokenConfig ? 'Hide token settings' : 'Customize max tokens'}
+                  </button>
+                  {showTokenConfig && (
+                    <div className="mt-2 max-w-xs">
+                      <label className="block text-xs text-gray-600 mb-1">Max tokens</label>
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={maxTokensInput}
+                        onChange={(e) => setMaxTokensInput(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Default is 1000.</p>
+                    </div>
+                  )}
+                </div>
                 {compareError && <p className="text-sm text-red-600 mt-3">{compareError}</p>}
 
                 {compareResult && (
                   <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                     <div className="flex items-center gap-2 text-emerald-800 font-semibold">
                       <CheckCircle2 className="h-5 w-5" />
-                      Comparison Complete
+                      Prompt Execution Complete
                     </div>
-                    <p className="text-sm text-emerald-900 mt-2">{compareResult.summary}</p>
-                    <ul className="list-disc list-inside text-sm text-emerald-900 mt-2 space-y-1">
-                      {compareResult.highlights.map((highlight) => (
-                        <li key={highlight}>{highlight}</li>
-                      ))}
-                    </ul>
-                    <div className="text-xs text-emerald-700 mt-2">
+                    <div className="text-sm text-emerald-900 mt-2">
+                      Run ID: <span className="font-semibold">{compareResult.promptRunId ?? 'N/A'}</span> ·
+                      {' '}Max tokens: <span className="font-semibold">{compareResult.maxTokens}</span> ·
+                      {' '}Completed: <span className="font-semibold">{compareResult.completedCount}</span> ·
+                      {' '}Other: <span className="font-semibold">{compareResult.failedCount}</span>
+                    </div>
+                    <div className="text-xs text-emerald-700 mt-2 mb-3">
                       Run timestamp: {formatDateTime(compareResult.runAt)}
+                    </div>
+
+                    <div className="space-y-3">
+                      {compareResult.results.length === 0 ? (
+                        <div className="text-sm text-emerald-900">No prompt results were returned.</div>
+                      ) : (
+                        compareResult.results.map((result) => {
+                          const status = String(result?.status || '').toLowerCase();
+                          const isCompleted = status === 'completed';
+                          return (
+                            <div key={result.id} className="rounded-lg border border-emerald-200 bg-white p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="text-sm font-semibold text-gray-900">
+                                  #{result?.id ?? 'N/A'} · Prompt #{result?.prompt_id ?? 'N/A'}
+                                  {result?.prompt_id != null && promptNameById.get(Number(result.prompt_id))
+                                    ? ` (${promptNameById.get(Number(result.prompt_id))})`
+                                    : ''}
+                                </div>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  isCompleted
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {status || 'unknown'}
+                                </span>
+                              </div>
+                              {result?.response ? (
+                                <div className="mt-2 text-sm text-gray-700 break-words max-h-64 overflow-auto border border-gray-200 rounded-md p-3 bg-gray-50">
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                      h1: ({ children }) => <h1 className="text-base font-semibold mt-2 mb-1">{children}</h1>,
+                                      h2: ({ children }) => <h2 className="text-sm font-semibold mt-2 mb-1">{children}</h2>,
+                                      h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>,
+                                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                                      ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                                      ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                                      li: ({ children }) => <li>{children}</li>,
+                                      strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                                      em: ({ children }) => <em className="italic">{children}</em>,
+                                      code: ({ children }) => (
+                                        <code className="px-1 py-0.5 rounded bg-gray-200 text-xs">{children}</code>
+                                      )
+                                    }}
+                                  >
+                                    {result.response}
+                                  </ReactMarkdown>
+                                </div>
+                              ) : (
+                                <div className="mt-2 text-sm text-gray-500">No response content returned.</div>
+                              )}
+                              {result?.error_message ? (
+                                <div className="mt-2 text-sm text-red-600">
+                                  Error: {result.error_message}
+                                </div>
+                              ) : null}
+                              {result?.created_at ? (
+                                <div className="mt-2 text-xs text-gray-500">
+                                  Created: {formatDateTime(result.created_at)}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 )}
@@ -802,6 +919,43 @@ const TranscriptComparePage = () => {
             setSelectedTranscript('');
           }}
         />
+      )}
+
+      {isComparing && (
+        <div className="fixed inset-0 z-[120] bg-black/55 flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-gray-200 p-6">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5">
+                <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-lg font-semibold text-gray-900">Running prompt comparison</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {compareLoadingMessage}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Segments</div>
+                <div className="text-lg font-semibold text-gray-900">{selectedSegmentIds.size}</div>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <div className="text-xs text-gray-500">Prompts</div>
+                <div className="text-lg font-semibold text-gray-900">{selectedPromptIds.size}</div>
+              </div>
+            </div>
+
+            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+              <div className="h-full w-1/3 animate-pulse rounded-full bg-purple-500" />
+            </div>
+
+            <p className="mt-3 text-xs text-gray-500">
+              Please keep this tab open while processing. Results will appear automatically once complete.
+            </p>
+          </div>
+        </div>
       )}
 
       {isPromptModalOpen && (
