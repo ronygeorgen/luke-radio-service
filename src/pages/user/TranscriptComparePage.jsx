@@ -13,7 +13,9 @@ import {
   Pencil,
   Radio,
   ExternalLink,
-  SlidersHorizontal
+  SlidersHorizontal,
+  History,
+  RefreshCw
 } from 'lucide-react';
 import CommonHeader from '../../components/DashboardUserSide/CommonHeader';
 import ChannelSwitcher from '../../components/ChannelSwitcher';
@@ -82,6 +84,12 @@ const TranscriptComparePage = () => {
   const [selectedResponseId, setSelectedResponseId] = useState(null);
   const [showTokenConfig, setShowTokenConfig] = useState(false);
   const [maxTokensInput, setMaxTokensInput] = useState('1000');
+  const [viewMode, setViewMode] = useState('compare');
+  const [historyRuns, setHistoryRuns] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+  const [selectedHistoryRunId, setSelectedHistoryRunId] = useState(null);
+  const [selectedHistoryResponseId, setSelectedHistoryResponseId] = useState(null);
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
   const [selectedTranscript, setSelectedTranscript] = useState('');
 
@@ -120,6 +128,37 @@ const TranscriptComparePage = () => {
     if (!compareResult?.results?.length) return null;
     return compareResult.results.find((item) => item.id === selectedResponseId) || compareResult.results[0];
   }, [compareResult, selectedResponseId]);
+  const selectedHistoryRun = useMemo(
+    () => historyRuns.find((run) => run.id === selectedHistoryRunId) || historyRuns[0] || null,
+    [historyRuns, selectedHistoryRunId]
+  );
+  const selectedHistoryResults = useMemo(() => {
+    const run = selectedHistoryRun;
+    if (!run) return [];
+    if (Array.isArray(run.prompts)) {
+      const promptNestedResults = run.prompts
+        .map((prompt) => {
+          if (!prompt?.result) return null;
+          return {
+            ...prompt.result,
+            prompt_id: prompt.result.prompt_id ?? prompt.id,
+            prompt_name: prompt.name
+          };
+        })
+        .filter(Boolean);
+      if (promptNestedResults.length > 0) return promptNestedResults;
+    }
+
+    const candidateKeys = ['results', 'prompt_results', 'executions', 'responses'];
+    for (const key of candidateKeys) {
+      if (Array.isArray(run[key])) return run[key];
+    }
+    return [];
+  }, [selectedHistoryRun]);
+  const selectedHistoryResponse = useMemo(() => {
+    if (!selectedHistoryResults.length) return null;
+    return selectedHistoryResults.find((item) => item.id === selectedHistoryResponseId) || selectedHistoryResults[0];
+  }, [selectedHistoryResults, selectedHistoryResponseId]);
   const compareLoadingMessage = 'Running prompt execution. This can take up to a minute.';
 
   const canContinueToPrompt = selectedSegmentIds.size >= 2;
@@ -220,6 +259,15 @@ const TranscriptComparePage = () => {
       setSelectedResponseId(null);
     }
   }, [compareResult]);
+
+  useEffect(() => {
+    if (selectedHistoryRun) {
+      const firstResult = selectedHistoryResults[0];
+      setSelectedHistoryResponseId(firstResult?.id ?? null);
+    } else {
+      setSelectedHistoryResponseId(null);
+    }
+  }, [selectedHistoryRun, selectedHistoryResults]);
 
   const toggleSegmentSelection = (segmentId) => {
     setSelectedSegmentIds((prev) => {
@@ -377,6 +425,48 @@ const TranscriptComparePage = () => {
     }
   };
 
+  const fetchPromptRunsHistory = async () => {
+    if (!channelId) return;
+    setHistoryLoading(true);
+    setHistoryError('');
+    try {
+      const response = await axiosInstance.get('/prompt-runs/', {
+        params: {
+          channel_id: Number(channelId)
+        }
+      });
+      const runs = Array.isArray(response?.data) ? response.data : [];
+      setHistoryRuns(runs);
+      if (runs.length > 0) {
+        setSelectedHistoryRunId(runs[0].id);
+      } else {
+        setSelectedHistoryRunId(null);
+      }
+    } catch (error) {
+      const responseData = error?.response?.data;
+      let message = 'Failed to load prompt run history.';
+      if (typeof responseData === 'string') {
+        message = responseData;
+      } else if (responseData?.detail) {
+        message = responseData.detail;
+      } else if (responseData?.message) {
+        message = responseData.message;
+      }
+      setHistoryError(message);
+      setHistoryRuns([]);
+      setSelectedHistoryRunId(null);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (viewMode === 'history') {
+      fetchPromptRunsHistory();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, channelId]);
+
   if (!channelId) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -409,62 +499,93 @@ const TranscriptComparePage = () => {
       <main className="w-full px-4 sm:px-6 lg:px-8 pt-24 pb-8">
         <div className="max-w-7xl mx-auto space-y-6">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <h1 className="text-2xl font-bold text-gray-900">Transcript Compare</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Select at least two audio segments, choose a predefined prompt, and run automated transcript comparison.
-            </p>
-            <div className="mt-5" role="tablist" aria-label="Transcript comparison steps">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                {stepItems.map((item) => {
-                  const isCurrent = activeStep === item.step;
-                  const isReachable =
-                    item.step === 1 ||
-                    (item.step === 2 && canContinueToPrompt) ||
-                    (item.step === 3 && canRunCompare) ||
-                    (item.step === 4 && canViewResponses);
-                  return (
-                    <button
-                      key={item.step}
-                      id={`step-tab-${item.step}`}
-                      role="tab"
-                      aria-selected={isCurrent}
-                      aria-controls={`step-panel-${item.step}`}
-                      aria-current={isCurrent ? 'step' : undefined}
-                      type="button"
-                      onClick={() => {
-                        if (isReachable || item.step <= activeStep) setActiveStep(item.step);
-                      }}
-                      className={`text-left px-3 py-2.5 rounded-lg border transition-colors ${
-                        isCurrent
-                          ? 'border-blue-500 bg-blue-50'
-                          : isReachable || item.step <= activeStep
-                            ? 'border-gray-200 bg-white hover:bg-gray-50'
-                            : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                      }`}
-                    >
-                      <div className="text-xs text-gray-500">Step {item.step}</div>
-                      <div className="font-medium text-sm">{item.title}</div>
-                      <div className="text-[11px] mt-0.5">{item.description}</div>
-                    </button>
-                  );
-                })}
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Transcript Compare</h1>
+                <p className="text-sm text-gray-600 mt-1">
+                  Select audio segments, run prompts, and review execution history.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('compare')}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors ${
+                    viewMode === 'compare'
+                      ? 'bg-blue-50 border-blue-300 text-blue-700'
+                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Compare
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('history')}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors ${
+                    viewMode === 'history'
+                      ? 'bg-blue-50 border-blue-300 text-blue-700'
+                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <History className="h-4 w-4" />
+                  Execution History
+                </button>
               </div>
             </div>
+            {viewMode === 'compare' && (
+              <div className="mt-5" role="tablist" aria-label="Transcript comparison steps">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  {stepItems.map((item) => {
+                    const isCurrent = activeStep === item.step;
+                    const isReachable =
+                      item.step === 1 ||
+                      (item.step === 2 && canContinueToPrompt) ||
+                      (item.step === 3 && canRunCompare) ||
+                      (item.step === 4 && canViewResponses);
+                    return (
+                      <button
+                        key={item.step}
+                        id={`step-tab-${item.step}`}
+                        role="tab"
+                        aria-selected={isCurrent}
+                        aria-controls={`step-panel-${item.step}`}
+                        aria-current={isCurrent ? 'step' : undefined}
+                        type="button"
+                        onClick={() => {
+                          if (isReachable || item.step <= activeStep) setActiveStep(item.step);
+                        }}
+                        className={`text-left px-3 py-2.5 rounded-lg border transition-colors ${
+                          isCurrent
+                            ? 'border-blue-500 bg-blue-50'
+                            : isReachable || item.step <= activeStep
+                              ? 'border-gray-200 bg-white hover:bg-gray-50'
+                              : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        <div className="text-xs text-gray-500">Step {item.step}</div>
+                        <div className="font-medium text-sm">{item.title}</div>
+                        <div className="text-[11px] mt-0.5">{item.description}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
-          <section
-            id={`step-panel-${activeStep}`}
-            role="tabpanel"
-            aria-labelledby={`step-tab-${activeStep}`}
-            className="bg-white rounded-xl border border-gray-200 shadow-sm p-5"
-          >
-            {activeStep === 1 && (
-              <>
-                <div className="flex items-center justify-between gap-3 mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">1. Select Audio Segments</h2>
-                  <div className="text-sm text-gray-600">{selectedSegmentIds.size} selected</div>
-                </div>
-
+          {viewMode === 'compare' && (
+            <section
+              id={`step-panel-${activeStep}`}
+              role="tabpanel"
+              aria-labelledby={`step-tab-${activeStep}`}
+              className="bg-white rounded-xl border border-gray-200 shadow-sm p-5"
+            >
+              {activeStep === 1 && (
+                <>
+                  <div className="flex items-center justify-between gap-3 mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900">1. Select Audio Segments</h2>
+                    <div className="text-sm text-gray-600">{selectedSegmentIds.size} selected</div>
+                  </div>
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">
                   <div className="relative">
                     <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -988,6 +1109,182 @@ const TranscriptComparePage = () => {
               </>
             )}
           </section>
+          )}
+
+          {viewMode === 'history' && (
+            <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Prompt Run History</h2>
+                  <p className="text-sm text-gray-600">Review previously executed prompts and responses for this channel.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fetchPromptRunsHistory}
+                  disabled={historyLoading}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-60 transition-colors"
+                >
+                  <RefreshCw className={`h-4 w-4 ${historyLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
+
+              {historyError && (
+                <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+                  {historyError}
+                </div>
+              )}
+
+              {historyLoading ? (
+                <div className="p-6 text-sm text-gray-600">Loading execution history...</div>
+              ) : historyRuns.length === 0 ? (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                  No prompt run history found for this channel yet.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                  <aside className="lg:col-span-4 rounded-xl border border-gray-200 bg-white overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-200 text-sm font-medium text-gray-900">
+                      Runs ({historyRuns.length})
+                    </div>
+                    <div className="max-h-[40rem] overflow-auto">
+                      <ul className="divide-y divide-gray-100">
+                        {historyRuns.map((run) => {
+                          const runResults = Array.isArray(run?.prompts)
+                            ? run.prompts.map((prompt) => prompt?.result).filter(Boolean)
+                            : Array.isArray(run?.results)
+                              ? run.results
+                              : Array.isArray(run?.prompt_results)
+                                ? run.prompt_results
+                                : Array.isArray(run?.executions)
+                                  ? run.executions
+                                  : Array.isArray(run?.responses)
+                                    ? run.responses
+                                    : [];
+                          const isSelected = selectedHistoryRun?.id === run.id;
+                          return (
+                            <li key={run.id}>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedHistoryRunId(run.id)}
+                                className={`w-full text-left px-4 py-3 transition-colors ${
+                                  isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                                }`}
+                              >
+                                <div className="text-sm font-semibold text-gray-900">Run #{run.id}</div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {formatDateTime(run.created_at)} · {runResults.length} result(s)
+                                </div>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  </aside>
+
+                  <section className="lg:col-span-8 rounded-xl border border-gray-200 bg-white overflow-hidden">
+                    {!selectedHistoryRun ? (
+                      <div className="p-6 text-sm text-gray-600">Select a run to view details.</div>
+                    ) : (
+                      <>
+                        <div className="px-4 py-3 border-b border-gray-200">
+                          <div className="text-sm font-semibold text-gray-900">
+                            Run #{selectedHistoryRun.id}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Created: {formatDateTime(selectedHistoryRun.created_at)}
+                          </div>
+                          {Array.isArray(selectedHistoryRun.prompts) && selectedHistoryRun.prompts.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {selectedHistoryRun.prompts.map((prompt) => (
+                                <span key={prompt.id} className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                  #{prompt.id} {prompt.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {selectedHistoryResults.length === 0 ? (
+                          <div className="p-6 text-sm text-gray-600">No result entries found for this run.</div>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-5 min-h-[34rem]">
+                            <div className="md:col-span-2 border-r border-gray-200">
+                              <div className="max-h-[34rem] overflow-auto">
+                                <ul className="divide-y divide-gray-100">
+                                  {selectedHistoryResults.map((result) => {
+                                    const status = String(result?.status || '').toLowerCase();
+                                    const isCompleted = status === 'completed';
+                                    const isSelected = selectedHistoryResponse?.id === result.id;
+                                    return (
+                                      <li key={result.id}>
+                                        <button
+                                          type="button"
+                                          onClick={() => setSelectedHistoryResponseId(result.id)}
+                                          className={`w-full text-left px-4 py-3 transition-colors ${
+                                            isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                                          }`}
+                                        >
+                                          <div className="text-sm font-semibold text-gray-900">
+                                            Result #{result?.id ?? 'N/A'}
+                                          </div>
+                                          <div className="text-xs text-gray-500 mt-1">
+                                            Prompt #{result?.prompt_id ?? 'N/A'}
+                                            {result?.prompt_name ? ` (${result.prompt_name})` : ''}
+                                          </div>
+                                          <span className={`mt-1 inline-flex text-xs px-2 py-0.5 rounded-full ${
+                                            isCompleted ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                          }`}>
+                                            {status || 'unknown'}
+                                          </span>
+                                        </button>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              </div>
+                            </div>
+                            <div className="md:col-span-3 p-4 max-h-[34rem] overflow-auto">
+                              {selectedHistoryResponse?.response ? (
+                                <div className="text-sm text-gray-700 break-words">
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                      h1: ({ children }) => <h1 className="text-base font-semibold mt-2 mb-1">{children}</h1>,
+                                      h2: ({ children }) => <h2 className="text-sm font-semibold mt-2 mb-1">{children}</h2>,
+                                      h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>,
+                                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                                      ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                                      ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                                      li: ({ children }) => <li>{children}</li>,
+                                      strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                                      em: ({ children }) => <em className="italic">{children}</em>,
+                                      code: ({ children }) => (
+                                        <code className="px-1 py-0.5 rounded bg-gray-200 text-xs">{children}</code>
+                                      )
+                                    }}
+                                  >
+                                    {selectedHistoryResponse.response}
+                                  </ReactMarkdown>
+                                </div>
+                              ) : (
+                                <div className="text-sm text-gray-500">No response content returned.</div>
+                              )}
+                              {selectedHistoryResponse?.error_message ? (
+                                <div className="mt-3 text-sm text-red-600">
+                                  Error: {selectedHistoryResponse.error_message}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </section>
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </main>
 
