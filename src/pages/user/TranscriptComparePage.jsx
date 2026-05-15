@@ -46,6 +46,47 @@ const defaultStartISO = () => {
   return date.toISOString().split('T')[0];
 };
 
+const IN_PROGRESS_STATUSES = new Set(['pending', 'processing', 'queued', 'running', 'in_progress', 'inprogress']);
+const TERMINAL_STATUSES = new Set(['completed', 'failed', 'error', 'cancelled']);
+
+const normalizeStatus = (value) => String(value || '').trim().toLowerCase();
+
+const normalizePromptRun = (runData, fallbackMaxTokens = 1000) => {
+  const results = Array.isArray(runData?.results) ? runData.results : [];
+  const statusBuckets = results.reduce((acc, item) => {
+    const status = normalizeStatus(item?.status);
+    if (status === 'completed') acc.completedCount += 1;
+    else if (status === 'failed' || status === 'error' || status === 'cancelled') acc.failedCount += 1;
+    else if (status === 'processing' || status === 'running') acc.processingCount += 1;
+    else if (status === 'pending' || status === 'queued' || status === 'in_progress' || status === 'inprogress') acc.pendingCount += 1;
+    else acc.otherCount += 1;
+    return acc;
+  }, {
+    completedCount: 0,
+    failedCount: 0,
+    processingCount: 0,
+    pendingCount: 0,
+    otherCount: 0
+  });
+
+  const hasInProgressByStatus = results.some((item) => IN_PROGRESS_STATUSES.has(normalizeStatus(item?.status)));
+  const isFinished = results.length > 0 && results.every((item) => {
+    const status = normalizeStatus(item?.status);
+    return TERMINAL_STATUSES.has(status);
+  });
+  const hasInProgress = hasInProgressByStatus || (results.length > 0 && !isFinished);
+
+  return {
+    promptRunId: runData?.prompt_run_id ?? runData?.id ?? null,
+    maxTokens: runData?.max_tokens ?? fallbackMaxTokens,
+    audioSegments: Array.isArray(runData?.audio_segments) ? runData.audio_segments : [],
+    results,
+    hasInProgress,
+    isFinished,
+    ...statusBuckets
+  };
+};
+
 const TranscriptComparePage = () => {
   const navigate = useNavigate();
   const { channelId: channelIdFromParams } = useParams();
@@ -81,6 +122,8 @@ const TranscriptComparePage = () => {
   const [isComparing, setIsComparing] = useState(false);
   const [compareResult, setCompareResult] = useState(null);
   const [compareError, setCompareError] = useState('');
+  const [activePromptRunId, setActivePromptRunId] = useState(null);
+  const [pollNotice, setPollNotice] = useState('');
   const [selectedResponseId, setSelectedResponseId] = useState(null);
   const [showTokenConfig, setShowTokenConfig] = useState(false);
   const [maxTokensInput, setMaxTokensInput] = useState('1000');
@@ -159,7 +202,6 @@ const TranscriptComparePage = () => {
     if (!selectedHistoryResults.length) return null;
     return selectedHistoryResults.find((item) => item.id === selectedHistoryResponseId) || selectedHistoryResults[0];
   }, [selectedHistoryResults, selectedHistoryResponseId]);
-  const compareLoadingMessage = 'Running prompt execution. This can take up to a minute.';
 
   const canContinueToPrompt = selectedSegmentIds.size >= 2;
   const canRunCompare = canContinueToPrompt && selectedPromptIds.size > 0;
@@ -374,11 +416,54 @@ const TranscriptComparePage = () => {
     }
   };
 
+  const fetchPromptRunById = async (promptRunId, options = {}) => {
+    const { silent = false, fallbackMaxTokens = 1000 } = options;
+    try {
+      const response = await axiosInstance.get(`/prompt-runs/${promptRunId}/`);
+      const normalized = normalizePromptRun(response?.data, fallbackMaxTokens);
+      setCompareResult((prev) => ({
+        ...(prev || {}),
+        runAt: prev?.runAt || new Date().toISOString(),
+        ...normalized
+      }));
+      if (normalized.hasInProgress) {
+        setIsComparing(true);
+        setPollNotice('Execution is in progress. Responses will appear automatically.');
+      } else {
+        setIsComparing(false);
+        setPollNotice('');
+        setActivePromptRunId(null);
+        if (normalized.results.length > 0 && viewMode === 'compare') {
+          setActiveStep(4);
+        }
+      }
+      return normalized;
+    } catch (error) {
+      if (!silent) {
+        const responseData = error?.response?.data;
+        let errorMessage = 'Failed to get prompt run status.';
+        if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        } else if (responseData?.detail) {
+          errorMessage = responseData.detail;
+        } else if (responseData?.message) {
+          errorMessage = responseData.message;
+        }
+        setCompareError(errorMessage);
+      } else {
+        setPollNotice('Reconnecting to prompt run status...');
+      }
+      return null;
+    }
+  };
+
   const runCompare = async () => {
     if (!canRunCompare) return;
     setIsComparing(true);
     setCompareError('');
     setCompareResult(null);
+    setPollNotice('');
+    setActivePromptRunId(null);
     try {
       const parsedMaxTokens = Number.parseInt(maxTokensInput, 10);
       const maxTokens = Number.isFinite(parsedMaxTokens) && parsedMaxTokens > 0 ? parsedMaxTokens : 1000;
@@ -394,19 +479,28 @@ const TranscriptComparePage = () => {
 
       const response = await axiosInstance.post('/prompts/execute/', payload);
       const runData = response?.data || {};
-      const results = Array.isArray(runData.results) ? runData.results : [];
+      const promptRunId = runData?.prompt_run_id ?? runData?.id;
+      if (!promptRunId) {
+        throw new Error('Prompt run ID was not returned by the server.');
+      }
 
-      const completedCount = results.filter((item) => item?.status === 'completed').length;
-      const failedCount = results.filter((item) => item?.status && item.status !== 'completed').length;
       setCompareResult({
         runAt: new Date().toISOString(),
-        promptRunId: runData.prompt_run_id ?? null,
-        maxTokens: runData.max_tokens ?? maxTokens,
-        results,
-        completedCount,
-        failedCount
+        promptRunId,
+        maxTokens,
+        audioSegments: [],
+        results: [],
+        completedCount: 0,
+        failedCount: 0,
+        processingCount: 0,
+        pendingCount: 0,
+        otherCount: 0,
+        hasInProgress: true,
+        isFinished: false
       });
-      setActiveStep(results.length > 0 ? 4 : 3);
+      setActiveStep(3);
+      setActivePromptRunId(promptRunId);
+      await fetchPromptRunById(promptRunId, { silent: true, fallbackMaxTokens: maxTokens });
     } catch (error) {
       const responseData = error?.response?.data;
       let errorMessage = 'Comparison failed. Please try again.';
@@ -420,8 +514,10 @@ const TranscriptComparePage = () => {
         errorMessage = error.message;
       }
       setCompareError(errorMessage);
-    } finally {
       setIsComparing(false);
+      setPollNotice('');
+    } finally {
+      // isComparing remains true while polling indicates pending/processing.
     }
   };
 
@@ -466,6 +562,19 @@ const TranscriptComparePage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, channelId]);
+
+  useEffect(() => {
+    if (!activePromptRunId) return;
+
+    const poll = () => {
+      fetchPromptRunById(activePromptRunId, { silent: true, fallbackMaxTokens: Number.parseInt(maxTokensInput, 10) || 1000 });
+    };
+
+    poll();
+    const intervalId = setInterval(poll, 4000);
+    return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePromptRunId]);
 
   if (!channelId) {
     return (
@@ -949,34 +1058,51 @@ const TranscriptComparePage = () => {
                   )}
                 </div>
                 {compareError && <p className="text-sm text-red-600 mt-3">{compareError}</p>}
+                {pollNotice && (
+                  <p className="text-sm text-blue-700 mt-2">{pollNotice}</p>
+                )}
 
                 {compareResult && (
                   <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                     <div className="flex items-center gap-2 text-emerald-800 font-semibold">
                       <CheckCircle2 className="h-5 w-5" />
-                      Prompt Execution Complete
+                      {compareResult.hasInProgress ? 'Prompt Execution In Progress' : 'Prompt Execution Complete'}
                     </div>
                     <div className="text-sm text-emerald-900 mt-2">
                       Run ID: <span className="font-semibold">{compareResult.promptRunId ?? 'N/A'}</span> ·
                       {' '}Max tokens: <span className="font-semibold">{compareResult.maxTokens}</span> ·
                       {' '}Completed: <span className="font-semibold">{compareResult.completedCount}</span> ·
-                      {' '}Other: <span className="font-semibold">{compareResult.failedCount}</span>
+                      {' '}Processing: <span className="font-semibold">{compareResult.processingCount}</span> ·
+                      {' '}Pending: <span className="font-semibold">{compareResult.pendingCount}</span> ·
+                      {' '}Failed: <span className="font-semibold">{compareResult.failedCount}</span>
                     </div>
                     <div className="text-xs text-emerald-700 mt-2 mb-3">
                       Run timestamp: {formatDateTime(compareResult.runAt)}
                     </div>
-                    {canViewResponses ? (
-                      <button
-                        type="button"
-                        onClick={() => setActiveStep(4)}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-                      >
-                        Read full responses
-                        <ChevronsRight className="h-4 w-4" />
-                      </button>
-                    ) : (
-                      <div className="text-sm text-emerald-900">No prompt results were returned.</div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {canViewResponses ? (
+                        <button
+                          type="button"
+                          onClick={() => setActiveStep(4)}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                        >
+                          Read full responses
+                          <ChevronsRight className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <div className="text-sm text-emerald-900">No prompt results were returned.</div>
+                      )}
+                      {compareResult.promptRunId && compareResult.hasInProgress && (
+                        <button
+                          type="button"
+                          onClick={() => fetchPromptRunById(compareResult.promptRunId, { fallbackMaxTokens: compareResult.maxTokens || 1000 })}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100 transition-colors"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Refresh status
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -1008,8 +1134,8 @@ const TranscriptComparePage = () => {
                       </div>
                       <div className="max-h-[34rem] overflow-auto">
                         <ul className="divide-y divide-gray-100">
-                          {compareResult.results.map((result) => {
-                            const status = String(result?.status || '').toLowerCase();
+                        {compareResult.results.map((result) => {
+                            const status = normalizeStatus(result?.status);
                             const isCompleted = status === 'completed';
                             const isSelected = selectedResponse?.id === result.id;
                             return (
@@ -1033,7 +1159,7 @@ const TranscriptComparePage = () => {
                                         ? 'bg-emerald-100 text-emerald-700'
                                         : 'bg-amber-100 text-amber-700'
                                     }`}>
-                                      {status || 'unknown'}
+                                          {status || 'unknown'}
                                     </span>
                                   </div>
                                   <div className="text-xs text-gray-500 mt-1">
@@ -1213,7 +1339,7 @@ const TranscriptComparePage = () => {
                               <div className="max-h-[34rem] overflow-auto">
                                 <ul className="divide-y divide-gray-100">
                                   {selectedHistoryResults.map((result) => {
-                                    const status = String(result?.status || '').toLowerCase();
+                                    const status = normalizeStatus(result?.status);
                                     const isCompleted = status === 'completed';
                                     const isSelected = selectedHistoryResponse?.id === result.id;
                                     return (
@@ -1296,43 +1422,6 @@ const TranscriptComparePage = () => {
             setSelectedTranscript('');
           }}
         />
-      )}
-
-      {isComparing && (
-        <div className="fixed inset-0 z-[120] bg-black/55 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-gray-200 p-6">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5">
-                <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-lg font-semibold text-gray-900">Running prompt comparison</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  {compareLoadingMessage}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="text-xs text-gray-500">Segments</div>
-                <div className="text-lg font-semibold text-gray-900">{selectedSegmentIds.size}</div>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="text-xs text-gray-500">Prompts</div>
-                <div className="text-lg font-semibold text-gray-900">{selectedPromptIds.size}</div>
-              </div>
-            </div>
-
-            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-gray-200">
-              <div className="h-full w-1/3 animate-pulse rounded-full bg-purple-500" />
-            </div>
-
-            <p className="mt-3 text-xs text-gray-500">
-              Please keep this tab open while processing. Results will appear automatically once complete.
-            </p>
-          </div>
-        </div>
       )}
 
       {isPromptModalOpen && (
