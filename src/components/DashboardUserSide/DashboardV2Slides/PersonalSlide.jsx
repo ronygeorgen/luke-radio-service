@@ -100,22 +100,24 @@ const PersonalSlide = ({ dateRange = { start: null, end: null, selecting: false 
     const buckets = categoryData.buckets;
     const bucketEntries = Object.entries(buckets);
 
-    // Sort by percentage (descending)
-    const sortedBuckets = bucketEntries.sort((a, b) => (b[1].percentage || 0) - (a[1].percentage || 0));
+    // Sort by content count percentage (descending)
+    const sortedBucketsByCount = [...bucketEntries].sort((a, b) => (b[1].percentage || 0) - (a[1].percentage || 0));
+    // Sort by content time percentage (descending)
+    const sortedBucketsByTime = [...bucketEntries].sort((a, b) => (b[1].content_time_percentage || 0) - (a[1].content_time_percentage || 0));
 
-    const byContentNumber = sortedBuckets.map(([name, data]) => ({
+    const byContentNumber = sortedBucketsByCount.map(([name, data]) => ({
       name,
       value: Math.round(data.percentage || 0)
     }));
 
-    const byContentTime = sortedBuckets.map(([name, data]) => ({
+    const byContentTime = sortedBucketsByTime.map(([name, data]) => ({
       name,
-      value: Math.round(data.percentage || 0),
+      value: Math.round(data.content_time_percentage || 0),
       color: bucketColors[name] || '#3b82f6'
     }));
 
     // Total Time data - use duration_seconds, convert to minutes for display
-    const totalTime = sortedBuckets.map(([name, data]) => ({
+    const totalTime = sortedBucketsByCount.map(([name, data]) => ({
       category: name,
       value: Math.round((data.duration_seconds || 0) / 60) // Convert seconds to minutes
     }));
