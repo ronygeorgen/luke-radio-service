@@ -9,6 +9,7 @@ import { Calendar, BarChart3, FileText, Menu, Settings, Radio, Search, Layers, U
 import SimpleChannelSelectionModal from "./SimpleChannelSelectionModal";
 import Shimmer from "../../components/DashboardUserSide/Shimmer";
 import ACRCustomFileUploadModal from "../../components/ACRCustomFileUploadModal";
+import { isTranscriptCompareEnabled } from "../../config/featureFlags";
 
 const UserChannelsPage = () => {
   const dispatch = useDispatch();
@@ -93,7 +94,7 @@ const UserChannelsPage = () => {
       navigate(`/channels/${channel.id}/segments?date=${today}&hour=0&name=${encodeURIComponent(channel.name)}`);
       setPendingNavigation(null);
       setIsChannelSelectionOpen(false);
-    } else if (pendingNavigation === 'TRANSCRIPT_COMPARE') {
+    } else if (pendingNavigation === 'TRANSCRIPT_COMPARE' && isTranscriptCompareEnabled) {
       try {
         if (channel?.id) localStorage.setItem("channelId", String(channel.id));
         if (channel?.name) localStorage.setItem("channelName", channel.name);
@@ -151,6 +152,7 @@ const UserChannelsPage = () => {
   };
 
   const handleTranscriptCompareNavigation = () => {
+    if (!isTranscriptCompareEnabled) return;
     setIsDropdownOpen(false);
     const channelId = localStorage.getItem('channelId');
     if (channelId) {
@@ -287,13 +289,15 @@ const UserChannelsPage = () => {
                           <Search className="w-4 h-4 mr-3 text-gray-500" />
                           Search
                         </button>
-                        <button
-                          onClick={handleTranscriptCompareNavigation}
-                          className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                        >
-                          <ArrowLeftRight className="w-4 h-4 mr-3 text-gray-500" />
-                          Transcript Compare
-                        </button>
+                        {isTranscriptCompareEnabled && (
+                          <button
+                            onClick={handleTranscriptCompareNavigation}
+                            className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                          >
+                            <ArrowLeftRight className="w-4 h-4 mr-3 text-gray-500" />
+                            Transcript Compare
+                          </button>
+                        )}
                         <button onClick={() => handleNavigation('/dashboard')} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                           <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
                           Dashboard

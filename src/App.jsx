@@ -26,6 +26,7 @@ import ShiftManagement from './components/DashboardUserSide/ShiftManagement';
 import PredefinedFilters from './components/DashboardUserSide/PredefinedFilters';
 import CustomFlagsPage from './pages/admin/CustomFlagsPage';
 import ContentTypeDeactivationPage from './pages/admin/ContentTypeDeactivationPage';
+import { isTranscriptCompareEnabled } from './config/featureFlags';
 
 function App() {
   return (
@@ -73,11 +74,13 @@ function App() {
                 <UserAudioSegmentsPage />
               </ProtectedRoute>
             } />
-            <Route path="/channels/:channelId/transcript-compare" element={
-              <ProtectedRoute>
-                <TranscriptComparePage />
-              </ProtectedRoute>
-            } />
+            {isTranscriptCompareEnabled && (
+              <Route path="/channels/:channelId/transcript-compare" element={
+                <ProtectedRoute>
+                  <TranscriptComparePage />
+                </ProtectedRoute>
+              } />
+            )}
 
             {/* Protected User Report Routes */}
             <Route path="/reports" element={

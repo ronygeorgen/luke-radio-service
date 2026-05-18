@@ -12,6 +12,7 @@ import { fetchUserChannels, selectUserChannels } from '../store/slices/channelSl
 import { fetchSettings } from '../store/slices/settingsSlice';
 import SimpleChannelSelectionModal from '../pages/user/SimpleChannelSelectionModal';
 import ACRCustomFileUploadModal from '../components/ACRCustomFileUploadModal';
+import { isTranscriptCompareEnabled } from '../config/featureFlags';
 
 const AdminLayout = () => {
     const navigate = useNavigate();
@@ -124,7 +125,7 @@ const AdminLayout = () => {
             navigate(`/channels/${channel.id}/segments?date=${today}&hour=0&name=${encodeURIComponent(channel.name)}`);
             setPendingNavigation(null);
             setIsChannelSelectionOpen(false);
-        } else if (pendingNavigation === 'TRANSCRIPT_COMPARE') {
+        } else if (pendingNavigation === 'TRANSCRIPT_COMPARE' && isTranscriptCompareEnabled) {
             navigate(`/channels/${channel.id}/transcript-compare`);
             setPendingNavigation(null);
             setIsChannelSelectionOpen(false);
@@ -166,6 +167,7 @@ const AdminLayout = () => {
     };
 
     const handleTranscriptCompareNavigation = () => {
+        if (!isTranscriptCompareEnabled) return;
         setIsDropdownOpen(false);
         const channelId = localStorage.getItem('channelId');
 
@@ -304,11 +306,13 @@ const AdminLayout = () => {
                                                     <Search className="w-4 h-4 mr-3 text-gray-500" />
                                                     Search
                                                 </button>
-                                                <button onClick={handleTranscriptCompareNavigation}
-                                                    className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
-                                                    <ArrowLeftRight className="w-4 h-4 mr-3 text-gray-500" />
-                                                    Transcript Compare
-                                                </button>
+                                                {isTranscriptCompareEnabled && (
+                                                    <button onClick={handleTranscriptCompareNavigation}
+                                                        className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
+                                                        <ArrowLeftRight className="w-4 h-4 mr-3 text-gray-500" />
+                                                        Transcript Compare
+                                                    </button>
+                                                )}
                                                 <button onClick={() => { handleNavigation("/dashboard"); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                                                     <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
                                                     Dashboard
