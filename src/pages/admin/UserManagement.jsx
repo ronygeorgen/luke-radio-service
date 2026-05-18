@@ -314,7 +314,7 @@ const UserManagement = () => {
                         <User className="h-4 w-4 text-gray-500 mr-1" />
                       )}
                       <span className="text-sm text-gray-900">
-                        {user.is_admin ? 'Admin' : 'User'}
+                        {user.is_admin ? 'System Admin' : 'Channel User'}
                       </span>
                     </div>
                   </td>

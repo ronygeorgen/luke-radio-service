@@ -81,11 +81,12 @@ export const setPassword = createAsyncThunk(
 
 export const createUser = createAsyncThunk(
   'auth/createUser',
-  async ({ email, name }, { rejectWithValue }) => {
+  async ({ email, name, is_admin }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.post('/accounts/admin/create-user/', {
         email,
-        name
+        name,
+        is_admin: Boolean(is_admin)
       });
       return response.data;
     } catch (error) {
@@ -96,12 +97,13 @@ export const createUser = createAsyncThunk(
 
 export const updateUser = createAsyncThunk(
   'auth/updateUser',
-  async ({ user_id, email, name, is_active }, { rejectWithValue }) => {
+  async ({ user_id, email, name, is_active, is_admin }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.put(`/accounts/admin/update-user/${user_id}/`, {
         email,
         name,
-        is_active
+        is_active,
+        is_admin: Boolean(is_admin)
       });
       return response.data;
     } catch (error) {

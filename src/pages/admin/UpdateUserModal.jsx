@@ -8,7 +8,8 @@ import { fetchUsers } from '../../store/slices/userManagementSlice';
 const UpdateUserModal = ({ isOpen, onClose, user }) => {
   const [formData, setFormData] = useState({
     name: '',
-    is_active: true
+    is_active: true,
+    userType: 'channel_user'
   });
   const [errors, setErrors] = useState({});
   const [updateSuccess, setUpdateSuccess] = useState(false);
@@ -20,7 +21,8 @@ const UpdateUserModal = ({ isOpen, onClose, user }) => {
     if (user && isOpen) {
       setFormData({
         name: user.name || '',
-        is_active: user.is_active !== undefined ? user.is_active : true
+        is_active: user.is_active !== undefined ? user.is_active : true,
+        userType: user.is_admin ? 'system_admin' : 'channel_user'
       });
       setErrors({});
       setUpdateSuccess(false);
@@ -35,7 +37,7 @@ const UpdateUserModal = ({ isOpen, onClose, user }) => {
   }, [error]);
 
   const handleCloseModal = () => {
-    setFormData({ name: '', is_active: true });
+    setFormData({ name: '', is_active: true, userType: 'channel_user' });
     setErrors({});
     setUpdateSuccess(false);
     dispatch(clearError());
@@ -90,7 +92,8 @@ const UpdateUserModal = ({ isOpen, onClose, user }) => {
       user_id: user.id,
       email: user.email,
       name: formData.name,
-      is_active: formData.is_active
+      is_active: formData.is_active,
+      is_admin: formData.userType === 'system_admin'
     }));
     
     if (updateUser.fulfilled.match(result)) {
@@ -156,6 +159,23 @@ const UpdateUserModal = ({ isOpen, onClose, user }) => {
                 />
               </div>
               {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+            </div>
+
+            {/* User Type */}
+            <div>
+              <label htmlFor="userType" className="block text-sm font-medium text-gray-700 mb-1">
+                User Type
+              </label>
+              <select
+                id="userType"
+                name="userType"
+                value={formData.userType}
+                onChange={handleChange}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              >
+                <option value="channel_user">Channel User</option>
+                <option value="system_admin">System Admin</option>
+              </select>
             </div>
 
             {/* Active Status Toggle */}

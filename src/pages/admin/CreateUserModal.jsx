@@ -4,12 +4,13 @@ import { X, Mail, User, Send, Radio, CheckCircle, XCircle } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { createUser, clearError } from '../../store/slices/authSlice';
 import { fetchChannels } from '../../store/slices/channelSlice';
-import { assignChannelToUser, resetAssignState } from '../../store/slices/userManagementSlice';
+import { assignChannelToUser, resetAssignState, fetchUsers } from '../../store/slices/userManagementSlice';
 
 const CreateUserModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     email: '',
-    name: ''
+    name: '',
+    userType: 'channel_user'
   });
   const [errors, setErrors] = useState({});
   const [showChannelAssignment, setShowChannelAssignment] = useState(false);
@@ -60,7 +61,7 @@ const CreateUserModal = ({ isOpen, onClose }) => {
 
   const handleCloseModal = () => {
     // Reset all states
-    setFormData({ email: '', name: '' });
+    setFormData({ email: '', name: '', userType: 'channel_user' });
     setErrors({});
     setShowChannelAssignment(false);
     setCreatedUser(null);
@@ -138,23 +139,31 @@ const CreateUserModal = ({ isOpen, onClose }) => {
       return;
     }
     
-    const result = await dispatch(createUser(formData));
+    const result = await dispatch(createUser({
+      email: formData.email,
+      name: formData.name,
+      is_admin: formData.userType === 'system_admin'
+    }));
     
     if (createUser.fulfilled.match(result)) {
-      // Extract user data from the response - it's nested under result.payload.user
       const userData = result.payload.user;
       setCreatedUser(userData);
-      
+      const isSystemAdmin = formData.userType === 'system_admin';
+
       if (result.payload.error && result.payload.error.includes('failed to send magic link')) {
-        // User created but email failed - show warning and proceed to channel assignment
-        setErrors({ 
-          submit: 'User created but email failed to send. You may need to resend the magic link.' 
+        setErrors({
+          submit: 'User created but email failed to send. You may need to resend the magic link.'
         });
-        setShowChannelAssignment(true);
-      } else {
-        // Complete success - proceed to channel assignment
-        setShowChannelAssignment(true);
       }
+
+      dispatch(fetchUsers());
+
+      if (isSystemAdmin) {
+        setTimeout(() => handleCloseModal(), 1500);
+        return;
+      }
+
+      setShowChannelAssignment(true);
     }
   };
 
@@ -248,6 +257,26 @@ const CreateUserModal = ({ isOpen, onClose }) => {
                   />
                 </div>
                 {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+              </div>
+
+              {/* User Type */}
+              <div>
+                <label htmlFor="userType" className="block text-sm font-medium text-gray-700 mb-1">
+                  User Type
+                </label>
+                <select
+                  id="userType"
+                  name="userType"
+                  value={formData.userType}
+                  onChange={handleChange}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                >
+                  <option value="channel_user">Channel User</option>
+                  <option value="system_admin">System Admin</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  System Admins have full admin access. Channel Users are assigned to specific channels.
+                </p>
               </div>
 
               {/* Error Message */}
