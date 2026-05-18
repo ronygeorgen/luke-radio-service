@@ -574,7 +574,7 @@ const AudioSegmentsPage = () => {
     console.log('  - newFilters:', newFilters);
 
     dispatch(setFilter(newFilters));
-    handleSearchWithPagination({ ...filters, ...newFilters });
+    handleFilterChange({ ...filters, ...newFilters });
   };
 
   const handleClearSearch = () => {
