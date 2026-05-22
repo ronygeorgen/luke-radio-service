@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   Calendar,
   CheckCircle2,
+  ChevronDown,
   ChevronsRight,
   Loader2,
   Plus,
@@ -39,6 +40,13 @@ const getTranscriptText = (segment) => {
 };
 
 const todayISO = () => new Date().toISOString().split('T')[0];
+
+const truncatePromptPreview = (content, maxLength = 120) => {
+  const cleaned = String(content || '').trim().replace(/\s+/g, ' ');
+  if (!cleaned) return 'No prompt content';
+  if (cleaned.length <= maxLength) return cleaned;
+  return `${cleaned.slice(0, maxLength).trim()}...`;
+};
 
 const defaultStartISO = () => {
   const date = new Date();
@@ -105,6 +113,7 @@ const TranscriptComparePage = () => {
   const [endDate, setEndDate] = useState(todayISO);
   const [transcribedOnly, setTranscribedOnly] = useState(true);
   const [selectedSegmentIds, setSelectedSegmentIds] = useState(new Set());
+  const [expandedPromptIds, setExpandedPromptIds] = useState(new Set());
 
   const [activeStep, setActiveStep] = useState(1);
   const [selectedPromptIds, setSelectedPromptIds] = useState(new Set());
@@ -203,6 +212,12 @@ const TranscriptComparePage = () => {
     return selectedHistoryResults.find((item) => item.id === selectedHistoryResponseId) || selectedHistoryResults[0];
   }, [selectedHistoryResults, selectedHistoryResponseId]);
 
+  const visibleSegmentIds = useMemo(
+    () => segments.map((segment) => segment.id),
+    [segments]
+  );
+  const allVisibleSegmentsSelected = segments.length > 0 && visibleSegmentIds.every((id) => selectedSegmentIds.has(id));
+  const someVisibleSegmentsSelected = visibleSegmentIds.some((id) => selectedSegmentIds.has(id));
   const canContinueToPrompt = selectedSegmentIds.size >= 2;
   const canRunCompare = canContinueToPrompt && selectedPromptIds.size > 0;
   const stepItems = [
@@ -316,6 +331,31 @@ const TranscriptComparePage = () => {
       const next = new Set(prev);
       if (next.has(segmentId)) next.delete(segmentId);
       else next.add(segmentId);
+      return next;
+    });
+  };
+
+  const selectAllVisibleSegments = () => {
+    setSelectedSegmentIds(new Set(visibleSegmentIds));
+  };
+
+  const deselectAllSegments = () => {
+    setSelectedSegmentIds(new Set());
+  };
+
+  const toggleAllVisibleSegments = () => {
+    if (allVisibleSegmentsSelected) {
+      deselectAllSegments();
+    } else {
+      selectAllVisibleSegments();
+    }
+  };
+
+  const togglePromptExpanded = (promptId) => {
+    setExpandedPromptIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(promptId)) next.delete(promptId);
+      else next.add(promptId);
       return next;
     });
   };
@@ -691,9 +731,14 @@ const TranscriptComparePage = () => {
             >
               {activeStep === 1 && (
                 <>
-                  <div className="flex items-center justify-between gap-3 mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900">1. Select Audio Segments</h2>
-                    <div className="text-sm text-gray-600">{selectedSegmentIds.size} selected</div>
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900">1. Select Audio Segments</h2>
+                      <p className="text-sm text-gray-600 mt-1">Choose at least 2 transcripts to compare.</p>
+                    </div>
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm bg-blue-50 text-blue-700 border border-blue-200">
+                      {selectedSegmentIds.size} of {segments.length} selected
+                    </span>
                   </div>
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-4">
                   <div className="relative">
@@ -748,7 +793,7 @@ const TranscriptComparePage = () => {
                   </label>
                 </div>
 
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex flex-wrap items-center gap-3 mb-4">
                   <button
                     type="button"
                     onClick={fetchSegments}
@@ -759,15 +804,31 @@ const TranscriptComparePage = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedSegmentIds(new Set())}
-                    className="px-4 py-2.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                    onClick={selectAllVisibleSegments}
+                    disabled={segments.length === 0 || allVisibleSegmentsSelected}
+                    className="px-4 py-2.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 transition-colors"
                   >
-                    Clear Selection
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={deselectAllSegments}
+                    disabled={selectedSegmentIds.size === 0}
+                    className="px-4 py-2.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                  >
+                    Deselect All
                   </button>
                 </div>
 
-                <div className="text-xs text-gray-500 mb-3">
-                  Showing {segmentsMeta.count} segment(s) of {segmentsMeta.totalCount} total.
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 mb-3">
+                  <span>
+                    Showing {segmentsMeta.count} segment(s) of {segmentsMeta.totalCount} total.
+                  </span>
+                  {selectedSegmentIds.size > 0 && selectedSegmentIds.size < 2 && (
+                    <span className="text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1">
+                      Select at least 2 segments to continue.
+                    </span>
+                  )}
                 </div>
 
                 {segmentsError && (
@@ -783,11 +844,43 @@ const TranscriptComparePage = () => {
                     ) : segments.length === 0 ? (
                       <div className="p-6 text-sm text-gray-600">No segments found for the selected filters.</div>
                     ) : (
-                      <ul className="divide-y divide-gray-200">
+                      <>
+                        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                          <label className="inline-flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={allVisibleSegmentsSelected}
+                              ref={(input) => {
+                                if (input) {
+                                  input.indeterminate = someVisibleSegmentsSelected && !allVisibleSegmentsSelected;
+                                }
+                              }}
+                              onChange={toggleAllVisibleSegments}
+                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            Select all visible ({segments.length})
+                          </label>
+                          {someVisibleSegmentsSelected && (
+                            <button
+                              type="button"
+                              onClick={deselectAllSegments}
+                              className="text-xs font-medium text-gray-600 hover:text-gray-900"
+                            >
+                              Clear selection
+                            </button>
+                          )}
+                        </div>
+                        <ul className="divide-y divide-gray-200">
                         {segments.map((segment) => {
                           const transcript = getTranscriptText(segment);
+                          const isSelected = selectedSegmentIds.has(segment.id);
                           return (
-                            <li key={segment.id} className="p-4 hover:bg-gray-50 transition-colors">
+                            <li
+                              key={segment.id}
+                              className={`p-4 transition-colors ${
+                                isSelected ? 'bg-blue-50/70 hover:bg-blue-50' : 'hover:bg-gray-50'
+                              }`}
+                            >
                               <label className="flex items-start gap-3 cursor-pointer">
                                 <input
                                   type="checkbox"
@@ -833,7 +926,8 @@ const TranscriptComparePage = () => {
                             </li>
                           );
                         })}
-                      </ul>
+                        </ul>
+                      </>
                     )}
                   </div>
                 </div>
@@ -854,24 +948,29 @@ const TranscriptComparePage = () => {
 
             {activeStep === 2 && (
               <>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">2. Prompt Selection</h2>
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">2. Prompt Selection</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {selectedPromptIds.size} of {prompts.length} prompt(s) selected
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setSelectedPromptIds(new Set(prompts.map((prompt) => prompt.id)))}
-                      disabled={prompts.length === 0}
+                      disabled={prompts.length === 0 || selectedPromptIds.size === prompts.length}
                       className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 disabled:opacity-50 transition-colors"
                     >
-                      Select all
+                      Select All
                     </button>
                     <button
                       type="button"
                       onClick={() => setSelectedPromptIds(new Set())}
-                      disabled={prompts.length === 0}
+                      disabled={prompts.length === 0 || selectedPromptIds.size === 0}
                       className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 disabled:opacity-50 transition-colors"
                     >
-                      Clear all
+                      Deselect All
                     </button>
                     <button
                       type="button"
@@ -904,7 +1003,10 @@ const TranscriptComparePage = () => {
                       No prompts found. Create a prompt to continue.
                     </div>
                   )}
-                  {prompts.map((prompt) => (
+                  {prompts.map((prompt) => {
+                    const isExpanded = expandedPromptIds.has(prompt.id);
+                    const preview = truncatePromptPreview(prompt.content);
+                    return (
                     <div
                       key={prompt.id}
                       className={`rounded-xl border p-4 transition-colors ${
@@ -912,19 +1014,51 @@ const TranscriptComparePage = () => {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <label className="flex items-start gap-3 cursor-pointer flex-1">
+                        <label className="flex items-start gap-3 cursor-pointer flex-1 min-w-0">
                           <input
                             type="checkbox"
                             checked={selectedPromptIds.has(prompt.id)}
                             onChange={() => togglePromptSelection(prompt.id)}
                             className="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <div className="font-medium text-gray-900">{prompt.name}</div>
-                            <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{prompt.content}</p>
+                            {!isExpanded ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  togglePromptExpanded(prompt.id);
+                                }}
+                                className="mt-1 w-full text-left group"
+                              >
+                                <p className="text-sm text-gray-500 line-clamp-2">{preview}</p>
+                                <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 group-hover:text-blue-700">
+                                  View full prompt
+                                  <ChevronDown className="h-3.5 w-3.5" />
+                                </span>
+                              </button>
+                            ) : (
+                              <div className="mt-2">
+                                <div className="text-sm text-gray-700 whitespace-pre-wrap border border-gray-200 rounded-lg p-3 bg-white max-h-60 overflow-auto">
+                                  {prompt.content || 'No prompt content'}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    togglePromptExpanded(prompt.id);
+                                  }}
+                                  className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+                                >
+                                  Hide prompt
+                                  <ChevronDown className="h-3.5 w-3.5 rotate-180" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </label>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           <button
                             type="button"
                             onClick={() => openEditPrompt(prompt)}
@@ -949,7 +1083,8 @@ const TranscriptComparePage = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="mt-5 flex items-center justify-between">
