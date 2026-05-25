@@ -262,7 +262,7 @@ const GeneralSettings = () => {
       title: 'Configuration',
       settings: [
         { key: 'bucketDefinitionErrorRate', label: 'Bucket Definition Error Rate' },
-        { key: 'chatGptModel', label: 'ChatGPT Model', disableEdit: true },
+        { key: 'chatGptModel', label: 'ChatGPT Model' },
         { key: 'chatGptTemperature', label: 'ChatGPT Temperature' },
         { key: 'chatGptTopP', label: 'ChatGPT Top P' },
         { key: 'radioSegmentErrorRate', label: 'Radio Segment Error Rate' },
