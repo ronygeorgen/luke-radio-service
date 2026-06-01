@@ -1294,30 +1294,21 @@ const FilterPanelV2 = ({
             {contentTypePrompt?.loading ? (
               <div className="text-xs text-gray-500 py-2 pl-0">Loading content types...</div>
             ) : contentTypePrompt?.contentTypes && contentTypePrompt.contentTypes.length > 0 ? (
-              <>
+              <div className="space-y-1 pl-0">
                 <ToggleSwitch
-                  checked={selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]}
-                  onChange={(checked) => handleContentTypeToggle(contentTypePrompt.contentTypes[0], checked)}
-                  label={`${contentTypePrompt.contentTypes[0]}`}
+                  checked={selectedContentTypes.length === 0}
+                  onChange={handleAllContentTypesToggle}
+                  label="All"
                 />
-                {!(selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]) && (
-                  <div className="space-y-1 pl-0">
-                    <ToggleSwitch
-                      checked={selectedContentTypes.length === 0}
-                      onChange={handleAllContentTypesToggle}
-                      label="All"
-                    />
-                    {contentTypePrompt.contentTypes.map((contentType) => (
-                      <ToggleSwitch
-                        key={contentType}
-                        checked={selectedContentTypes.includes(contentType)}
-                        onChange={(checked) => handleContentTypeToggle(contentType, checked)}
-                        label={contentType}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
+                {contentTypePrompt.contentTypes.map((contentType) => (
+                  <ToggleSwitch
+                    key={contentType}
+                    checked={selectedContentTypes.includes(contentType)}
+                    onChange={(checked) => handleContentTypeToggle(contentType, checked)}
+                    label={contentType}
+                  />
+                ))}
+              </div>
             ) : (
               <div className="text-xs text-gray-500 py-2 pl-0">No content types available</div>
             )}
@@ -1530,29 +1521,18 @@ const FilterPanelV2 = ({
                 ) : contentTypePrompt?.contentTypes && contentTypePrompt.contentTypes.length > 0 ? (
                   <>
                     <ToggleSwitch
-                      checked={selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]}
-                      onChange={(checked) => handleContentTypeToggle(contentTypePrompt.contentTypes[0], checked)}
-                      label={`${contentTypePrompt.contentTypes[0]}`}
+                      checked={selectedContentTypes.length === 0}
+                      onChange={handleAllContentTypesToggle}
+                      label="All"
                     />
-                    {!(selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]) && (
-                      <>
-                        <div className="border-t border-gray-200 mt-1 pt-1">
-                          <ToggleSwitch
-                            checked={selectedContentTypes.length === 0}
-                            onChange={handleAllContentTypesToggle}
-                            label="All"
-                          />
-                          {contentTypePrompt.contentTypes.map((contentType) => (
-                            <ToggleSwitch
-                              key={contentType}
-                              checked={selectedContentTypes.includes(contentType)}
-                              onChange={(checked) => handleContentTypeToggle(contentType, checked)}
-                              label={contentType}
-                            />
-                          ))}
-                        </div>
-                      </>
-                    )}
+                    {contentTypePrompt.contentTypes.map((contentType) => (
+                      <ToggleSwitch
+                        key={contentType}
+                        checked={selectedContentTypes.includes(contentType)}
+                        onChange={(checked) => handleContentTypeToggle(contentType, checked)}
+                        label={contentType}
+                      />
+                    ))}
                   </>
                 ) : (
                   <div className="text-xs text-gray-500 py-2">No content types available</div>
@@ -1785,30 +1765,21 @@ const FilterPanelV2 = ({
                 {contentTypePrompt?.loading ? (
                   <div className="text-xs text-gray-500 py-2">Loading content types...</div>
                 ) : contentTypePrompt?.contentTypes?.length ? (
-                  <>
+                  <div className="space-y-1 max-h-64 overflow-y-auto">
                     <ToggleSwitch
-                      checked={selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]}
-                      onChange={(checked) => handleContentTypeToggle(contentTypePrompt.contentTypes[0], checked)}
-                      label={`${contentTypePrompt.contentTypes[0]}`}
+                      checked={selectedContentTypes.length === 0}
+                      onChange={handleAllContentTypesToggle}
+                      label="All"
                     />
-                    {!(selectedContentTypes.length === 1 && selectedContentTypes[0] === contentTypePrompt.contentTypes[0]) && (
-                      <div className="mt-2 space-y-1 pl-4 border-t border-gray-200 pt-2 max-h-64 overflow-y-auto">
-                        <ToggleSwitch
-                          checked={selectedContentTypes.length === 0}
-                          onChange={handleAllContentTypesToggle}
-                          label="All"
-                        />
-                        {contentTypePrompt.contentTypes.map((contentType) => (
-                          <ToggleSwitch
-                            key={contentType}
-                            checked={selectedContentTypes.includes(contentType)}
-                            onChange={(checked) => handleContentTypeToggle(contentType, checked)}
-                            label={contentType}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </>
+                    {contentTypePrompt.contentTypes.map((contentType) => (
+                      <ToggleSwitch
+                        key={contentType}
+                        checked={selectedContentTypes.includes(contentType)}
+                        onChange={(checked) => handleContentTypeToggle(contentType, checked)}
+                        label={contentType}
+                      />
+                    ))}
+                  </div>
                 ) : (
                   <div className="text-xs text-gray-500 py-2">No content types available</div>
                 )}
