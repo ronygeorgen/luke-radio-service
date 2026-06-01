@@ -27,11 +27,13 @@ import PredefinedFilters from './components/DashboardUserSide/PredefinedFilters'
 import CustomFlagsPage from './pages/admin/CustomFlagsPage';
 import ContentTypeDeactivationPage from './pages/admin/ContentTypeDeactivationPage';
 import { isTranscriptCompareEnabled } from './config/featureFlags';
+import DocumentTitle from './components/DocumentTitle';
 
 function App() {
   return (
     <Provider store={store}>
       <Router>
+        <DocumentTitle />
         <div className="min-h-screen bg-gray-50">
           <TranscriptionPollingHydrator />
           <Routes>

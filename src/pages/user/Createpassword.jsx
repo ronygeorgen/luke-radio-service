@@ -219,9 +219,9 @@ const CreatePassword = () => {
 
         {/* Content Overlay */}
         <div className="relative z-10 flex flex-col justify-center items-center text-white p-12">
-          <h1 className="text-5xl font-bold mb-6 text-center">Radio Tracker</h1>
+          <h1 className="text-5xl font-bold mb-6 text-center">Podcast Researcher</h1>
           <p className="text-xl text-center text-blue-100 mb-8 max-w-md">
-            Welcome to the future of radio monitoring. Create your secure access credentials to get started.
+            Welcome to Podcast Researcher. Create your secure access credentials to get started.
           </p>
           <div className="flex items-center space-x-2 text-blue-200">
             <CheckCircle className="w-5 h-5" />

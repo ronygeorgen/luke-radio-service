@@ -106,7 +106,7 @@ const AdminLogin = () => {
             <Radio className="h-8 w-8 text-white animate-pulse" />
           </div>
           <h2 className="text-4xl font-bold text-white mb-2">Admin Portal</h2>
-          <p className="text-blue-200 text-lg">Radio Tracker Management</p>
+          <p className="text-blue-200 text-lg">Podcast Researcher</p>
         </div>
 
         {/* Login Form */}
@@ -216,7 +216,7 @@ const AdminLogin = () => {
 
         {/* Footer */}
         <p className="text-center text-blue-200 text-sm">
-          Protected admin access • Radio Tracker System
+          Protected admin access • Podcast Researcher
         </p>
       </div>
     </div>

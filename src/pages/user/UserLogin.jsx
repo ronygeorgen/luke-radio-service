@@ -237,7 +237,7 @@ const UserLogin = () => {
         <div className="relative z-10 flex flex-col justify-center items-center text-white p-12">
           <h1 className="text-5xl font-bold mb-6 text-center">Welcome Back</h1>
           <p className="text-xl text-center text-blue-100 mb-8 max-w-md">
-            Access your Radio Tracker dashboard and continue monitoring your channels with precision.
+            Access your Podcast Researcher dashboard and continue monitoring your channels with precision.
           </p>
           <div className="flex items-center space-x-6 text-blue-200">
             <div className="flex items-center space-x-2">
@@ -261,7 +261,7 @@ const UserLogin = () => {
               <Radio className="h-8 w-8 text-white" />
             </div>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Sign In</h2>
-            <p className="text-gray-600">Access your Radio Tracker account</p>
+            <p className="text-gray-600">Access your Podcast Researcher account</p>
           </div>
 
           {/* Form */}
