@@ -5,11 +5,7 @@ import { X, Eye, Loader2 } from 'lucide-react';
 
 const PieChartModal = ({ isOpen, onClose }) => {
   const dispatch = useDispatch();
-  const { pieChartData, pieChartLoading, pieChartError, filters, pagination  } = useSelector((state) => state.audioSegments);
-  // const filters = useSelector((state) => state.audioSegments.filters);
-
-  const currentPageData = pagination?.current_page;
-  const availablePages = pagination?.available_pages;
+  const { pieChartData, pieChartLoading, pieChartError, filters } = useSelector((state) => state.audioSegments);
 
   const [chartData, setChartData] = useState([]);
   const [hoveredSegment, setHoveredSegment] = useState(null);

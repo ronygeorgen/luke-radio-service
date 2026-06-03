@@ -2,9 +2,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { trimAudioSegment } from '../../store/slices/audioTrimmerSlice';
-import { fetchAudioSegments, fetchAudioSegmentsV2 } from '../../store/slices/audioSegmentsSlice';
+import { fetchAudioSegmentsV3 } from '../../store/slices/audioSegmentsSlice';
+import { buildFetchAudioSegmentsV3Args } from '../../utils/audioSegmentsApiHelpers';
 import { useParams } from 'react-router-dom';
-import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 
 const CompactAudioEditor = ({ isOpen, onClose, segment }) => {
   const dispatch = useDispatch();
@@ -269,81 +269,11 @@ const CompactAudioEditor = ({ isOpen, onClose, segment }) => {
         trimAudioSegment({ segment, split_segments, is_active: isSegmentActive })
       );
       if (result.meta.requestStatus === 'fulfilled') {
-        // Preserve current page instead of resetting to 1
-        const currentPage = pagination?.current_page || 1;
-        
-        // Check if V2 filters are active
-        const hasV2Filters = (
-          (filters.contentTypes && filters.contentTypes.length > 0) ||
-          filters.onlyAnnouncers === true ||
-          filters.onlyActive === true
-        );
-
-        if (hasV2Filters) {
-          // Use V2 API with all current filters
-          let startDatetime = null;
-          let endDatetime = null;
-          if (filters.startDate && filters.endDate) {
-            const startTime = filters.startTime || '00:00:00';
-            const endTime = filters.endTime || '23:59:59';
-            startDatetime = convertLocalToUTC(filters.startDate, startTime);
-            endDatetime = convertLocalToUTC(filters.endDate, endTime);
-          } else if (filters.date) {
-            const startTime = filters.startTime || '00:00:00';
-            const endTime = filters.endTime || '23:59:59';
-            startDatetime = convertLocalToUTC(filters.date, startTime);
-            endDatetime = convertLocalToUTC(filters.date, endTime);
-          }
-
-          if (startDatetime && endDatetime) {
-            // Determine status parameter
-            let statusParam = null;
-            if (filters.status === 'active' || filters.status === 'inactive') {
-              statusParam = filters.status;
-            }
-
-            // Determine content types
-            let contentTypesToUse = [];
-            if (filters.onlyAnnouncers) {
-              contentTypesToUse = ['Announcer'];
-            } else if (filters.contentTypes && filters.contentTypes.length > 0) {
-              contentTypesToUse = filters.contentTypes;
-            }
-
-            dispatch(fetchAudioSegmentsV2({
-              channelId,
-              startDatetime,
-              endDatetime,
-              page: currentPage,
-              shiftId: filters.shiftId || null,
-              predefinedFilterId: filters.predefinedFilterId || null,
-              contentTypes: contentTypesToUse,
-              status: statusParam,
-              searchText: filters.searchText || null,
-              searchIn: filters.searchIn || null
-            }));
-          }
-        } else {
-          // Use V1 API with all current filters
-          dispatch(fetchAudioSegments({
-            channelId: channelId,
-            date: filters.date,
-            startDate: filters.startDate,
-            endDate: filters.endDate,
-            startTime: filters.startTime,
-            endTime: filters.endTime,
-            daypart: filters.daypart,
-            searchText: filters.searchText,
-            searchIn: filters.searchIn,
-            shiftId: filters.shiftId,
-            predefinedFilterId: filters.predefinedFilterId,
-            duration: filters.duration,
-            showFlaggedOnly: filters.showFlaggedOnly || false,
-            status: filters.status,
-            recognition_status: filters.recognition_status,
-            has_content: filters.has_content,
-            page: currentPage,
-          }));
+        const args = buildFetchAudioSegmentsV3Args(channelId, filters, {
+          slotIndex: pagination?.current_slot ?? 0,
+        });
+        if (args.startDatetime && args.endDatetime) {
+          dispatch(fetchAudioSegmentsV3(args));
         }
         setTimeout(() => onClose && onClose(), 800);
       }

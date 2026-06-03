@@ -2,7 +2,12 @@ import React, { useEffect, useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Filter as FilterIcon } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { fetchAudioSegmentsV2, setCurrentPlaying, setIsPlaying, setFilter, clearError } from '../../store/slices/audioSegmentsSlice';
+import { fetchAudioSegmentsV3, setCurrentPlaying, setIsPlaying, setFilter, clearError } from '../../store/slices/audioSegmentsSlice';
+import {
+  buildFetchAudioSegmentsV3Args,
+  formatSlotDateForApi,
+  parseApiSlotDate,
+} from '../../utils/audioSegmentsApiHelpers';
 import Header from '../../components/UserSide/Header';
 import FilterPanelV2 from '../../components/UserSide/FilterPanelV2';
 import SegmentCard from '../../components/UserSide/SegmentCard';
@@ -11,7 +16,6 @@ import SummaryModal from './SummaryModal';
 import TranscriptionModal from './TranscriptionModal';
 import AudioPlayer from './AudioPlayer';
 import { formatDateForDisplay, formatTimeDisplay } from '../../utils/formatters'
-import { convertLocalToUTC } from '../../utils/dateTimeUtils';
 import useTranscriptionPolling from '../../hooks/useTranscriptionPolling';
 import { openTrimmer } from '../../store/slices/audioTrimmerSlice';
 import AudioTrimmer from './AudioTrimmer';
@@ -156,39 +160,12 @@ const AudioSegmentsPage = () => {
         // Navigate to new URL with updated channel ID, preserving all query params
         navigate(`/channels/${newChannelId}/segments?${newParams.toString()}`, { replace: true });
 
-        const filtersToUse = filters;
-        if ((filtersToUse.startDate && filtersToUse.endDate) || filtersToUse.date) {
-          let startDatetime = null;
-          let endDatetime = null;
-          if (filtersToUse.startDate && filtersToUse.endDate) {
-            const startTime = filtersToUse.startTime || '00:00:00';
-            const endTime = filtersToUse.endTime || '23:59:59';
-            startDatetime = convertLocalToUTC(filtersToUse.startDate, startTime);
-            endDatetime = convertLocalToUTC(filtersToUse.endDate, endTime);
-          } else if (filtersToUse.date) {
-            const startTime = filtersToUse.startTime || '00:00:00';
-            const endTime = filtersToUse.endTime || '23:59:59';
-            startDatetime = convertLocalToUTC(filtersToUse.date, startTime);
-            endDatetime = convertLocalToUTC(filtersToUse.date, endTime);
-          }
-          if (startDatetime && endDatetime) {
-            let statusParam = null;
-            if (filtersToUse.onlyActive === true) statusParam = 'active';
-            else if (filtersToUse.status === 'active' || filtersToUse.status === 'inactive') statusParam = filtersToUse.status;
-            const contentTypesToUse = (filtersToUse.contentTypes && filtersToUse.contentTypes.length > 0) ? filtersToUse.contentTypes : [];
-            dispatch(fetchAudioSegmentsV2({
-              channelId: newChannelId,
-              startDatetime,
-              endDatetime,
-              page: 1,
-              shiftId: filtersToUse.shiftId || null,
-              predefinedFilterId: filtersToUse.predefinedFilterId || null,
-              contentTypes: contentTypesToUse,
-              status: statusParam,
-              searchText: filtersToUse.searchText || null,
-              searchIn: filtersToUse.searchIn || null
-            }));
-          }
+        if ((filters.startDate && filters.endDate) || filters.date) {
+          dispatch(
+            fetchAudioSegmentsV3(
+              buildFetchAudioSegmentsV3Args(newChannelId, filters, { slotCalendarDate: filters.date || filters.startDate })
+            )
+          );
         }
       }
     };
@@ -199,8 +176,24 @@ const AudioSegmentsPage = () => {
     };
   }, [filters, dispatch, navigate, searchParams, channelIdFromParams]);
 
-  const currentPage = pagination?.current_page || 1;
-  const totalPages = pagination?.total_pages || 0;
+  const currentSlot = pagination?.current_slot ?? 0;
+  const hoursWithData = (pagination?.hours || []).filter((h) => h.has_data);
+  const showTimePagination =
+    !filters.showFlaggedOnly &&
+    ((pagination?.dates_with_data?.length || 0) > 0 || hoursWithData.length > 0);
+
+  const dispatchFetchSegments = (slotOverrides = {}) => {
+    const overrides = { ...slotOverrides };
+    if (
+      overrides.slotIndex != null &&
+      overrides.slotCalendarDate == null &&
+      overrides.slotDate == null &&
+      pagination?.slot_date
+    ) {
+      overrides.slotDate = formatSlotDateForApi(parseApiSlotDate(pagination.slot_date));
+    }
+    dispatch(fetchAudioSegmentsV3(buildFetchAudioSegmentsV3Args(channelId, filters, overrides)));
+  };
 
   // Track if we've already auto-switched pages to avoid infinite loops
   const hasAutoSwitchedPage = useRef(false);
@@ -287,28 +280,14 @@ const AudioSegmentsPage = () => {
 
       hasInitialFiltersSet.current = true;
 
-      const startDatetime = convertLocalToUTC(today, '00:00:00');
-      const endDatetime = convertLocalToUTC(today, '23:59:59');
-
-      let statusParam = null;
-      if (defaultV2Filters.onlyActive === true) {
-        statusParam = 'active';
-      } else if (filters.status === 'active' || filters.status === 'inactive') {
-        statusParam = filters.status;
-      }
-
-      dispatch(fetchAudioSegmentsV2({
-        channelId,
-        startDatetime,
-        endDatetime,
-        page: 1,
-        shiftId: null,
-        predefinedFilterId: null,
-        contentTypes: contentTypesToUse,
-        status: statusParam,
-        searchText: null,
-        searchIn: null
-      }));
+      dispatch(
+        fetchAudioSegmentsV3(
+          buildFetchAudioSegmentsV3Args(channelId, {
+            ...defaultV2Filters,
+            contentTypes: contentTypesToUse,
+          }, { slotCalendarDate: today })
+        )
+      );
     }
   }, [channelId]);
 
@@ -340,47 +319,13 @@ const AudioSegmentsPage = () => {
 
   const handleFilterChange = (newFilters = null) => {
     const filtersToUse = newFilters || filters;
-
     hasAutoSwitchedPage.current = false;
 
-    let startDatetime = null;
-    let endDatetime = null;
-    if (filtersToUse.startDate && filtersToUse.endDate) {
-      const startTime = filtersToUse.startTime || '00:00:00';
-      const endTime = filtersToUse.endTime || '23:59:59';
-      startDatetime = convertLocalToUTC(filtersToUse.startDate, startTime);
-      endDatetime = convertLocalToUTC(filtersToUse.endDate, endTime);
-    } else if (filtersToUse.date) {
-      const startTime = filtersToUse.startTime || '00:00:00';
-      const endTime = filtersToUse.endTime || '23:59:59';
-      startDatetime = convertLocalToUTC(filtersToUse.date, startTime);
-      endDatetime = convertLocalToUTC(filtersToUse.date, endTime);
-    }
-
-    if (startDatetime && endDatetime) {
-      let statusParam = null;
-      if (filtersToUse.onlyActive === true) {
-        statusParam = 'active';
-      } else if (filtersToUse.status === 'active' || filtersToUse.status === 'inactive') {
-        statusParam = filtersToUse.status;
-      }
-
-      const contentTypesToUse = (filtersToUse.contentTypes && filtersToUse.contentTypes.length > 0)
-        ? filtersToUse.contentTypes
-        : [];
-
-      dispatch(fetchAudioSegmentsV2({
-        channelId,
-        startDatetime,
-        endDatetime,
-        page: 1,
-        shiftId: filtersToUse.shiftId || null,
-        predefinedFilterId: filtersToUse.predefinedFilterId || null,
-        contentTypes: contentTypesToUse,
-        status: statusParam,
-        searchText: filtersToUse.searchText || null,
-        searchIn: filtersToUse.searchIn || null
-      }));
+    const args = buildFetchAudioSegmentsV3Args(channelId, filtersToUse, {
+      slotCalendarDate: filtersToUse.date || filtersToUse.startDate,
+    });
+    if (args.startDatetime && args.endDatetime) {
+      dispatch(fetchAudioSegmentsV3(args));
     }
   };
 
@@ -398,116 +343,25 @@ const AudioSegmentsPage = () => {
     setLocalSearchIn(filters.searchIn || 'transcription');
   }, [filters]);
 
-  // Auto-switch to a page with data if current page has no segments - works for both V1 and V2
   useEffect(() => {
-    // Only check after initial load and when not loading
-    if (!hasInitialFiltersSet.current || loading) {
-      return;
-    }
+    if (!hasInitialFiltersSet.current || loading) return;
 
-    // If current page has no segments
-    if (segments.length === 0 && pagination?.available_pages) {
-      // Find pages with data
-      const pagesWithData = pagination.available_pages.filter(page => page.has_data);
+    if (segments.length === 0 && pagination?.hours?.length) {
+      const slotsWithData = pagination.hours.filter((h) => h.has_data);
+      const currentHasData = slotsWithData.some((h) => h.slot === currentSlot);
 
-      // If there are pages with data and current page is not one of them
-      if (pagesWithData.length > 0) {
-        const currentPageHasData = pagesWithData.some(page => page.page === currentPage);
-
-        if (!currentPageHasData && !hasAutoSwitchedPage.current) {
-          // Switch to the first page with data
-          const firstPageWithData = pagesWithData[0].page;
-          console.log(`🔄 Auto-switching from page ${currentPage} (no data) to page ${firstPageWithData} (has data)`);
-
-          hasAutoSwitchedPage.current = true;
-
-          let startDatetime = null;
-          let endDatetime = null;
-          if (filters.startDate && filters.endDate) {
-            const startTime = filters.startTime || '00:00:00';
-            const endTime = filters.endTime || '23:59:59';
-            startDatetime = convertLocalToUTC(filters.startDate, startTime);
-            endDatetime = convertLocalToUTC(filters.endDate, endTime);
-          } else if (filters.date) {
-            const startTime = filters.startTime || '00:00:00';
-            const endTime = filters.endTime || '23:59:59';
-            startDatetime = convertLocalToUTC(filters.date, startTime);
-            endDatetime = convertLocalToUTC(filters.date, endTime);
-          }
-
-          if (startDatetime && endDatetime) {
-            let statusParam = null;
-            if (filters.onlyActive === true) {
-              statusParam = 'active';
-            } else if (filters.status === 'active' || filters.status === 'inactive') {
-              statusParam = filters.status;
-            }
-
-            const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0)
-              ? filters.contentTypes
-              : [];
-
-            dispatch(fetchAudioSegmentsV2({
-              channelId,
-              startDatetime,
-              endDatetime,
-              page: firstPageWithData,
-              shiftId: filters.shiftId || null,
-              predefinedFilterId: filters.predefinedFilterId || null,
-              contentTypes: contentTypesToUse,
-              status: statusParam,
-              searchText: filters.searchText || null,
-              searchIn: filters.searchIn || null
-            }));
-          }
-        }
+      if (slotsWithData.length > 0 && !currentHasData && !hasAutoSwitchedPage.current) {
+        hasAutoSwitchedPage.current = true;
+        dispatchFetchSegments({ slotIndex: slotsWithData[0].slot });
       }
     } else if (segments.length > 0) {
       hasAutoSwitchedPage.current = false;
     }
-  }, [segments.length, pagination, currentPage, loading, channelId, filters, dispatch]);
+  }, [segments.length, pagination, currentSlot, loading, channelId, filters]);
 
-  const handlePageChange = (pageNumber) => {
+  const handleSlotChange = (slotOverrides) => {
     hasAutoSwitchedPage.current = false;
-
-    let startDatetime = null;
-    let endDatetime = null;
-    if (filters.startDate && filters.endDate) {
-      const startTime = filters.startTime || '00:00:00';
-      const endTime = filters.endTime || '23:59:59';
-      startDatetime = convertLocalToUTC(filters.startDate, startTime);
-      endDatetime = convertLocalToUTC(filters.endDate, endTime);
-    } else if (filters.date) {
-      const startTime = filters.startTime || '00:00:00';
-      const endTime = filters.endTime || '23:59:59';
-      startDatetime = convertLocalToUTC(filters.date, startTime);
-      endDatetime = convertLocalToUTC(filters.date, endTime);
-    }
-    if (startDatetime && endDatetime) {
-      let statusParam = null;
-      if (filters.onlyActive === true) {
-        statusParam = 'active';
-      } else if (filters.status === 'active' || filters.status === 'inactive') {
-        statusParam = filters.status;
-      }
-
-      const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0)
-        ? filters.contentTypes
-        : [];
-
-      dispatch(fetchAudioSegmentsV2({
-        channelId,
-        startDatetime,
-        endDatetime,
-        page: pageNumber,
-        shiftId: filters.shiftId || null,
-        predefinedFilterId: filters.predefinedFilterId || null,
-        contentTypes: contentTypesToUse,
-        status: statusParam,
-        searchText: filters.searchText || null,
-        searchIn: filters.searchIn || null
-      }));
-    }
+    dispatchFetchSegments(slotOverrides);
   };
 
   // Handle errors with toast instead of replacing entire UI
@@ -518,44 +372,14 @@ const AudioSegmentsPage = () => {
         dispatch(setFilter({ showFlaggedOnly: false }));
         setErrorToast('This shift does not have flag duration configured. Flagged filter has been disabled.');
 
-        let startDatetime = null;
-        let endDatetime = null;
-        if (filters.startDate && filters.endDate) {
-          const startTime = filters.startTime || '00:00:00';
-          const endTime = filters.endTime || '23:59:59';
-          startDatetime = convertLocalToUTC(filters.startDate, startTime);
-          endDatetime = convertLocalToUTC(filters.endDate, endTime);
-        } else if (filters.date) {
-          const startTime = filters.startTime || '00:00:00';
-          const endTime = filters.endTime || '23:59:59';
-          startDatetime = convertLocalToUTC(filters.date, startTime);
-          endDatetime = convertLocalToUTC(filters.date, endTime);
-        }
-        if (startDatetime && endDatetime) {
-          let statusParam = null;
-          if (filters.onlyActive === true) statusParam = 'active';
-          else if (filters.status === 'active' || filters.status === 'inactive') statusParam = filters.status;
-          const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0) ? filters.contentTypes : [];
-          dispatch(fetchAudioSegmentsV2({
-            channelId,
-            startDatetime,
-            endDatetime,
-            page: currentPage,
-            shiftId: filters.shiftId || null,
-            predefinedFilterId: filters.predefinedFilterId || null,
-            contentTypes: contentTypesToUse,
-            status: statusParam,
-            searchText: filters.searchText || null,
-            searchIn: filters.searchIn || null
-          }));
-        }
+        dispatchFetchSegments({ slotIndex: currentSlot });
       } else {
         setErrorToast(error);
       }
       // Clear error after showing toast
       dispatch(clearError());
     }
-  }, [error, dispatch, channelId, filters, currentPage]);
+  }, [error, dispatch, channelId, filters, currentSlot]);
 
   const handleSearch = () => {
     console.log('🔍 Search button clicked - Current state:');
@@ -793,25 +617,7 @@ const AudioSegmentsPage = () => {
 
       await Promise.all(requests);
 
-      dispatch(fetchAudioSegments({
-        channelId,
-        date: filters.date,
-        startDate: filters.startDate,
-        endDate: filters.endDate,
-        startTime: filters.startTime,
-        endTime: filters.endTime,
-        daypart: filters.daypart,
-        searchText: filters.searchText,
-        searchIn: filters.searchIn,
-        shiftId: filters.shiftId,
-        predefinedFilterId: filters.predefinedFilterId,
-        duration: filters.duration,
-        showFlaggedOnly: filters.showFlaggedOnly || false,
-        status: filters.status,
-        recognition_status: filters.recognition_status,
-        has_content: filters.has_content,
-        page: currentPage
-      }));
+      dispatchFetchSegments({ slotIndex: currentSlot });
 
       setStatusMessage('Segment statuses updated successfully.');
       setStatusMessageType('success');
@@ -948,21 +754,11 @@ const AudioSegmentsPage = () => {
 
     hasAutoSwitchedPage.current = false;
 
-    const startDatetime = convertLocalToUTC(today, defaultStartTime);
-    const endDatetime = convertLocalToUTC(today, defaultEndTime);
-
-    dispatch(fetchAudioSegmentsV2({
-      channelId,
-      startDatetime,
-      endDatetime,
-      page: 1,
-      shiftId: null,
-      predefinedFilterId: null,
-      contentTypes: [], // Reset = show all
-      status: 'active',
-      searchText: null,
-      searchIn: null
-    }));
+    dispatch(
+      fetchAudioSegmentsV3(
+        buildFetchAudioSegmentsV3Args(channelId, newFilters, { slotCalendarDate: today })
+      )
+    );
   };
 
   const handleSummaryClick = (segment) => {
@@ -1032,38 +828,7 @@ const AudioSegmentsPage = () => {
         dispatch(openTrimmer(mergedSegment));
       }
 
-      // Refresh segments with V2 API
-      let startDatetime = null;
-      let endDatetime = null;
-      if (filters.startDate && filters.endDate) {
-        const startTime = filters.startTime || '00:00:00';
-        const endTime = filters.endTime || '23:59:59';
-        startDatetime = convertLocalToUTC(filters.startDate, startTime);
-        endDatetime = convertLocalToUTC(filters.endDate, endTime);
-      } else if (filters.date) {
-        const startTime = filters.startTime || '00:00:00';
-        const endTime = filters.endTime || '23:59:59';
-        startDatetime = convertLocalToUTC(filters.date, startTime);
-        endDatetime = convertLocalToUTC(filters.date, endTime);
-      }
-      if (startDatetime && endDatetime) {
-        let statusParam = null;
-        if (filters.onlyActive === true) statusParam = 'active';
-        else if (filters.status === 'active' || filters.status === 'inactive') statusParam = filters.status;
-        const contentTypesToUse = (filters.contentTypes && filters.contentTypes.length > 0) ? filters.contentTypes : [];
-        dispatch(fetchAudioSegmentsV2({
-          channelId,
-          startDatetime,
-          endDatetime,
-          page: currentPage,
-          shiftId: filters.shiftId || null,
-          predefinedFilterId: filters.predefinedFilterId || null,
-          contentTypes: contentTypesToUse,
-          status: statusParam,
-          searchText: filters.searchText || null,
-          searchIn: filters.searchIn || null
-        }));
-      }
+      dispatchFetchSegments({ slotIndex: currentSlot });
     } catch (error) {
       console.error('Error merging segments:', error);
 
@@ -1334,7 +1099,7 @@ const AudioSegmentsPage = () => {
                 dispatch={dispatch}
                 segments={segments}
                 channelId={channelId}
-                fetchAudioSegments={fetchAudioSegmentsV2}
+                fetchAudioSegments={fetchAudioSegmentsV3}
                 handleDaypartChange={handleDaypartChange}
                 handleSearchWithCustomTime={handleSearchWithCustomTime}
                 localStartTime={localStartTime}
@@ -1360,13 +1125,14 @@ const AudioSegmentsPage = () => {
         {/* Main Content - Takes remaining width */}
         <main className={`flex-1 p-6 min-w-0 z-30 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
           {/* Show pagination if we have pages with data in Redux and showFlaggedOnly is not active */}
-          {totalPages > 1 && !filters.showFlaggedOnly && (
+          {showTimePagination && (
             <div className="mb-6 flex justify-center">
               <TimePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-                availablePages={pagination?.available_pages || []}
+                currentSlot={currentSlot}
+                slotDate={pagination?.slot_date}
+                datesWithData={pagination?.dates_with_data || []}
+                hours={pagination?.hours || []}
+                onSlotChange={handleSlotChange}
               />
             </div>
           )}
@@ -1375,16 +1141,16 @@ const AudioSegmentsPage = () => {
           {pagination && (
             <div className="mb-4 text-sm text-gray-600 bg-white rounded-lg p-3 shadow-sm">
               {(() => {
-                const currentPageData = pagination.available_pages?.find(page => page.page === currentPage);
-                const pagesWithData = pagination.available_pages?.filter(page => page.has_data) || [];
-                const currentPageIndex = pagesWithData.findIndex(page => page.page === currentPage) + 1;
                 const isShowFlaggedOnly = filters.showFlaggedOnly || false;
+                const slotIndexAmongHours = hoursWithData.findIndex((h) => h.slot === currentSlot) + 1;
 
                 return (
                   <div className="flex items-center space-x-4">
-                    {!isShowFlaggedOnly && (
+                    {!isShowFlaggedOnly && hoursWithData.length > 0 && (
                       <>
-                        <span className="font-medium">Time slot {currentPageIndex} of {pagesWithData.length}</span>
+                        <span className="font-medium">
+                          Hour {String(currentSlot).padStart(2, '0')} ({slotIndexAmongHours} of {hoursWithData.length} with data)
+                        </span>
                         <span>•</span>
                       </>
                     )}

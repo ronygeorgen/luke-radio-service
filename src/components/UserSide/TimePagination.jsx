@@ -1,11 +1,29 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Clock } from 'lucide-react';
+import { parseApiSlotDate } from '../../utils/audioSegmentsApiHelpers';
+
+const parseDateTimeOffset = (dateTimeString) => {
+  if (!dateTimeString) return null;
+  try {
+    const d = new Date(dateTimeString);
+    if (Number.isNaN(d.getTime())) return null;
+    return {
+      year: d.getFullYear(),
+      month: d.getMonth() + 1,
+      day: d.getDate(),
+      dateKey: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+    };
+  } catch {
+    return null;
+  }
+};
 
 const TimePagination = ({
-  currentPage,
-  totalPages,
-  onPageChange,
-  availablePages = []
+  currentSlot = 0,
+  slotDate = null,
+  datesWithData = [],
+  hours = [],
+  onSlotChange,
 }) => {
   const dateScrollRef = useRef(null);
   const hourScrollRef = useRef(null);
@@ -14,68 +32,29 @@ const TimePagination = ({
   const [canScrollHourLeft, setCanScrollHourLeft] = useState(false);
   const [canScrollHourRight, setCanScrollHourRight] = useState(false);
 
-  // Parse date and hour from timestamp
-  const parseDateTime = (dateTimeString) => {
-    if (!dateTimeString) return null;
-    try {
-      const [datePart, timePartWithOffset] = dateTimeString.split("T");
-      const [timePart] = timePartWithOffset.split(/[+-]/);
-      const [year, month, day] = datePart.split("-").map(Number);
-      const [hour] = timePart.split(":").map(Number);
-      return { year, month, day, hour, dateKey: `${year}-${month}-${day}` };
-    } catch (error) {
-      return null;
-    }
-  };
+  const selectedDateKey = parseApiSlotDate(slotDate);
 
-  // Get current page data
-  const currentPageData = availablePages.find(page => page.page === currentPage);
-  const currentDateTime = currentPageData ? parseDateTime(currentPageData.start_time) : null;
-  const selectedDate = currentDateTime ? currentDateTime.dateKey : null;
-  const selectedHour = currentDateTime ? currentDateTime.hour : null;
-
-  // Extract unique dates from available pages
   const uniqueDates = useMemo(() => {
     const dateMap = new Map();
-    availablePages
-      .filter(page => page.has_data)
-      .forEach(page => {
-        const dt = parseDateTime(page.start_time);
-        if (dt) {
-          const dateKey = dt.dateKey;
-          if (!dateMap.has(dateKey)) {
-            dateMap.set(dateKey, {
-              dateKey,
-              month: dt.month,
-              day: dt.day,
-              year: dt.year,
-              pages: []
-            });
-          }
-          dateMap.get(dateKey).pages.push(page);
-        }
-      });
+    datesWithData.forEach((dateStr) => {
+      const dt = parseDateTimeOffset(dateStr);
+      if (!dt) return;
+      if (!dateMap.has(dt.dateKey)) {
+        dateMap.set(dt.dateKey, {
+          dateKey: dt.dateKey,
+          month: dt.month,
+          day: dt.day,
+          year: dt.year,
+        });
+      }
+    });
     return Array.from(dateMap.values()).sort((a, b) => {
       if (a.year !== b.year) return a.year - b.year;
       if (a.month !== b.month) return a.month - b.month;
       return a.day - b.day;
     });
-  }, [availablePages]);
+  }, [datesWithData]);
 
-  // Get available hours for selected date
-  const availableHoursForDate = useMemo(() => {
-    if (!selectedDate) return new Set();
-    const dateData = uniqueDates.find(d => d.dateKey === selectedDate);
-    if (!dateData) return new Set();
-    const hours = new Set();
-    dateData.pages.forEach(page => {
-      const dt = parseDateTime(page.start_time);
-      if (dt) hours.add(dt.hour);
-    });
-    return hours;
-  }, [selectedDate, uniqueDates]);
-
-  // Check scroll position for date row
   const checkDateScroll = () => {
     if (dateScrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = dateScrollRef.current;
@@ -84,7 +63,6 @@ const TimePagination = ({
     }
   };
 
-  // Check scroll position for hour row
   const checkHourScroll = () => {
     if (hourScrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = hourScrollRef.current;
@@ -118,143 +96,124 @@ const TimePagination = ({
         window.removeEventListener('resize', checkHourScroll);
       }
     };
-  }, [uniqueDates, availablePages]);
+  }, [uniqueDates, hours]);
 
-  // Scroll date row
   const scrollDateRow = (direction) => {
     if (dateScrollRef.current) {
-      const scrollAmount = 200;
       dateScrollRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
+        left: direction === 'left' ? -200 : 200,
+        behavior: 'smooth',
       });
     }
   };
 
-  // Scroll hour row
   const scrollHourRow = (direction) => {
     if (hourScrollRef.current) {
-      const scrollAmount = 200;
       hourScrollRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
+        left: direction === 'left' ? -200 : 200,
+        behavior: 'smooth',
       });
     }
   };
 
-  // Handle date selection
   const handleDateClick = (dateKey) => {
-    const dateData = uniqueDates.find(d => d.dateKey === dateKey);
-    if (dateData && dateData.pages.length > 0) {
-      // Select the first page for this date
-      onPageChange(dateData.pages[0].page);
-    }
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const padded = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    onSlotChange({ slotCalendarDate: padded });
   };
 
-  // Handle hour selection
   const handleHourClick = (hour) => {
-    if (!selectedDate) return;
-    const dateData = uniqueDates.find(d => d.dateKey === selectedDate);
-    if (!dateData) return;
-
-    // Find page with matching hour
-    const matchingPage = dateData.pages.find(page => {
-      const dt = parseDateTime(page.start_time);
-      return dt && dt.hour === hour;
-    });
-
-    if (matchingPage) {
-      onPageChange(matchingPage.page);
-    }
+    if (!selectedDateKey) return;
+    onSlotChange({ slotCalendarDate: selectedDateKey, slotIndex: hour });
   };
 
-  // Check if hour is available
   const isHourAvailable = (hour) => {
-    return availableHoursForDate.has(hour);
+    const entry = hours.find((h) => h.slot === hour);
+    return entry?.has_data === true;
   };
+
+  if (uniqueDates.length === 0 && hours.length === 0) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col items-center space-y-4 py-4 w-full">
-      {/* Date Row with Navigation */}
-      <div className="w-full relative">
-        <div className="flex items-center gap-2">
-          {/* Left Arrow */}
-          {canScrollLeft && (
-            <button
-              type="button"
-              onClick={() => scrollDateRow('left')}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
-              aria-label="Scroll dates left"
+      {uniqueDates.length > 0 && (
+        <div className="w-full relative">
+          <div className="flex items-center gap-2">
+            {canScrollLeft && (
+              <button
+                type="button"
+                onClick={() => scrollDateRow('left')}
+                className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                aria-label="Scroll dates left"
+              >
+                <ChevronLeft className="w-4 h-4 text-gray-600" />
+              </button>
+            )}
+
+            <div
+              ref={dateScrollRef}
+              className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-thin"
             >
-              <ChevronLeft className="w-4 h-4 text-gray-600" />
-            </button>
-          )}
+              {uniqueDates.map((date) => {
+                const isSelected = date.dateKey === selectedDateKey;
+                const dateLabel = `${date.month}/${date.day}`;
 
-          {/* Date Buttons Container */}
-          <div
-            ref={dateScrollRef}
-            className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-thin"
-          >
-            {uniqueDates.map((date) => {
-              const isSelected = date.dateKey === selectedDate;
-              const dateLabel = `${date.month}/${date.day}`;
-
-              return (
-                <button
-                  type="button"
-                  key={date.dateKey}
-                  onClick={() => handleDateClick(date.dateKey)}
-                  className={`
+                return (
+                  <button
+                    type="button"
+                    key={date.dateKey}
+                    onClick={() => handleDateClick(date.dateKey)}
+                    className={`
                     flex-shrink-0 w-16 h-8 flex items-center justify-center
                     rounded-lg font-medium text-xs transition-all duration-200
                     ${isSelected
-                      ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md scale-105'
-                      : 'text-white shadow-sm'
-                    }
+                        ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md scale-105'
+                        : 'text-white shadow-sm'
+                      }
                   `}
-                  style={!isSelected ? {
-                    backgroundColor: '#E1007B',
-                    borderColor: '#C1006A',
-                    borderWidth: '1px'
-                  } : {}}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.backgroundColor = '#C1006A';
+                    style={
+                      !isSelected
+                        ? {
+                            backgroundColor: '#E1007B',
+                            borderColor: '#C1006A',
+                            borderWidth: '1px',
+                          }
+                        : {}
                     }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.backgroundColor = '#E1007B';
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-1">
-                    <Calendar className={`w-3 h-3 ${isSelected ? 'text-white' : 'text-white'}`} />
-                    <span>{dateLabel}</span>
-                  </div>
-                </button>
-              );
-            })}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) e.currentTarget.style.backgroundColor = '#C1006A';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected) e.currentTarget.style.backgroundColor = '#E1007B';
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-white" />
+                      <span>{dateLabel}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {canScrollRight && (
+              <button
+                type="button"
+                onClick={() => scrollDateRow('right')}
+                className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                aria-label="Scroll dates right"
+              >
+                <ChevronRight className="w-4 h-4 text-gray-600" />
+              </button>
+            )}
           </div>
-
-          {/* Right Arrow */}
-          {canScrollRight && (
-            <button
-              type="button"
-              onClick={() => scrollDateRow('right')}
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
-              aria-label="Scroll dates right"
-            >
-              <ChevronRight className="w-4 h-4 text-gray-600" />
-            </button>
-          )}
         </div>
-      </div>
+      )}
 
-      {/* Hour Row with Navigation */}
       <div className="w-full relative">
         <div className="flex items-center gap-1">
-          {/* Left Arrow */}
           {canScrollHourLeft && (
             <button
               type="button"
@@ -266,13 +225,12 @@ const TimePagination = ({
             </button>
           )}
 
-          {/* Hour Buttons Container */}
           <div
             ref={hourScrollRef}
             className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar"
           >
             {Array.from({ length: 24 }, (_, i) => i).map((hour) => {
-              const isSelected = selectedHour === hour;
+              const isSelected = currentSlot === hour;
               const isAvailable = isHourAvailable(hour);
               const isUnavailable = !isAvailable;
 
@@ -294,7 +252,9 @@ const TimePagination = ({
                   `}
                 >
                   <div className="flex items-center gap-0.5">
-                    <Clock className={`w-2.5 h-2.5 ${isSelected ? 'text-white' : isUnavailable ? 'text-gray-400' : 'text-white'}`} />
+                    <Clock
+                      className={`w-2.5 h-2.5 ${isSelected ? 'text-white' : isUnavailable ? 'text-gray-400' : 'text-white'}`}
+                    />
                     <span>{hour.toString().padStart(2, '0')}</span>
                   </div>
                 </button>
@@ -302,7 +262,6 @@ const TimePagination = ({
             })}
           </div>
 
-          {/* Right Arrow */}
           {canScrollHourRight && (
             <button
               type="button"
@@ -315,7 +274,6 @@ const TimePagination = ({
           )}
         </div>
       </div>
-
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { fetchPredefinedFilters } from '../../store/slices/shiftManagementSlice'
 import { useDispatch, useSelector } from 'react-redux';
 import { selectUserChannels } from '../../store/slices/channelSlice';
 import { convertLocalToUTC } from '../../utils/dateTimeUtils';
+import { buildFetchAudioSegmentsV3Args } from '../../utils/audioSegmentsApiHelpers';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
@@ -845,68 +846,34 @@ const FilterPanelV2 = ({
 
   // Apply filters using V2 API with explicit status and content type parameters
   const applyFiltersV2WithStatusAndContentTypes = (filterState, shiftId, onlyActiveValue, activeStatusValue, selectedContentTypesValue) => {
-    let startDatetime = null;
-    let endDatetime = null;
-
-    // Calculate datetime from date range and time
-    if (filterState.startDate && filterState.endDate) {
-      const startTime = filterState.startTime || '00:00:00';
-      const endTime = filterState.endTime || '23:59:59';
-      startDatetime = convertLocalToUTC(filterState.startDate, startTime);
-      endDatetime = convertLocalToUTC(filterState.endDate, endTime);
-    } else if (filterState.date) {
-      const startTime = filterState.startTime || '00:00:00';
-      const endTime = filterState.endTime || '23:59:59';
-      startDatetime = convertLocalToUTC(filterState.date, startTime);
-      endDatetime = convertLocalToUTC(filterState.date, endTime);
-    }
-
-    // Determine status - API expects 'active' or 'inactive' as strings
-    const statusParam = getStatusParam(onlyActiveValue, activeStatusValue);
-
-    // Content types: when "All" (empty) don't add param; otherwise use selected types as-is
-    const contentTypesParam = (selectedContentTypesValue && selectedContentTypesValue.length > 0)
-      ? [...selectedContentTypesValue]
-      : null;
-    // If contentTypesParam is null or empty array, content_type won't be added to API call (handled in slice)
-
-    // Get duration value
     let durationValue = null;
     if (localDuration && localDuration.toString().trim() !== '') {
       const parsed = parseInt(localDuration.toString().trim(), 10);
-      if (!isNaN(parsed) && parsed > 0) {
-        durationValue = parsed;
-      }
+      if (!isNaN(parsed) && parsed > 0) durationValue = parsed;
     }
 
-    if (fetchAudioSegments) {
-      console.log('🚀 Calling V2 API with contentTypes:', contentTypesParam);
-      console.log('📊 Full API params:', {
-        channelId,
-        startDatetime,
-        endDatetime,
-        page: 1,
-        shiftId: shiftId || filterState.shiftId || null,
-        predefinedFilterId: filterState.predefinedFilterId || null,
-        contentTypes: contentTypesParam || [],
-        status: statusParam,
-        searchText: filterState.searchText || localSearchText || null,
-        searchIn: filterState.searchIn || localSearchIn || null
-      });
+    const mergedFilters = {
+      ...filterState,
+      onlyActive: onlyActiveValue,
+      status:
+        activeStatusValue === 'active' || activeStatusValue === 'inactive'
+          ? activeStatusValue
+          : null,
+      contentTypes: selectedContentTypesValue || [],
+      duration: durationValue,
+      showFlaggedOnly: shiftId ? showFlaggedOnly : false,
+      shiftId: shiftId || filterState.shiftId || null,
+      searchText: filterState.searchText || localSearchText || null,
+      searchIn: filterState.searchIn || localSearchIn || null,
+    };
 
-      // fetchAudioSegments prop should be fetchAudioSegmentsV2 function
-      reduxDispatch(fetchAudioSegments({
-        channelId,
-        startDatetime,
-        endDatetime,
-        page: 1,
-        shiftId: shiftId || filterState.shiftId || null,
-        predefinedFilterId: filterState.predefinedFilterId || null,
-        contentTypes: contentTypesParam || [], // Pass empty array if null to ensure no param is added
-        status: statusParam,
-        searchText: filterState.searchText || localSearchText || null,
-        searchIn: filterState.searchIn || localSearchIn || null
-      }));
+    if (fetchAudioSegments) {
+      const args = buildFetchAudioSegmentsV3Args(channelId, mergedFilters, {
+        slotCalendarDate: filterState.date || filterState.startDate,
+      });
+      if (args.startDatetime && args.endDatetime) {
+        reduxDispatch(fetchAudioSegments(args));
+      }
     }
   };
 

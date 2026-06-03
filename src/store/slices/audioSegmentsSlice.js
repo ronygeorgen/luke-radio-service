@@ -1,6 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { axiosInstance } from '../../services/api';
 import { convertLocalToUTC } from '../../utils/dateTimeUtils';
+import {
+  createV3ParamsSerializer,
+  computeTotalsFromSegments,
+  mapV3ChannelInfo,
+} from '../../utils/audioSegmentsApiHelpers';
 
 // audioSegmentsSlice.js - Update the fetchAudioSegments thunk
 export const fetchShifts = createAsyncThunk(
@@ -298,6 +303,80 @@ export const fetchAudioSegmentsV2 = createAsyncThunk(
         } else if (typeof errorData === 'string') {
           errorMessage = errorData;
         }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+export const fetchAudioSegmentsV3 = createAsyncThunk(
+  'audioSegments/fetchAudioSegmentsV3',
+  async ({
+    channelId,
+    startDatetime,
+    endDatetime,
+    slotDate = null,
+    slotIndex = null,
+    shiftId = null,
+    predefinedFilterId = null,
+    contentTypes = [],
+    status = null,
+    searchText = null,
+    searchIn = null,
+    showFlaggedOnly = false,
+    durationSecondsMin = null,
+    durationSecondsMax = null,
+    transcribedOnly = null,
+    searchType = null,
+  }, { rejectWithValue }) => {
+    try {
+      const params = { channel_id: channelId };
+
+      if (startDatetime) params.start_datetime = startDatetime;
+      if (endDatetime) params.end_datetime = endDatetime;
+      if (slotDate) {
+        params.slot_date = slotDate;
+        params.slot_index =
+          slotIndex !== null && slotIndex !== undefined ? slotIndex : 0;
+      }
+
+      if (predefinedFilterId) {
+        params.predefined_filter_id = predefinedFilterId;
+      } else if (shiftId) {
+        params.shift_id = shiftId;
+        if (showFlaggedOnly) params.show_flagged_only = true;
+      }
+
+      if (contentTypes?.length > 0) params.content_type = contentTypes;
+      if (status) params.status = status;
+      if (searchText && searchIn) {
+        params.search_text = searchText;
+        params.search_in = searchIn;
+      }
+      if (searchType) params.search_type = searchType;
+      if (transcribedOnly === true) params.transcribed_only = true;
+      if (durationSecondsMin != null) params.duration_seconds_min = durationSecondsMin;
+      if (durationSecondsMax != null) params.duration_seconds_max = durationSecondsMax;
+
+      const config = { params };
+      if (contentTypes?.length > 0) {
+        config.paramsSerializer = createV3ParamsSerializer;
+      }
+
+      const response = await axiosInstance.get('/audio/filter/v3/audio-segments/', config);
+      return response.data;
+    } catch (err) {
+      let errorMessage = 'Failed to fetch audio segments';
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        const errField = errorData.error;
+        if (typeof errField === 'string') errorMessage = errField;
+        else if (errField?.non_field_errors?.length) {
+          errorMessage = errField.non_field_errors.join(' ');
+        } else if (errorData.message) errorMessage = errorData.message;
+        else if (typeof errorData === 'string') errorMessage = errorData;
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -702,6 +781,30 @@ const audioSegmentsSlice = createSlice({
         };
       })
       .addCase(fetchAudioSegmentsV2.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Failed to fetch audio segments';
+      })
+      .addCase(fetchAudioSegmentsV3.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchAudioSegmentsV3.fulfilled, (state, action) => {
+        state.loading = false;
+        const segments = Array.isArray(action.payload.data) ? action.payload.data : [];
+        state.segments = segments;
+        state.channelInfo = mapV3ChannelInfo(segments) || state.channelInfo;
+
+        const pag = action.payload.pagination || {};
+        state.pagination = {
+          current_slot: pag.current_slot ?? 0,
+          slot_date: pag.slot_date ?? null,
+          hours: pag.hours || [],
+          dates_with_data: pag.dates_with_data || [],
+          count: action.payload.count ?? segments.length,
+        };
+        state.availablePages = null;
+        state.totals = computeTotalsFromSegments(segments);
+      })
+      .addCase(fetchAudioSegmentsV3.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || 'Failed to fetch audio segments';
       })
