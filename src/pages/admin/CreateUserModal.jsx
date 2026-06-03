@@ -6,6 +6,11 @@ import { createUser, clearError } from '../../store/slices/authSlice';
 import { fetchChannels } from '../../store/slices/channelSlice';
 import { assignChannelToUser, resetAssignState, fetchUsers } from '../../store/slices/userManagementSlice';
 
+const userTypeToFlags = (userType) => ({
+  is_admin: userType === 'system_admin',
+  is_channel_admin: userType === 'channel_admin'
+});
+
 const CreateUserModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     email: '',
@@ -142,7 +147,7 @@ const CreateUserModal = ({ isOpen, onClose }) => {
     const result = await dispatch(createUser({
       email: formData.email,
       name: formData.name,
-      is_admin: formData.userType === 'system_admin'
+      ...userTypeToFlags(formData.userType)
     }));
     
     if (createUser.fulfilled.match(result)) {
@@ -272,10 +277,11 @@ const CreateUserModal = ({ isOpen, onClose }) => {
                   className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 >
                   <option value="channel_user">Channel User</option>
+                  <option value="channel_admin">Channel Admin</option>
                   <option value="system_admin">System Admin</option>
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
-                  System Admins have full admin access. Channel Users are assigned to specific channels.
+                  System Admins have full admin access. Channel Admins manage assigned channels. Channel Users are assigned to specific channels.
                 </p>
               </div>
 

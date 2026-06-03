@@ -5,6 +5,17 @@ import { useDispatch, useSelector } from 'react-redux';
 import { updateUser, clearError } from '../../store/slices/authSlice';
 import { fetchUsers } from '../../store/slices/userManagementSlice';
 
+const getUserType = (user) => {
+  if (user.is_admin) return 'system_admin';
+  if (user.is_channel_admin) return 'channel_admin';
+  return 'channel_user';
+};
+
+const userTypeToFlags = (userType) => ({
+  is_admin: userType === 'system_admin',
+  is_channel_admin: userType === 'channel_admin'
+});
+
 const UpdateUserModal = ({ isOpen, onClose, user }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -22,7 +33,7 @@ const UpdateUserModal = ({ isOpen, onClose, user }) => {
       setFormData({
         name: user.name || '',
         is_active: user.is_active !== undefined ? user.is_active : true,
-        userType: user.is_admin ? 'system_admin' : 'channel_user'
+        userType: getUserType(user)
       });
       setErrors({});
       setUpdateSuccess(false);
@@ -93,7 +104,7 @@ const UpdateUserModal = ({ isOpen, onClose, user }) => {
       email: user.email,
       name: formData.name,
       is_active: formData.is_active,
-      is_admin: formData.userType === 'system_admin'
+      ...userTypeToFlags(formData.userType)
     }));
     
     if (updateUser.fulfilled.match(result)) {
@@ -174,6 +185,7 @@ const UpdateUserModal = ({ isOpen, onClose, user }) => {
                 className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               >
                 <option value="channel_user">Channel User</option>
+                <option value="channel_admin">Channel Admin</option>
                 <option value="system_admin">System Admin</option>
               </select>
             </div>

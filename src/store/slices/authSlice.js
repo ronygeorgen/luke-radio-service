@@ -27,7 +27,8 @@ export const loginUser = createAsyncThunk(
           id: tokenPayload.user_id,
           email: tokenPayload.email,
           name: tokenPayload.name,
-          isAdmin: tokenPayload.is_admin
+          isAdmin: tokenPayload.is_admin,
+          isChannelAdmin: Boolean(tokenPayload.is_channel_admin)
         }
       };
     } catch (error) {
@@ -81,12 +82,13 @@ export const setPassword = createAsyncThunk(
 
 export const createUser = createAsyncThunk(
   'auth/createUser',
-  async ({ email, name, is_admin }, { rejectWithValue }) => {
+  async ({ email, name, is_admin, is_channel_admin }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.post('/accounts/admin/create-user/', {
         email,
         name,
-        is_admin: Boolean(is_admin)
+        is_admin: Boolean(is_admin),
+        is_channel_admin: Boolean(is_channel_admin)
       });
       return response.data;
     } catch (error) {
@@ -97,13 +99,14 @@ export const createUser = createAsyncThunk(
 
 export const updateUser = createAsyncThunk(
   'auth/updateUser',
-  async ({ user_id, email, name, is_active, is_admin }, { rejectWithValue }) => {
+  async ({ user_id, email, name, is_active, is_admin, is_channel_admin }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.put(`/accounts/admin/update-user/${user_id}/`, {
         email,
         name,
         is_active,
-        is_admin: Boolean(is_admin)
+        is_admin: Boolean(is_admin),
+        is_channel_admin: Boolean(is_channel_admin)
       });
       return response.data;
     } catch (error) {
@@ -188,7 +191,8 @@ export const checkAuth = createAsyncThunk(
               id: newTokenPayload.user_id,
               email: newTokenPayload.email,
               name: newTokenPayload.name,
-              isAdmin: newTokenPayload.is_admin
+              isAdmin: newTokenPayload.is_admin,
+              isChannelAdmin: Boolean(newTokenPayload.is_channel_admin)
             }
           };
         } else {
@@ -205,7 +209,8 @@ export const checkAuth = createAsyncThunk(
           id: tokenPayload.user_id,
           email: tokenPayload.email,
           name: tokenPayload.name,
-          isAdmin: tokenPayload.is_admin
+          isAdmin: tokenPayload.is_admin,
+          isChannelAdmin: Boolean(tokenPayload.is_channel_admin)
         }
       };
     } catch (error) {

@@ -175,6 +175,12 @@ const UserManagement = () => {
   };
 
   // Filter users based on search query
+  const getUserRoleLabel = (user) => {
+    if (user.is_admin) return 'System Admin';
+    if (user.is_channel_admin) return 'Channel Admin';
+    return 'Channel User';
+  };
+
   const filteredUsers = users.filter(user => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
@@ -310,11 +316,13 @@ const UserManagement = () => {
                     <div className="flex items-center">
                       {user.is_admin ? (
                         <Shield className="h-4 w-4 text-purple-500 mr-1" />
+                      ) : user.is_channel_admin ? (
+                        <Shield className="h-4 w-4 text-blue-500 mr-1" />
                       ) : (
                         <User className="h-4 w-4 text-gray-500 mr-1" />
                       )}
                       <span className="text-sm text-gray-900">
-                        {user.is_admin ? 'System Admin' : 'Channel User'}
+                        {getUserRoleLabel(user)}
                       </span>
                     </div>
                   </td>
