@@ -4,6 +4,7 @@ import { Info, Server, User, GitMerge, Play, Pause, Scissors, FilePlus } from 'l
 import { SelectReportModal, CreateReportModal } from '../../pages/user/ReportModals';
 import dayjs from "dayjs";
 import FlagIcon from './FlagIcon';
+import { formatSegmentDateTimeInChannelTz } from '../../utils/dateTimeUtils';
 
 const FullSegment = ({ 
   segment, 
@@ -73,44 +74,6 @@ const FullSegment = ({
     setShowSelectModal(false);
     setShowCreateModal(false);
   };
-
-
-function formatDateTime(dateTimeString) {
-  if (!dateTimeString) return "N/A";
-
-  try {
-    // Split into date and time parts
-    const [datePart, timePartWithOffset] = dateTimeString.split("T");
-    const [timePart] = timePartWithOffset.split(/[+-]/);
-    const offsetMatch = dateTimeString.match(/([+-]\d{2}:\d{2})$/);
-    const offset = offsetMatch ? `UTC${offsetMatch[1]}` : "UTC";
-
-    // Extract date components
-    const [year, month, day] = datePart.split("-").map(Number);
-
-    // Extract time components
-    const [hour, minute, second] = timePart.split(":").map(Number);
-
-    // Format month and 12-hour time
-    const months = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    ];
-    const hour12 = hour % 12 || 12;
-    const ampm = hour < 12 ? "AM" : "PM";
-
-    // Construct readable string
-    const formatted = `${day.toString().padStart(2, "0")} ${months[month - 1]} ${year}, ` +
-                      `${hour12.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}:${second.toString().padStart(2, "0")} ${ampm}`;
-
-    return `${formatted}`;
-  } catch (error) {
-    console.error("Error formatting date:", error);
-    return dateTimeString;
-  }
-}
-
-
 
   return (
     <div className={`p-6 ${(isMergeMode && isSelected) || (isStatusToggleMode && isStatusSelected) ? 'bg-blue-50 border-2 border-blue-500' : ''}`}>
@@ -228,11 +191,11 @@ function formatDateTime(dateTimeString) {
             <div className="space-y-1">
               <p className="text-sm text-gray-600">
                 <span className="font-medium text-gray-800">Start:</span>{" "}
-                {formatDateTime(segment.start_time)}
+                {formatSegmentDateTimeInChannelTz(segment.start_time)}
               </p>
               <p className="text-sm text-gray-600">
                 <span className="font-medium text-gray-800">End:</span>{" "}
-                {formatDateTime(segment.end_time)}
+                {formatSegmentDateTimeInChannelTz(segment.end_time)}
               </p>
             </div>
           </div>

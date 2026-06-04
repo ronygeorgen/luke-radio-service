@@ -86,6 +86,55 @@ export const formatDateTimeForDisplay = (date, time) => {
   return date;
 };
 
+const MONTH_LABELS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/** Format a UTC/ISO segment timestamp in the channel timezone (e.g. "03 Jun 2026, 08:09:54 PM"). */
+export const formatSegmentDateTimeInChannelTz = (dateTimeString, timezone) => {
+  if (!dateTimeString) return 'N/A';
+
+  const tz = (timezone
+    || (typeof localStorage !== 'undefined' && localStorage.getItem('channelTimezone'))
+    || 'UTC'
+  ).trim();
+
+  try {
+    const date = new Date(dateTimeString);
+    if (Number.isNaN(date.getTime())) return dateTimeString;
+
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
+
+    const parts = Object.fromEntries(
+      formatter.formatToParts(date).map((p) => [p.type, p.value])
+    );
+
+    const monthIdx = parseInt(parts.month, 10) - 1;
+    const hour12 = parseInt(parts.hour, 10);
+    const minute = parts.minute;
+    const second = parts.second;
+    const ampm = (parts.dayPeriod || '').toUpperCase();
+    const day = parts.day.padStart(2, '0');
+    const year = parts.year;
+    const monthLabel = MONTH_LABELS[monthIdx] || parts.month;
+
+    return `${day} ${monthLabel} ${year}, ${hour12.toString().padStart(2, '0')}:${minute}:${second} ${ampm}`;
+  } catch (error) {
+    console.error('Error formatting segment datetime in channel timezone:', error);
+    return dateTimeString;
+  }
+};
+
 // Convert UTC datetime string to local timezone for display
 export const convertUTCToLocal = (utcDateTimeString) => {
   if (!utcDateTimeString) return null;

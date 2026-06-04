@@ -4,6 +4,7 @@ import { Play, Pause, Info, Server, User, GitMerge } from "lucide-react";
 import TranscribeButton from "./TranscribeButton";
 import dayjs from "dayjs";
 import FlagIcon from "./FlagIcon";
+import { formatSegmentDateTimeInChannelTz } from '../../utils/dateTimeUtils';
 
 const CompactSegment = ({ 
   segment, 
@@ -38,43 +39,6 @@ const CompactSegment = ({
   };
 
   const sourceConfig = getSourceIcon(segment.source);
-
-
-function formatDateTime(dateTimeString) {
-  if (!dateTimeString) return "N/A";
-
-  try {
-    // Split into date and time parts
-    const [datePart, timePartWithOffset] = dateTimeString.split("T");
-    const [timePart] = timePartWithOffset.split(/[+-]/);
-    const offsetMatch = dateTimeString.match(/([+-]\d{2}:\d{2})$/);
-    const offset = offsetMatch ? `UTC${offsetMatch[1]}` : "UTC";
-
-    // Extract date components
-    const [year, month, day] = datePart.split("-").map(Number);
-
-    // Extract time components
-    const [hour, minute, second] = timePart.split(":").map(Number);
-
-    // Format month and 12-hour time
-    const months = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    ];
-    const hour12 = hour % 12 || 12;
-    const ampm = hour < 12 ? "AM" : "PM";
-
-    // Construct readable string
-    const formatted = `${day.toString().padStart(2, "0")} ${months[month - 1]} ${year}, ` +
-                      `${hour12.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}:${second.toString().padStart(2, "0")} ${ampm}`;
-
-    return `${formatted}`;
-  } catch (error) {
-    console.error("Error formatting date:", error);
-    return dateTimeString;
-  }
-}
-
 
 
   return (
@@ -232,7 +196,7 @@ function formatDateTime(dateTimeString) {
           <div className="flex flex-col">
             <span className="text-xs font-medium text-gray-500">Start Time</span>
             <span className="text-sm text-gray-900">
-              {formatDateTime(segment.start_time)}
+              {formatSegmentDateTimeInChannelTz(segment.start_time)}
             </span>
             {/* <span className="text-xs text-gray-500">
               {new Date(segment.start_time).toUTCString()} 
@@ -242,7 +206,7 @@ function formatDateTime(dateTimeString) {
           <div className="flex flex-col">
             <span className="text-xs font-medium text-gray-500">End Time</span>
             <span className="text-sm text-gray-900">
-              {formatDateTime(segment.end_time)}
+              {formatSegmentDateTimeInChannelTz(segment.end_time)}
             </span>
             {/* <span className="text-xs text-gray-500">
               {new Date(segment.end_time).toUTCString()} 

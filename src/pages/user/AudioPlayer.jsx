@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setIsPlaying, setCurrentPlaying } from '../../store/slices/audioSegmentsSlice';
 import dayjs from "dayjs";
+import { formatSegmentDateTimeInChannelTz } from '../../utils/dateTimeUtils';
 
 const AudioPlayer = ({ segment, onClose }) => {
   const dispatch = useDispatch();
@@ -24,40 +25,6 @@ const AudioPlayer = ({ segment, onClose }) => {
     ? segment.audio_url 
     : `${import.meta.env.VITE_API_URL}/${segment.file_path}`;
 
-function formatDateTime(dateTimeString) {
-  if (!dateTimeString) return "N/A";
-
-  try {
-    // Split into date and time parts
-    const [datePart, timePartWithOffset] = dateTimeString.split("T");
-    const [timePart] = timePartWithOffset.split(/[+-]/);
-    const offsetMatch = dateTimeString.match(/([+-]\d{2}:\d{2})$/);
-    const offset = offsetMatch ? `UTC${offsetMatch[1]}` : "UTC";
-
-    // Extract date components
-    const [year, month, day] = datePart.split("-").map(Number);
-
-    // Extract time components
-    const [hour, minute, second] = timePart.split(":").map(Number);
-
-    // Format month and 12-hour time
-    const months = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    ];
-    const hour12 = hour % 12 || 12;
-    const ampm = hour < 12 ? "AM" : "PM";
-
-    // Construct readable string
-    const formatted = `${day.toString().padStart(2, "0")} ${months[month - 1]} ${year}, ` +
-                      `${hour12.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}:${second.toString().padStart(2, "0")} ${ampm}`;
-
-    return `${formatted}`;
-  } catch (error) {
-    console.error("Error formatting date:", error);
-    return dateTimeString;
-  }
-}
 
 
   // Preload the entire audio file to enable seeking
@@ -558,8 +525,8 @@ function formatDateTime(dateTimeString) {
               )}
               <p className="text-sm text-blue-100">
                 Duration: {formatTime(segment.duration_seconds)} • 
-                Start: {formatDateTime(segment.start_time)} • 
-                End: {formatDateTime(segment.end_time)}
+                Start: {formatSegmentDateTimeInChannelTz(segment.start_time)} • 
+                End: {formatSegmentDateTimeInChannelTz(segment.end_time)}
               </p>
 
             </h3>
