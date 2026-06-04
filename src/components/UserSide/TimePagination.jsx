@@ -1,21 +1,17 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Clock } from 'lucide-react';
-import { parseApiSlotDate } from '../../utils/audioSegmentsApiHelpers';
+import { parseApiCalendarDate, parseApiSlotDate } from '../../utils/audioSegmentsApiHelpers';
 
-const parseDateTimeOffset = (dateTimeString) => {
-  if (!dateTimeString) return null;
-  try {
-    const d = new Date(dateTimeString);
-    if (Number.isNaN(d.getTime())) return null;
-    return {
-      year: d.getFullYear(),
-      month: d.getMonth() + 1,
-      day: d.getDate(),
-      dateKey: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-    };
-  } catch {
-    return null;
-  }
+const calendarDateToParts = (dateKey) => {
+  if (!dateKey) return null;
+  const [year, month, day] = dateKey.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return {
+    year,
+    month,
+    day,
+    dateKey,
+  };
 };
 
 const TimePagination = ({
@@ -37,7 +33,8 @@ const TimePagination = ({
   const uniqueDates = useMemo(() => {
     const dateMap = new Map();
     datesWithData.forEach((dateStr) => {
-      const dt = parseDateTimeOffset(dateStr);
+      const dateKey = parseApiCalendarDate(dateStr);
+      const dt = calendarDateToParts(dateKey);
       if (!dt) return;
       if (!dateMap.has(dt.dateKey)) {
         dateMap.set(dt.dateKey, {

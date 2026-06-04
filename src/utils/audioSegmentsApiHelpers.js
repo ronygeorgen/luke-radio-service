@@ -6,16 +6,40 @@ export const formatSlotDateForApi = (calendarDate) => {
   return `${calendarDate}T00:00:00`;
 };
 
-/** API slot_date (20251010, ISO date, etc.) → YYYY-MM-DD */
-export const parseApiSlotDate = (slotDate) => {
-  if (!slotDate) return null;
-  const str = String(slotDate);
-  if (str.includes('T')) return str.split('T')[0];
+/**
+ * API calendar date without browser-local shift.
+ * Handles YYYYMMDD, YYYY-MM-DD, and ISO datetimes with offset (e.g. 2026-06-04T00:00:00+10:00).
+ */
+export const parseApiCalendarDate = (dateTimeString) => {
+  if (!dateTimeString) return null;
+  const str = String(dateTimeString).trim();
+
   if (/^\d{8}$/.test(str)) {
     return `${str.slice(0, 4)}-${str.slice(4, 6)}-${str.slice(6, 8)}`;
   }
-  return str;
+
+  const datePartMatch = str.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (datePartMatch) {
+    return datePartMatch[1];
+  }
+
+  const tz = ((typeof localStorage !== 'undefined' && localStorage.getItem('channelTimezone')) || 'UTC').trim();
+  try {
+    const date = new Date(str);
+    if (Number.isNaN(date.getTime())) return null;
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  } catch {
+    return null;
+  }
 };
+
+/** API slot_date (20251010, ISO date, etc.) → YYYY-MM-DD */
+export const parseApiSlotDate = (slotDate) => parseApiCalendarDate(slotDate);
 
 export const getCalendarDateFromFilters = (filters) => {
   if (filters?.date) return filters.date;
