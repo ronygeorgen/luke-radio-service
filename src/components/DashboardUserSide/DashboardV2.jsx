@@ -19,6 +19,7 @@ import ChannelSwitcher from '../ChannelSwitcher';
 import ACRCustomFileUploadModal from '../ACRCustomFileUploadModal';
 import SimpleChannelSelectionModal from '../../pages/user/SimpleChannelSelectionModal';
 import { fetchUserChannels, selectUserChannels } from '../../store/slices/channelSlice';
+import { hasAdminMenuAccess, canAccessGeneralSettings, canAccessUserManagement } from '../../utils/adminAccess';
 
 const slides = [
   {
@@ -616,7 +617,7 @@ function DashboardV2() {
                 {/* Dropdown Menu */}
                 {isDropdownOpen && (
                   <div className={`absolute right-0 mt-2 w-[28rem] bg-gradient-to-br ${currentSlideConfig.headerBg} ${currentSlideConfig.headerBorder} rounded-xl shadow-2xl border py-3 z-50 backdrop-blur-sm transition-all duration-300`}>
-                    <div className={`grid ${user?.isAdmin ? 'grid-cols-2' : 'grid-cols-1'} gap-2 px-2`}>
+                    <div className={`grid ${hasAdminMenuAccess(user) ? 'grid-cols-2' : 'grid-cols-1'} gap-2 px-2`}>
                       <div>
                         <div className={`px-2 pb-1 text-xs font-semibold ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'} uppercase`}>Channels</div>
                         <button
@@ -679,7 +680,7 @@ function DashboardV2() {
                           Support Ticket
                         </button>
                       </div>
-                      {user?.isAdmin && (
+                      {hasAdminMenuAccess(user) && (
                         <div>
                           <div className={`px-2 pb-1 text-xs font-semibold ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'} uppercase`}>Settings</div>
                           <button
@@ -724,12 +725,16 @@ function DashboardV2() {
                             </svg>
                             Audio Management
                           </button>
+                          {canAccessGeneralSettings(user) && (
                           <button onClick={() => handleNavigation('/admin/settings')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
                             <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                             </svg>
                             General Settings
                           </button>
+                          )}
+                          {canAccessUserManagement(user) && (
+                          <>
                           <button onClick={() => handleNavigation('/admin/users')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
                             <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -742,6 +747,8 @@ function DashboardV2() {
                             </svg>
                             Create New User
                           </button>
+                          </>
+                          )}
                           <button onClick={() => handleNavigation('/admin/channels')} className={`flex items-center w-full px-3 py-2 text-sm font-medium ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-800 hover:bg-gray-100'} rounded-lg transition-colors duration-200`}>
                             <svg className={`w-4 h-4 mr-3 ${currentSlideConfig.headerText === 'text-white' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />

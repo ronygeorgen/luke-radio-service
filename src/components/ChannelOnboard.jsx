@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom'; // Add this import
 import { Users, Plus, RefreshCw, UserCog, FileText } from 'lucide-react';
-import { fetchChannels } from '../store/slices/channelSlice';
+import { fetchChannels, fetchUserChannels, selectUserChannels, selectUserChannelsLoading, selectUserChannelsError } from '../store/slices/channelSlice';
 import ChannelCard from './ChannelCard';
 import OnboardModal from './OnboardModal';
 import CreateUserModal from '../pages/admin/CreateUserModal';
@@ -13,18 +13,33 @@ const ChannelOnboard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate(); // Add this
   const { channels, loading, error } = useSelector(state => state.channels);
+  const userChannels = useSelector(selectUserChannels);
+  const userChannelsLoading = useSelector(selectUserChannelsLoading);
+  const userChannelsError = useSelector(selectUserChannelsError);
   const { user } = useSelector(state => state.auth);
+  const isChannelAdminOnly = Boolean(user?.isChannelAdmin && !user?.isAdmin);
+  const displayChannels = isChannelAdminOnly ? userChannels : channels;
+  const displayLoading = isChannelAdminOnly ? userChannelsLoading : loading;
+  const displayError = isChannelAdminOnly ? userChannelsError : error;
   const [isUserModalOpen, setIsUserModalOpen] = useState(false); 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTranscriptionLogModalOpen, setIsTranscriptionLogModalOpen] = useState(false);
   const [channelToEdit, setChannelToEdit] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchChannels());
-  }, [dispatch]);
+    if (isChannelAdminOnly) {
+      dispatch(fetchUserChannels());
+    } else {
+      dispatch(fetchChannels());
+    }
+  }, [dispatch, isChannelAdminOnly]);
 
   const handleRefresh = () => {
-    dispatch(fetchChannels());
+    if (isChannelAdminOnly) {
+      dispatch(fetchUserChannels());
+    } else {
+      dispatch(fetchChannels());
+    }
   };
 
   const [formData, setFormData] = useState({
@@ -48,6 +63,7 @@ const ChannelOnboard = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setChannelToEdit(null);
+    handleRefresh();
   };
 
   const handleCloseUserModal = () => {
@@ -59,7 +75,7 @@ const ChannelOnboard = () => {
     navigate('/admin/users');
   };
 
-  if (loading && channels.length === 0) {
+  if (displayLoading && displayChannels.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -78,6 +94,7 @@ const ChannelOnboard = () => {
             <FileText className="h-4 w-4" />
             <span>View Transcription Log</span>
           </button>
+          {!isChannelAdminOnly && (
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
@@ -85,16 +102,17 @@ const ChannelOnboard = () => {
             <Plus className="h-4 w-4" />
             <span>Onboard Channel</span>
           </button>
+          )}
         </div>
       </div>
 
-      {error && (
+      {displayError && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-red-600">{displayError}</p>
         </div>
       )}
 
-      {channels.length === 0 && !loading ? (
+      {displayChannels.length === 0 && !displayLoading ? (
         <div className="text-center py-12">
           <div className="bg-gray-50 rounded-lg p-8">
             <h3 className="text-lg font-medium text-gray-900 mb-2">No channels found</h3>
@@ -103,7 +121,7 @@ const ChannelOnboard = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {channels.map(channel => (
+          {displayChannels.map(channel => (
             <ChannelCard 
               key={channel.id} 
               channel={channel} 

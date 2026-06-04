@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { checkAuth } from '../store/slices/authSlice';
+import { hasAdminMenuAccess } from '../utils/adminAccess';
 import LoadingSpinner from './DashboardUserSide/LoadingSpinner';
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -25,7 +26,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
     return <Navigate to="/user-login" state={{ from: location }} replace />;
   }
 
-  if (requireAdmin && (!user || !user.isAdmin)) {
+  if (requireAdmin && !hasAdminMenuAccess(user)) {
     return <Navigate to="/" replace />;
   }
 

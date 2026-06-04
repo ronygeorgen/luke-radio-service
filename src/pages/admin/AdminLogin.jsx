@@ -4,6 +4,7 @@ import { Mail, Lock, Radio, Eye, EyeOff, X } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, clearError } from '../../store/slices/authSlice';
 import { formatAuthError } from '../../utils/authErrors';
+import { hasAdminMenuAccess } from '../../utils/adminAccess';
 
 const AdminLogin = () => {
   const [formData, setFormData] = useState({
@@ -21,7 +22,7 @@ const AdminLogin = () => {
   const from = location.state?.from?.pathname || '/admin/channels';
 
   useEffect(() => {
-    if (isAuthenticated && user?.isAdmin) {
+    if (isAuthenticated && hasAdminMenuAccess(user)) {
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, user, navigate, from]);

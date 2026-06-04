@@ -1,6 +1,8 @@
 // pages/admin/UserManagement.jsx
 import { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { canAccessUserManagement } from '../../utils/adminAccess';
 import { Users, RefreshCw, Mail, User, Shield, Key, CheckCircle, XCircle, Plus, Edit, Send, Radio, Search, Trash2 } from 'lucide-react';
 import { fetchUsers, assignChannelToUser, fetchUserAssignedChannels, unassignChannelFromUser, deleteUser, clearAssignError, resetAssignState, clearDeleteState, clearUserAssignedChannels } from '../../store/slices/userManagementSlice';
 import { fetchChannels } from '../../store/slices/channelSlice';
@@ -12,6 +14,7 @@ import Toast from '../../components/UserSide/Toast';
 
 const UserManagement = () => {
   const dispatch = useDispatch();
+  const { user } = useSelector(state => state.auth);
   const { users, loading, error, assignLoading, assignError, assignSuccess, userAssignedChannels, userAssignedChannelsLoading, unassignLoading, deleteLoading, deleteError, deleteSuccess } = useSelector(state => state.userManagement);
   const { channels } = useSelector(state => state.channels);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -188,6 +191,10 @@ const UserManagement = () => {
     const nameMatch = user.name?.toLowerCase().includes(query);
     return emailMatch || nameMatch;
   });
+
+  if (!canAccessUserManagement(user)) {
+    return <Navigate to="/admin/channels" replace />;
+  }
 
   if (loading && users.length === 0) {
     return (

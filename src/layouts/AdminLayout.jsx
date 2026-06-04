@@ -13,6 +13,7 @@ import { fetchSettings } from '../store/slices/settingsSlice';
 import SimpleChannelSelectionModal from '../pages/user/SimpleChannelSelectionModal';
 import ACRCustomFileUploadModal from '../components/ACRCustomFileUploadModal';
 import { isTranscriptCompareEnabled } from '../config/featureFlags';
+import { hasAdminMenuAccess, canAccessGeneralSettings, canAccessUserManagement } from '../utils/adminAccess';
 
 const AdminLayout = () => {
     const navigate = useNavigate();
@@ -294,7 +295,7 @@ const AdminLayout = () => {
                                 {/* Dropdown Menu - EXACT SAME DESIGN AS BEFORE */}
                                 {isDropdownOpen === 'settings' && (
                                     <div className="absolute right-0 mt-2 w-[28rem] bg-white rounded-xl shadow-2xl border border-gray-200 py-3 z-50 backdrop-blur-sm">
-                                        <div className={`grid ${user?.isAdmin ? 'grid-cols-2' : 'grid-cols-1'} gap-2 px-2`}>
+                                        <div className={`grid ${hasAdminMenuAccess(user) ? 'grid-cols-2' : 'grid-cols-1'} gap-2 px-2`}>
                                             <div>
                                                 <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Channels</div>
                                                 <button onClick={() => { navigate('/user-channels'); setIsDropdownOpen(false); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
@@ -327,7 +328,7 @@ const AdminLayout = () => {
                                                     Support Ticket
                                                 </button>
                                             </div>
-                                            {user?.isAdmin && (
+                                            {hasAdminMenuAccess(user) && (
                                                 <div>
                                                     <div className="px-2 pb-1 text-xs font-semibold text-gray-400 uppercase">Settings</div>
                                                     <button
@@ -363,10 +364,14 @@ const AdminLayout = () => {
                                                         <Music className="w-4 h-4 mr-3 text-gray-500" />
                                                         Audio Management
                                                     </button>
+                                                    {canAccessGeneralSettings(user) && (
                                                     <button onClick={() => { handleNavigation("/admin/settings"); setIsDropdownOpen(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                                                         <Layers className="w-4 h-4 mr-3 text-gray-500" />
                                                         General Settings
                                                     </button>
+                                                    )}
+                                                    {canAccessUserManagement(user) && (
+                                                    <>
                                                     <button onClick={() => { navigate("/admin/users"); setIsDropdownOpen(null); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                                                         <UserCog className="w-4 h-4 mr-3 text-gray-500" />
                                                         User Management
@@ -375,6 +380,8 @@ const AdminLayout = () => {
                                                         <Plus className="w-4 h-4 mr-3 text-gray-500" />
                                                         Create New User
                                                     </button>
+                                                    </>
+                                                    )}
                                                     <button onClick={() => { handleNavigation("/admin/channels"); }} className="flex items-center w-full px-3 py-2 text-sm font-medium text-gray-800 hover:bg-blue-50 rounded-lg transition-colors duration-200">
                                                         <Layers className="w-4 h-4 mr-3 text-gray-500" />
                                                         Channel Managment
