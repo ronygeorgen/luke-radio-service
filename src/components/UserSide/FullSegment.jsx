@@ -5,6 +5,7 @@ import { SelectReportModal, CreateReportModal } from '../../pages/user/ReportMod
 import dayjs from "dayjs";
 import FlagIcon from './FlagIcon';
 import { formatSegmentDateTimeInChannelTz } from '../../utils/dateTimeUtils';
+import { formatDurationSeconds } from '../../utils/formatters';
 
 const FullSegment = ({ 
   segment, 
@@ -138,7 +139,7 @@ const FullSegment = ({
               backgroundSize: '100% 100%'
             } : undefined}
           >
-            {segment.duration_seconds}s
+            {formatDurationSeconds(segment.duration_seconds)}
             {segment?.flag?.duration?.flagged && (
               <span className="inline-flex items-center ml-1 align-middle">
                 <Info className="w-3 h-3 text-yellow-600" />
@@ -211,7 +212,7 @@ const FullSegment = ({
                   backgroundSize: '100% 100%'
                 } : undefined}
               >
-                {segment.duration_seconds} seconds
+                {formatDurationSeconds(segment.duration_seconds)}
               </span>
               {segment?.flag?.duration?.flagged && (
                 <span className="inline-flex items-center ml-2" title={segment?.flag?.duration?.message}>

@@ -41,3 +41,16 @@ export const formatTimeDisplay = (filters, daypartOptions) => {
   
   return filters.date ? formatDateForDisplay(filters.date) : 'Today';
 };
+
+/** Format seconds as minutes and seconds (e.g. 247 -> "4 min 7 sec"). */
+export const formatDurationSeconds = (seconds) => {
+  if (seconds == null || Number.isNaN(Number(seconds))) return 'N/A';
+
+  const total = Math.max(0, Math.floor(Number(seconds)));
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+
+  if (mins === 0) return `${secs} sec`;
+  if (secs === 0) return `${mins} min`;
+  return `${mins} min ${secs} sec`;
+};
