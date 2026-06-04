@@ -89,14 +89,27 @@ export const buildFetchAudioSegmentsV3Args = (channelId, filters, overrides = {}
     showFlaggedOnly: filters?.showFlaggedOnly || false,
     durationSecondsMin: null,
     durationSecondsMax: null,
+    sentimentMin: null,
+    sentimentMax: null,
     transcribedOnly: null,
     searchType: null,
   };
 
-  if (filters?.duration != null && filters.duration !== '' && !Number.isNaN(Number(filters.duration))) {
-    const parsed = parseInt(String(filters.duration), 10);
-    if (parsed > 0) args.durationSecondsMin = parsed;
-  }
+  const parseOptionalInt = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = parseInt(String(value), 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  };
+
+  args.durationSecondsMin =
+    parseOptionalInt(filters?.durationSecondsMin) ??
+    parseOptionalInt(filters?.duration);
+  args.durationSecondsMax = parseOptionalInt(filters?.durationSecondsMax);
+
+  const sentimentMin = parseOptionalInt(filters?.sentimentMin);
+  const sentimentMax = parseOptionalInt(filters?.sentimentMax);
+  if (sentimentMin !== null) args.sentimentMin = sentimentMin;
+  if (sentimentMax !== null) args.sentimentMax = sentimentMax;
 
   return args;
 };

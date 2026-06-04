@@ -328,6 +328,8 @@ export const fetchAudioSegmentsV3 = createAsyncThunk(
     showFlaggedOnly = false,
     durationSecondsMin = null,
     durationSecondsMax = null,
+    sentimentMin = null,
+    sentimentMax = null,
     transcribedOnly = null,
     searchType = null,
   }, { rejectWithValue }) => {
@@ -359,6 +361,8 @@ export const fetchAudioSegmentsV3 = createAsyncThunk(
       if (transcribedOnly === true) params.transcribed_only = true;
       if (durationSecondsMin != null) params.duration_seconds_min = durationSecondsMin;
       if (durationSecondsMax != null) params.duration_seconds_max = durationSecondsMax;
+      if (sentimentMin != null) params.sentiment_min = sentimentMin;
+      if (sentimentMax != null) params.sentiment_max = sentimentMax;
 
       const config = { params };
       if (contentTypes?.length > 0) {
@@ -552,7 +556,11 @@ const audioSegmentsSlice = createSlice({
       searchIn: 'transcription', // NEW: search category
       shiftId: null,
       predefinedFilterId: null,
-      duration: null, // Duration filter in seconds
+      duration: null, // Legacy: maps to durationSecondsMin when set
+      durationSecondsMin: null,
+      durationSecondsMax: null,
+      sentimentMin: null,
+      sentimentMax: null,
       showFlaggedOnly: false, // Show flagged only when shift is selected
       contentTypes: [], // V2: [] = all, [type, ...] = filter; single source of truth for fetch
       onlyActive: true, // V2: Only Active toggle state (default: true)

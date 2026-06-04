@@ -10,6 +10,12 @@ import { buildFetchAudioSegmentsV3Args } from '../../utils/audioSegmentsApiHelpe
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
+const parseOptionalFilterInt = (value) => {
+  if (value === '' || value === null || value === undefined) return null;
+  const parsed = parseInt(String(value).trim(), 10);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
 const FilterPanelV2 = ({
   filters,
   dispatch,
@@ -48,7 +54,13 @@ const FilterPanelV2 = ({
   const [localShiftId, setLocalShiftId] = useState(filters.shiftId || '');
   const [currentShiftId, setCurrentShiftId] = useState(filters.shiftId || '');
   const [currentPredefinedFilterId, setCurrentPredefinedFilterId] = useState(filters.predefinedFilterId || '');
-  const [localDuration, setLocalDuration] = useState(filters.duration || '');
+  const [localDurationSecondsMin, setLocalDurationSecondsMin] = useState(
+    filters.durationSecondsMin ?? filters.duration ?? ''
+  );
+  const [localDurationSecondsMax, setLocalDurationSecondsMax] = useState(filters.durationSecondsMax ?? '');
+  const [localSentimentMin, setLocalSentimentMin] = useState(filters.sentimentMin ?? '');
+  const [localSentimentMax, setLocalSentimentMax] = useState(filters.sentimentMax ?? '');
+  const [rangeFilterError, setRangeFilterError] = useState('');
   const [showFlaggedOnly, setShowFlaggedOnly] = useState(filters.showFlaggedOnly || false);
   const [isExpanded, setIsExpanded] = useState(false);
   const filterRef = useRef(null);
@@ -448,7 +460,10 @@ const FilterPanelV2 = ({
   useEffect(() => {
     setLocalStartTime(filters.startTime?.substring(0, 5) || '');
     setLocalEndTime(filters.endTime?.substring(0, 5) || '');
-    setLocalDuration(filters.duration || '');
+    setLocalDurationSecondsMin(filters.durationSecondsMin ?? filters.duration ?? '');
+    setLocalDurationSecondsMax(filters.durationSecondsMax ?? '');
+    setLocalSentimentMin(filters.sentimentMin ?? '');
+    setLocalSentimentMax(filters.sentimentMax ?? '');
     setShowFlaggedOnly(filters.showFlaggedOnly || false);
 
     if (!filters.shiftId && !originalTimesRef.current.startTime && !originalTimesRef.current.endTime) {
@@ -457,7 +472,138 @@ const FilterPanelV2 = ({
         endTime: filters.endTime || ''
       };
     }
-  }, [filters.startTime, filters.endTime, filters.duration, filters.showFlaggedOnly, filters.shiftId]);
+  }, [
+    filters.startTime,
+    filters.endTime,
+    filters.duration,
+    filters.durationSecondsMin,
+    filters.durationSecondsMax,
+    filters.sentimentMin,
+    filters.sentimentMax,
+    filters.showFlaggedOnly,
+    filters.shiftId,
+  ]);
+
+  const getDurationAndSentimentFilterValues = () => {
+    const durationSecondsMin = parseOptionalFilterInt(localDurationSecondsMin);
+    const durationSecondsMax = parseOptionalFilterInt(localDurationSecondsMax);
+    const sentimentMin = parseOptionalFilterInt(localSentimentMin);
+    const sentimentMax = parseOptionalFilterInt(localSentimentMax);
+
+    if (
+      durationSecondsMin !== null &&
+      durationSecondsMax !== null &&
+      durationSecondsMin > durationSecondsMax
+    ) {
+      return { error: 'Min duration cannot be greater than max duration.' };
+    }
+    if (
+      sentimentMin !== null &&
+      sentimentMax !== null &&
+      sentimentMin > sentimentMax
+    ) {
+      return { error: 'Min sentiment cannot be greater than max sentiment.' };
+    }
+
+    return {
+      durationSecondsMin,
+      durationSecondsMax,
+      sentimentMin,
+      sentimentMax,
+      duration: durationSecondsMin,
+    };
+  };
+
+  const renderDurationAndSentimentFields = (variant = 'compact') => {
+    const isCompact = variant === 'compact';
+    const sectionLabelClass = isCompact
+      ? 'block text-xs font-medium text-gray-700 mb-1.5'
+      : 'block text-sm font-medium text-gray-700 mb-2';
+    const fieldLabelClass = 'block text-xs font-medium text-gray-600 mb-1';
+    const inputClass = isCompact
+      ? 'w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white'
+      : 'w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500';
+
+    return (
+      <>
+        <div className={isCompact ? 'space-y-2' : 'space-y-4'}>
+          <div>
+            <label className={sectionLabelClass}>Duration (seconds)</label>
+            <div className={`flex gap-2 ${isCompact ? '' : 'flex-row'}`}>
+              <div className="flex-1">
+                <label className={fieldLabelClass}>Min</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 30"
+                  value={localDurationSecondsMin}
+                  onChange={(e) => {
+                    setLocalDurationSecondsMin(e.target.value);
+                    setRangeFilterError('');
+                  }}
+                  className={inputClass}
+                />
+              </div>
+              <div className="flex-1">
+                <label className={fieldLabelClass}>Max</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 1000"
+                  value={localDurationSecondsMax}
+                  onChange={(e) => {
+                    setLocalDurationSecondsMax(e.target.value);
+                    setRangeFilterError('');
+                  }}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </div>
+          <div>
+            <label className={sectionLabelClass}>Sentiment (0–100)</label>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className={fieldLabelClass}>Min</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="e.g. 7"
+                  value={localSentimentMin}
+                  onChange={(e) => {
+                    setLocalSentimentMin(e.target.value);
+                    setRangeFilterError('');
+                  }}
+                  className={inputClass}
+                />
+              </div>
+              <div className="flex-1">
+                <label className={fieldLabelClass}>Max</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="e.g. 20"
+                  value={localSentimentMax}
+                  onChange={(e) => {
+                    setLocalSentimentMax(e.target.value);
+                    setRangeFilterError('');
+                  }}
+                  className={inputClass}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        {rangeFilterError && (
+          <div className="p-2 text-xs text-red-600 bg-red-50 rounded border border-red-200">
+            {rangeFilterError}
+          </div>
+        )}
+      </>
+    );
+  };
 
   useEffect(() => {
     if (filters.shiftId !== currentShiftId) {
@@ -846,10 +992,10 @@ const FilterPanelV2 = ({
 
   // Apply filters using V2 API with explicit status and content type parameters
   const applyFiltersV2WithStatusAndContentTypes = (filterState, shiftId, onlyActiveValue, activeStatusValue, selectedContentTypesValue) => {
-    let durationValue = null;
-    if (localDuration && localDuration.toString().trim() !== '') {
-      const parsed = parseInt(localDuration.toString().trim(), 10);
-      if (!isNaN(parsed) && parsed > 0) durationValue = parsed;
+    const rangeFilters = getDurationAndSentimentFilterValues();
+    if (rangeFilters.error) {
+      setRangeFilterError(rangeFilters.error);
+      return;
     }
 
     const mergedFilters = {
@@ -860,7 +1006,11 @@ const FilterPanelV2 = ({
           ? activeStatusValue
           : null,
       contentTypes: selectedContentTypesValue || [],
-      duration: durationValue,
+      duration: rangeFilters.duration,
+      durationSecondsMin: rangeFilters.durationSecondsMin,
+      durationSecondsMax: rangeFilters.durationSecondsMax,
+      sentimentMin: rangeFilters.sentimentMin,
+      sentimentMax: rangeFilters.sentimentMax,
       showFlaggedOnly: shiftId ? showFlaggedOnly : false,
       shiftId: shiftId || filterState.shiftId || null,
       searchText: filterState.searchText || localSearchText || null,
@@ -885,20 +1035,22 @@ const FilterPanelV2 = ({
 
   // Wrapper function to handle Apply button click
   const handleApplyWithDuration = () => {
-    let durationValue = null;
-
-    if (localDuration && localDuration.toString().trim() !== '') {
-      const parsed = parseInt(localDuration.toString().trim(), 10);
-      if (!isNaN(parsed) && parsed > 0) {
-        durationValue = parsed;
-      }
+    const rangeFilters = getDurationAndSentimentFilterValues();
+    if (rangeFilters.error) {
+      setRangeFilterError(rangeFilters.error);
+      return;
     }
+    setRangeFilterError('');
 
     const timeFilters = {
       startTime: localStartTime ? localStartTime + ':00' : '',
       endTime: localEndTime ? localEndTime + ':00' : '',
       daypart: 'none',
-      duration: durationValue,
+      duration: rangeFilters.duration,
+      durationSecondsMin: rangeFilters.durationSecondsMin,
+      durationSecondsMax: rangeFilters.durationSecondsMax,
+      sentimentMin: rangeFilters.sentimentMin,
+      sentimentMax: rangeFilters.sentimentMax,
       showFlaggedOnly: currentShiftId ? showFlaggedOnly : false
     };
 
@@ -1398,6 +1550,8 @@ const FilterPanelV2 = ({
             />
           </div>
 
+          {renderDurationAndSentimentFields('compact')}
+
           {timeError && (
             <div className="p-2 text-xs text-red-600 bg-red-50 rounded border border-red-200">
               {timeError}
@@ -1632,6 +1786,10 @@ const FilterPanelV2 = ({
                 className="w-full p-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
+          </div>
+
+          <div className="mb-4">
+            {renderDurationAndSentimentFields('header')}
           </div>
 
           {timeError && (
@@ -1919,6 +2077,8 @@ const FilterPanelV2 = ({
                     </div>
                   )}
                 </div>
+
+                {renderDurationAndSentimentFields('expanded')}
               </div>
             </div>
           </div>

@@ -688,6 +688,10 @@ const AudioSegmentsPage = () => {
       endTime: localEndTime ? localEndTime + ':00' : '',
       daypart: 'none',
       duration: filters.duration || null,
+      durationSecondsMin: filters.durationSecondsMin ?? filters.duration ?? null,
+      durationSecondsMax: filters.durationSecondsMax ?? null,
+      sentimentMin: filters.sentimentMin ?? null,
+      sentimentMax: filters.sentimentMax ?? null,
     };
     dispatch(setFilter(newFilters));
     handleFilterChange({ ...filters, ...newFilters });
@@ -735,6 +739,10 @@ const AudioSegmentsPage = () => {
       shiftId: null,
       predefinedFilterId: null,
       duration: null,
+      durationSecondsMin: null,
+      durationSecondsMax: null,
+      sentimentMin: null,
+      sentimentMax: null,
       onlyActive: true,
       contentTypes: [], // Reset to "all"
       showFlaggedOnly: false
