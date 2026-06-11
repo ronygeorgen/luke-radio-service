@@ -67,23 +67,6 @@ const FilterPanelV2 = ({
   const calendarRef = useRef(null);
   const originalTimesRef = useRef({ startTime: null, endTime: null });
 
-  // V2 specific filter states
-  // Initialize from Redux filters.status if available, otherwise default to true for onlyActive
-  const getInitialStatus = () => {
-    // Check if filters.status is set (from Redux)
-    if (filters.status === 'active') return { onlyActive: false, activeStatus: 'active' };
-    if (filters.status === 'inactive') return { onlyActive: false, activeStatus: 'inactive' };
-    // Check if filters.onlyActive is explicitly set in Redux
-    if (filters.onlyActive !== undefined) {
-      return { onlyActive: filters.onlyActive, activeStatus: 'all' };
-    }
-    // Default to true for "Only Active" on initial load
-    return { onlyActive: true, activeStatus: 'all' };
-  };
-
-  const [onlyActive, setOnlyActive] = useState(getInitialStatus().onlyActive);
-  const [activeStatus, setActiveStatus] = useState(getInitialStatus().activeStatus);
-
   // Load saved preference from localStorage on mount (user must click "Save preference" to persist)
   const loadSavedPreference = () => {
     try {
@@ -92,7 +75,11 @@ const FilterPanelV2 = ({
         const parsed = JSON.parse(stored);
         return {
           hasSaved: true,
-          selectedContentTypes: Array.isArray(parsed.selectedContentTypes) ? parsed.selectedContentTypes : []
+          selectedContentTypes: Array.isArray(parsed.selectedContentTypes) ? parsed.selectedContentTypes : [],
+          onlyActive: typeof parsed.onlyActive === 'boolean' ? parsed.onlyActive : undefined,
+          activeStatus: parsed.activeStatus === 'active' || parsed.activeStatus === 'inactive' || parsed.activeStatus === 'all'
+            ? parsed.activeStatus
+            : undefined,
         };
       }
     } catch (err) {
@@ -102,6 +89,31 @@ const FilterPanelV2 = ({
   };
 
   const initialPreference = loadSavedPreference();
+
+  // V2 specific filter states — prefer saved preference, then Redux filters, then defaults
+  const getInitialStatus = () => {
+    if (initialPreference.hasSaved) {
+      if (initialPreference.onlyActive !== undefined) {
+        return {
+          onlyActive: initialPreference.onlyActive,
+          activeStatus: initialPreference.activeStatus ?? 'all',
+        };
+      }
+      if (initialPreference.activeStatus === 'active' || initialPreference.activeStatus === 'inactive') {
+        return { onlyActive: false, activeStatus: initialPreference.activeStatus };
+      }
+    }
+    if (filters.status === 'active') return { onlyActive: false, activeStatus: 'active' };
+    if (filters.status === 'inactive') return { onlyActive: false, activeStatus: 'inactive' };
+    if (filters.onlyActive !== undefined) {
+      return { onlyActive: filters.onlyActive, activeStatus: 'all' };
+    }
+    return { onlyActive: true, activeStatus: 'all' };
+  };
+
+  const initialStatus = getInitialStatus();
+  const [onlyActive, setOnlyActive] = useState(initialStatus.onlyActive);
+  const [activeStatus, setActiveStatus] = useState(initialStatus.activeStatus);
   const [selectedContentTypes, setSelectedContentTypes] = useState(initialPreference.hasSaved ? initialPreference.selectedContentTypes : []);
   const [preferenceSavedMessage, setPreferenceSavedMessage] = useState('');
   const hasAppliedDefaultRef = useRef(!initialPreference.hasSaved);
@@ -122,13 +134,24 @@ const FilterPanelV2 = ({
 
     console.log('📥 Syncing saved preference to Redux:', initialPreference.selectedContentTypes);
     hasSyncedSavedPreferenceToRedux.current = true;
-    dispatch(setFilter({ contentTypes: initialPreference.selectedContentTypes || [] }));
-  }, [filters.contentTypes, dispatch, initialPreference.hasSaved, initialPreference.selectedContentTypes]);
+    const statusForRedux = initialStatus.onlyActive
+      ? 'active'
+      : (initialStatus.activeStatus === 'all' ? null : initialStatus.activeStatus);
+    dispatch(setFilter({
+      contentTypes: initialPreference.selectedContentTypes || [],
+      onlyActive: initialStatus.onlyActive,
+      status: statusForRedux,
+    }));
+  }, [filters.contentTypes, dispatch, initialPreference.hasSaved, initialPreference.selectedContentTypes, initialStatus.activeStatus, initialStatus.onlyActive]);
 
   // Save current filter state as user preference (only when user clicks "Save preference")
   const handleSavePreference = () => {
     try {
-      localStorage.setItem('filterV2_savedPreference', JSON.stringify({ selectedContentTypes }));
+      localStorage.setItem('filterV2_savedPreference', JSON.stringify({
+        selectedContentTypes,
+        onlyActive,
+        activeStatus,
+      }));
       setPreferenceSavedMessage('Preference saved');
       setTimeout(() => setPreferenceSavedMessage(''), 2000);
     } catch (err) {
@@ -213,8 +236,8 @@ const FilterPanelV2 = ({
     // 4. No saved preference exists
     if (!hasAppliedDefaultRef.current || !contentTypes || contentTypes.length === 0) return;
 
-    // CRITICAL: Don't apply default if filters.contentTypes is already set (not null)
-    if (filters.contentTypes !== null) {
+    // Don't apply default if specific content types are already selected
+    if (Array.isArray(filters.contentTypes) && filters.contentTypes.length > 0) {
       console.log('⏭️ Skipping default application - filters.contentTypes already set:', filters.contentTypes);
       return;
     }
@@ -228,7 +251,7 @@ const FilterPanelV2 = ({
     console.log('🎯 Applying default content type (first time only):', contentTypes[0]);
     hasAppliedDefaultRef.current = false;
     const firstType = contentTypes[0];
-    const defaultPreference = { selectedContentTypes: [firstType] };
+    const defaultPreference = { selectedContentTypes: [firstType], onlyActive: true, activeStatus: 'all' };
     setSelectedContentTypes([firstType]);
     dispatch(setFilter({ contentTypes: [firstType] }));
     try {
@@ -238,11 +261,12 @@ const FilterPanelV2 = ({
     }
   }, [contentTypePrompt?.contentTypes, filters.contentTypes, dispatch]);
 
-  // Only set onlyActive/status on mount if needed. Do NOT touch contentTypes - page hydrates it from localStorage.
+  // Only set onlyActive/status on mount if needed and no saved preference exists.
   const hasInitializedDefaults = useRef(false);
   useEffect(() => {
     if (hasInitializedDefaults.current) return;
-    if (filters.onlyActive === undefined) {
+    const saved = localStorage.getItem('filterV2_savedPreference');
+    if (!saved && filters.onlyActive === undefined) {
       dispatch(setFilter({ onlyActive: true, status: 'active' }));
     }
     hasInitializedDefaults.current = true;
@@ -618,39 +642,36 @@ const FilterPanelV2 = ({
     }
   }, [filters.predefinedFilterId, currentPredefinedFilterId]);
 
-  // Sync content types with Redux state
+  // Sync content types with Redux state once Redux has been hydrated (null = not yet loaded)
   useEffect(() => {
     if (isManuallyUpdatingContentTypes.current) return;
-    if (filters.contentTypes && Array.isArray(filters.contentTypes)) {
-      const currentTypes = JSON.stringify([...selectedContentTypes].sort());
-      const reduxTypes = JSON.stringify([...filters.contentTypes].sort());
-      if (currentTypes !== reduxTypes) {
-        setSelectedContentTypes(filters.contentTypes);
-      }
-    } else if (filters.contentTypes === null || (Array.isArray(filters.contentTypes) && filters.contentTypes.length === 0)) {
-      if (selectedContentTypes.length > 0) setSelectedContentTypes([]);
+    if (filters.contentTypes == null) return;
+
+    const reduxTypes = Array.isArray(filters.contentTypes) ? filters.contentTypes : [];
+    const currentTypes = JSON.stringify([...selectedContentTypes].sort());
+    const normalizedRedux = JSON.stringify([...reduxTypes].sort());
+    if (currentTypes !== normalizedRedux) {
+      setSelectedContentTypes(reduxTypes);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.contentTypes]);
 
-  // Sync onlyActive from Redux state
+  // Sync onlyActive from Redux state (after page hydration)
   useEffect(() => {
-    // Skip sync if we're manually updating status
-    if (isManuallyUpdatingStatus.current) {
-      return;
-    }
+    if (isManuallyUpdatingStatus.current) return;
+    if (filters.contentTypes == null) return;
 
-    // Sync onlyActive from Redux to local state
     if (filters.onlyActive !== undefined && filters.onlyActive !== onlyActive) {
       setOnlyActive(filters.onlyActive);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.onlyActive]);
+  }, [filters.onlyActive, filters.contentTypes]);
 
   // Sync status state with Redux filters.status (for V2) - only when status changes externally
   // IMPORTANT: This should NOT interfere when onlyActive is true, as "Only Active" mode takes precedence
   useEffect(() => {
-    // Skip sync if we're manually updating status or if onlyActive is true (check both local and Redux state)
+    if (filters.contentTypes == null) return;
+
     const isOnlyActiveActive = onlyActive || filters.onlyActive;
     if (isManuallyUpdatingStatus.current || isOnlyActiveActive) {
       // When onlyActive is true, ensure activeStatus stays at 'all' to prevent UI confusion
@@ -679,7 +700,7 @@ const FilterPanelV2 = ({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.status, onlyActive, filters.onlyActive]);
+  }, [filters.status, onlyActive, filters.onlyActive, filters.contentTypes]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {

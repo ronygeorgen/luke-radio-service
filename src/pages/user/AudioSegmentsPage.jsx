@@ -253,8 +253,10 @@ const AudioSegmentsPage = () => {
         predefinedFilterId: null
       };
 
-      // Hydrate content types from saved preference (single source of truth). Empty array = fetch all.
+      // Hydrate content types and status from saved preference (single source of truth). Empty array = fetch all.
       let contentTypesToUse = [];
+      let onlyActiveToUse = filters.onlyActive !== undefined ? filters.onlyActive : true;
+      let statusToUse = null;
       try {
         const saved = localStorage.getItem('filterV2_savedPreference');
         if (saved) {
@@ -262,13 +264,23 @@ const AudioSegmentsPage = () => {
           if (Array.isArray(parsed.selectedContentTypes)) {
             contentTypesToUse = parsed.selectedContentTypes;
           }
+          if (typeof parsed.onlyActive === 'boolean') {
+            onlyActiveToUse = parsed.onlyActive;
+            statusToUse = parsed.onlyActive
+              ? 'active'
+              : (parsed.activeStatus === 'active' || parsed.activeStatus === 'inactive' ? parsed.activeStatus : null);
+          } else if (parsed.activeStatus === 'active' || parsed.activeStatus === 'inactive') {
+            onlyActiveToUse = false;
+            statusToUse = parsed.activeStatus;
+          }
         }
       } catch (_) {}
 
       // Hydrate Redux immediately so all later code (pagination, panel) uses this value. No race with panel.
       const defaultV2Filters = {
         ...lastFilters.current,
-        onlyActive: filters.onlyActive !== undefined ? filters.onlyActive : true,
+        onlyActive: onlyActiveToUse,
+        status: statusToUse,
         contentTypes: contentTypesToUse,
       };
       dispatch(setFilter(defaultV2Filters));

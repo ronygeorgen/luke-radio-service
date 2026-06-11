@@ -562,7 +562,7 @@ const audioSegmentsSlice = createSlice({
       sentimentMin: null,
       sentimentMax: null,
       showFlaggedOnly: false, // Show flagged only when shift is selected
-      contentTypes: [], // V2: [] = all, [type, ...] = filter; single source of truth for fetch
+      contentTypes: null, // V2: null = uninitialized, [] = all, [type, ...] = filter
       onlyActive: true, // V2: Only Active toggle state (default: true)
     },
     contentTypePrompt: {
