@@ -14,9 +14,10 @@ import {
   Pencil,
   Radio,
   ExternalLink,
-  SlidersHorizontal,
   History,
-  RefreshCw
+  RefreshCw,
+  GripVertical,
+  Tag
 } from 'lucide-react';
 import CommonHeader from '../../components/DashboardUserSide/CommonHeader';
 import ChannelSwitcher from '../../components/ChannelSwitcher';
@@ -63,6 +64,17 @@ const getPromptRunLabel = (run) => {
   const title = typeof run?.title === 'string' ? run.title.trim() : '';
   if (title) return title;
   return `Run #${run?.id ?? 'N/A'}`;
+};
+
+const reorderPromptIds = (ids, fromId, toId) => {
+  if (fromId === toId) return ids;
+  const fromIndex = ids.indexOf(fromId);
+  const toIndex = ids.indexOf(toId);
+  if (fromIndex === -1 || toIndex === -1) return ids;
+  const next = [...ids];
+  next.splice(fromIndex, 1);
+  next.splice(toIndex, 0, fromId);
+  return next;
 };
 
 const normalizePromptRun = (runData, fallbackMaxTokens = 1000) => {
@@ -123,7 +135,9 @@ const TranscriptComparePage = () => {
   const [expandedPromptIds, setExpandedPromptIds] = useState(new Set());
 
   const [activeStep, setActiveStep] = useState(1);
-  const [selectedPromptIds, setSelectedPromptIds] = useState(new Set());
+  const [selectedPromptIds, setSelectedPromptIds] = useState([]);
+  const [draggingPromptId, setDraggingPromptId] = useState(null);
+  const [dragOverPromptId, setDragOverPromptId] = useState(null);
   const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
   const [promptName, setPromptName] = useState('');
   const [promptBody, setPromptBody] = useState('');
@@ -141,8 +155,8 @@ const TranscriptComparePage = () => {
   const [activePromptRunId, setActivePromptRunId] = useState(null);
   const [pollNotice, setPollNotice] = useState('');
   const [selectedResponseId, setSelectedResponseId] = useState(null);
-  const [showTokenConfig, setShowTokenConfig] = useState(false);
   const [maxTokensInput, setMaxTokensInput] = useState('1000');
+  const [promptRunTitle, setPromptRunTitle] = useState('');
   const [viewMode, setViewMode] = useState('compare');
   const [historyRuns, setHistoryRuns] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -157,25 +171,27 @@ const TranscriptComparePage = () => {
 
   useEffect(() => {
     if (prompts.length === 0) {
-      setSelectedPromptIds(new Set());
+      setSelectedPromptIds([]);
       return;
     }
 
     setSelectedPromptIds((prev) => {
-      if (prev.size === 0) {
-        return new Set(prompts.map((prompt) => prompt.id));
+      if (prev.length === 0) {
+        return prompts.map((prompt) => prompt.id);
       }
 
       const validPromptIds = new Set(prompts.map((prompt) => prompt.id));
-      const next = new Set([...prev].filter((id) => validPromptIds.has(id)));
-      return next.size > 0 ? next : new Set(prompts.map((prompt) => prompt.id));
+      const next = prev.filter((id) => validPromptIds.has(id));
+      return next.length > 0 ? next : prompts.map((prompt) => prompt.id);
     });
   }, [prompts]);
 
-  const selectedPrompts = useMemo(
-    () => prompts.filter((prompt) => selectedPromptIds.has(prompt.id)),
-    [prompts, selectedPromptIds]
-  );
+  const selectedPrompts = useMemo(() => {
+    const promptById = new Map(prompts.map((prompt) => [prompt.id, prompt]));
+    return selectedPromptIds
+      .map((id) => promptById.get(id))
+      .filter(Boolean);
+  }, [prompts, selectedPromptIds]);
 
   const selectedSegments = useMemo(
     () => segments.filter((segment) => selectedSegmentIds.has(segment.id)),
@@ -229,7 +245,7 @@ const TranscriptComparePage = () => {
   const allVisibleSegmentsSelected = segments.length > 0 && visibleSegmentIds.every((id) => selectedSegmentIds.has(id));
   const someVisibleSegmentsSelected = visibleSegmentIds.some((id) => selectedSegmentIds.has(id));
   const canContinueToPrompt = selectedSegmentIds.size >= 2;
-  const canRunCompare = canContinueToPrompt && selectedPromptIds.size > 0;
+  const canRunCompare = canContinueToPrompt && selectedPromptIds.length > 0;
   const stepItems = [
     { step: 1, title: 'Select Segments', description: 'Choose 2+ transcripts' },
     { step: 2, title: 'Choose Prompt', description: 'Pick or manage prompt' },
@@ -377,14 +393,39 @@ const TranscriptComparePage = () => {
 
   const togglePromptSelection = (promptId) => {
     setSelectedPromptIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(promptId)) {
-        next.delete(promptId);
-      } else {
-        next.add(promptId);
+      const index = prev.indexOf(promptId);
+      if (index !== -1) {
+        return prev.filter((id) => id !== promptId);
       }
-      return next;
+      return [...prev, promptId];
     });
+  };
+
+  const handlePromptDragStart = (promptId, event) => {
+    setDraggingPromptId(promptId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(promptId));
+  };
+
+  const handlePromptDragEnd = () => {
+    setDraggingPromptId(null);
+    setDragOverPromptId(null);
+  };
+
+  const handlePromptDragOver = (promptId, event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    setDragOverPromptId((prev) => (prev === promptId ? prev : promptId));
+  };
+
+  const handlePromptDrop = (targetPromptId, event) => {
+    event.preventDefault();
+    const fromId = Number(event.dataTransfer.getData('text/plain'));
+    if (Number.isFinite(fromId) && fromId !== targetPromptId) {
+      setSelectedPromptIds((prev) => reorderPromptIds(prev, fromId, targetPromptId));
+    }
+    setDraggingPromptId(null);
+    setDragOverPromptId(null);
   };
 
   const handleTranscriptPreviewClick = (transcript) => {
@@ -527,10 +568,14 @@ const TranscriptComparePage = () => {
       }
 
       const payload = {
-        prompt_ids: Array.from(selectedPromptIds).map((id) => Number(id)).filter((id) => Number.isFinite(id)),
+        prompt_ids: selectedPromptIds.map((id) => Number(id)).filter((id) => Number.isFinite(id)),
         audio_segment_ids: Array.from(selectedSegmentIds).map((id) => Number(id)).filter((id) => Number.isFinite(id)),
         max_tokens: maxTokens
       };
+      const cleanedRunTitle = promptRunTitle.trim();
+      if (cleanedRunTitle) {
+        payload.title = cleanedRunTitle;
+      }
 
       const response = await axiosInstance.post('/prompts/execute/', payload);
       const runData = response?.data || {};
@@ -542,6 +587,7 @@ const TranscriptComparePage = () => {
       setCompareResult({
         runAt: new Date().toISOString(),
         promptRunId,
+        title: runData?.title ?? (cleanedRunTitle || null),
         maxTokens,
         audioSegments: [],
         results: [],
@@ -1000,22 +1046,23 @@ const TranscriptComparePage = () => {
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">2. Prompt Selection</h2>
                     <p className="text-sm text-gray-600 mt-1">
-                      {selectedPromptIds.size} of {prompts.length} prompt(s) selected
+                      {selectedPromptIds.length} of {prompts.length} prompt(s) selected
+                      {selectedPromptIds.length > 1 ? ' · drag to set execution order below' : ''}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setSelectedPromptIds(new Set(prompts.map((prompt) => prompt.id)))}
-                      disabled={prompts.length === 0 || selectedPromptIds.size === prompts.length}
+                      onClick={() => setSelectedPromptIds(prompts.map((prompt) => prompt.id))}
+                      disabled={prompts.length === 0 || selectedPromptIds.length === prompts.length}
                       className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 disabled:opacity-50 transition-colors"
                     >
                       Select All
                     </button>
                     <button
                       type="button"
-                      onClick={() => setSelectedPromptIds(new Set())}
-                      disabled={prompts.length === 0 || selectedPromptIds.size === 0}
+                      onClick={() => setSelectedPromptIds([])}
+                      disabled={prompts.length === 0 || selectedPromptIds.length === 0}
                       className="px-3 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 disabled:opacity-50 transition-colors"
                     >
                       Deselect All
@@ -1045,6 +1092,44 @@ const TranscriptComparePage = () => {
                   </div>
                 )}
 
+                {selectedPrompts.length > 0 && (
+                  <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50/60 p-4">
+                    <div className="text-sm font-medium text-gray-900">Execution order</div>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Prompts run in this order. Drag rows to reorder before executing.
+                    </p>
+                    <ul className="mt-3 space-y-2">
+                      {selectedPrompts.map((prompt, index) => {
+                        const isDragging = draggingPromptId === prompt.id;
+                        const isDragOver = dragOverPromptId === prompt.id && draggingPromptId !== prompt.id;
+                        return (
+                          <li
+                            key={prompt.id}
+                            draggable
+                            onDragStart={(event) => handlePromptDragStart(prompt.id, event)}
+                            onDragEnd={handlePromptDragEnd}
+                            onDragOver={(event) => handlePromptDragOver(prompt.id, event)}
+                            onDragLeave={() => {
+                              setDragOverPromptId((prev) => (prev === prompt.id ? null : prev));
+                            }}
+                            onDrop={(event) => handlePromptDrop(prompt.id, event)}
+                            className={`flex items-center gap-3 rounded-lg border bg-white px-3 py-2.5 transition-colors ${
+                              isDragging ? 'opacity-50 border-gray-300' : ''
+                            } ${isDragOver ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'}`}
+                          >
+                            <GripVertical className="h-4 w-4 text-gray-400 flex-shrink-0 cursor-grab active:cursor-grabbing" />
+                            <span className="text-xs font-semibold text-blue-700 w-5 flex-shrink-0">{index + 1}</span>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium text-gray-900 truncate">{prompt.name}</div>
+                              <div className="text-xs text-gray-500">Prompt #{prompt.id}</div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+
                 <div className="space-y-3 max-h-[32rem] overflow-auto pr-1">
                   {!loadingPrompts && prompts.length === 0 && (
                     <div className="text-sm text-gray-600 border border-gray-200 rounded-lg p-4 bg-gray-50">
@@ -1058,14 +1143,14 @@ const TranscriptComparePage = () => {
                     <div
                       key={prompt.id}
                       className={`rounded-xl border p-4 transition-colors ${
-                        selectedPromptIds.has(prompt.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        selectedPromptIds.includes(prompt.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <label className="flex items-start gap-3 cursor-pointer flex-1 min-w-0">
                           <input
                             type="checkbox"
-                            checked={selectedPromptIds.has(prompt.id)}
+                            checked={selectedPromptIds.includes(prompt.id)}
                             onChange={() => togglePromptSelection(prompt.id)}
                             className="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
@@ -1183,21 +1268,66 @@ const TranscriptComparePage = () => {
                   </div>
                   <div className="rounded-xl border border-gray-200 p-4 bg-gray-50">
                     <div className="text-sm text-gray-500 mb-1">Selected prompt</div>
-                    <div className="text-2xl font-bold text-gray-900">{selectedPromptIds.size}</div>
-                    <div className="text-xs text-gray-500 mt-1">Select one or more prompts.</div>
+                    <div className="text-2xl font-bold text-gray-900">{selectedPromptIds.length}</div>
+                    <div className="text-xs text-gray-500 mt-1">Select one or more prompts. Order is preserved from step 2.</div>
                     {selectedPrompts.length > 0 && (
                       <div className="mt-3 max-h-40 overflow-auto rounded-lg border border-gray-200 bg-white">
                         <ul className="divide-y divide-gray-100">
-                          {selectedPrompts.map((prompt) => (
+                          {selectedPrompts.map((prompt, index) => (
                             <li key={prompt.id} className="px-3 py-2">
                               <div className="text-sm font-medium text-gray-900">
-                                #{prompt.id} - {prompt.name}
+                                {index + 1}. #{prompt.id} - {prompt.name}
                               </div>
                             </li>
                           ))}
                         </ul>
                       </div>
                     )}
+                  </div>
+                </div>
+
+                <div className="mb-5 rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 to-white p-4 sm:p-5">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-purple-100 text-purple-700">
+                      <Tag className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">Run settings</h3>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        Optional label for this execution. It appears in execution history for quick reference.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="prompt-run-title" className="block text-xs font-medium text-gray-700 mb-1.5">
+                        Run title <span className="text-gray-400 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        id="prompt-run-title"
+                        type="text"
+                        value={promptRunTitle}
+                        onChange={(e) => setPromptRunTitle(e.target.value)}
+                        placeholder="e.g. Sunday sermon analysis"
+                        maxLength={200}
+                        className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="max-tokens-input" className="block text-xs font-medium text-gray-700 mb-1.5">
+                        Max tokens
+                      </label>
+                      <input
+                        id="max-tokens-input"
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={maxTokensInput}
+                        onChange={(e) => setMaxTokensInput(e.target.value)}
+                        className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Default is 1000.</p>
+                    </div>
                   </div>
                 </div>
 
@@ -1216,30 +1346,6 @@ const TranscriptComparePage = () => {
                     Please select at least two segments and one prompt before running comparison.
                   </p>
                 )}
-                <div className="mt-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowTokenConfig((prev) => !prev)}
-                    className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-                  >
-                    <SlidersHorizontal className="h-4 w-4" />
-                    {showTokenConfig ? 'Hide token settings' : 'Customize max tokens'}
-                  </button>
-                  {showTokenConfig && (
-                    <div className="mt-2 max-w-xs">
-                      <label className="block text-xs text-gray-600 mb-1">Max tokens</label>
-                      <input
-                        type="number"
-                        min={1}
-                        step={1}
-                        value={maxTokensInput}
-                        onChange={(e) => setMaxTokensInput(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Default is 1000.</p>
-                    </div>
-                  )}
-                </div>
                 {compareError && <p className="text-sm text-red-600 mt-3">{compareError}</p>}
                 {pollNotice && (
                   <p className="text-sm text-blue-700 mt-2">{pollNotice}</p>
