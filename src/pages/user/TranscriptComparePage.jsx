@@ -59,6 +59,12 @@ const TERMINAL_STATUSES = new Set(['completed', 'failed', 'error', 'cancelled'])
 
 const normalizeStatus = (value) => String(value || '').trim().toLowerCase();
 
+const getPromptRunLabel = (run) => {
+  const title = typeof run?.title === 'string' ? run.title.trim() : '';
+  if (title) return title;
+  return `Run #${run?.id ?? 'N/A'}`;
+};
+
 const normalizePromptRun = (runData, fallbackMaxTokens = 1000) => {
   const results = Array.isArray(runData?.results) ? runData.results : [];
   const statusBuckets = results.reduce((acc, item) => {
@@ -86,6 +92,7 @@ const normalizePromptRun = (runData, fallbackMaxTokens = 1000) => {
 
   return {
     promptRunId: runData?.prompt_run_id ?? runData?.id ?? null,
+    title: runData?.title ?? null,
     maxTokens: runData?.max_tokens ?? fallbackMaxTokens,
     audioSegments: Array.isArray(runData?.audio_segments) ? runData.audio_segments : [],
     results,
@@ -142,6 +149,9 @@ const TranscriptComparePage = () => {
   const [historyError, setHistoryError] = useState('');
   const [selectedHistoryRunId, setSelectedHistoryRunId] = useState(null);
   const [selectedHistoryResponseId, setSelectedHistoryResponseId] = useState(null);
+  const [runTitleInput, setRunTitleInput] = useState('');
+  const [savingRunTitle, setSavingRunTitle] = useState(false);
+  const [runTitleError, setRunTitleError] = useState('');
   const [showTranscriptionModal, setShowTranscriptionModal] = useState(false);
   const [selectedTranscript, setSelectedTranscript] = useState('');
 
@@ -325,6 +335,11 @@ const TranscriptComparePage = () => {
       setSelectedHistoryResponseId(null);
     }
   }, [selectedHistoryRun, selectedHistoryResults]);
+
+  useEffect(() => {
+    setRunTitleInput(selectedHistoryRun?.title ?? '');
+    setRunTitleError('');
+  }, [selectedHistoryRun]);
 
   const toggleSegmentSelection = (segmentId) => {
     setSelectedSegmentIds((prev) => {
@@ -558,6 +573,39 @@ const TranscriptComparePage = () => {
       setPollNotice('');
     } finally {
       // isComparing remains true while polling indicates pending/processing.
+    }
+  };
+
+  const saveRunTitle = async () => {
+    if (!selectedHistoryRun?.id) return;
+
+    setSavingRunTitle(true);
+    setRunTitleError('');
+    try {
+      const cleanedTitle = runTitleInput.trim();
+      const response = await axiosInstance.patch(`/prompt-runs/${selectedHistoryRun.id}/title/`, {
+        title: cleanedTitle || null
+      });
+      const updatedTitle = response?.data?.title ?? (cleanedTitle || null);
+      setHistoryRuns((prev) =>
+        prev.map((run) =>
+          run.id === selectedHistoryRun.id ? { ...run, title: updatedTitle } : run
+        )
+      );
+      setRunTitleInput(updatedTitle ?? '');
+    } catch (error) {
+      const responseData = error?.response?.data;
+      let message = 'Failed to update run title.';
+      if (typeof responseData === 'string') {
+        message = responseData;
+      } else if (responseData?.detail) {
+        message = responseData.detail;
+      } else if (responseData?.message) {
+        message = responseData.message;
+      }
+      setRunTitleError(message);
+    } finally {
+      setSavingRunTitle(false);
     }
   };
 
@@ -1204,6 +1252,12 @@ const TranscriptComparePage = () => {
                       {compareResult.hasInProgress ? 'Prompt Execution In Progress' : 'Prompt Execution Complete'}
                     </div>
                     <div className="text-sm text-emerald-900 mt-2">
+                      {compareResult.title ? (
+                        <>
+                          Title: <span className="font-semibold">{compareResult.title}</span> ·
+                          {' '}
+                        </>
+                      ) : null}
                       Run ID: <span className="font-semibold">{compareResult.promptRunId ?? 'N/A'}</span> ·
                       {' '}Max tokens: <span className="font-semibold">{compareResult.maxTokens}</span> ·
                       {' '}Completed: <span className="font-semibold">{compareResult.completedCount}</span> ·
@@ -1432,7 +1486,9 @@ const TranscriptComparePage = () => {
                                   isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'
                                 }`}
                               >
-                                <div className="text-sm font-semibold text-gray-900">Run #{run.id}</div>
+                                <div className="text-sm font-semibold text-gray-900 truncate">
+                                  {getPromptRunLabel(run)}
+                                </div>
                                 <div className="text-xs text-gray-500 mt-1">
                                   {formatDateTime(run.created_at)} · {runResults.length} result(s)
                                 </div>
@@ -1451,10 +1507,37 @@ const TranscriptComparePage = () => {
                       <>
                         <div className="px-4 py-3 border-b border-gray-200">
                           <div className="text-sm font-semibold text-gray-900">
-                            Run #{selectedHistoryRun.id}
+                            {getPromptRunLabel(selectedHistoryRun)}
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
-                            Created: {formatDateTime(selectedHistoryRun.created_at)}
+                            Run #{selectedHistoryRun.id} · Created: {formatDateTime(selectedHistoryRun.created_at)}
+                          </div>
+                          <div className="mt-3">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Run title</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={runTitleInput}
+                                onChange={(e) => setRunTitleInput(e.target.value)}
+                                placeholder={`Run #${selectedHistoryRun.id}`}
+                                className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={saveRunTitle}
+                                disabled={savingRunTitle}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                              >
+                                {savingRunTitle ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+                                {savingRunTitle ? 'Saving...' : 'Save title'}
+                              </button>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Leave blank to clear the title and show the run ID instead.
+                            </p>
+                            {runTitleError && (
+                              <p className="text-xs text-red-600 mt-1">{runTitleError}</p>
+                            )}
                           </div>
                           {Array.isArray(selectedHistoryRun.prompts) && selectedHistoryRun.prompts.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-1.5">
