@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, User } from 'lucide-react';
 import { dashboardApi } from '../../../services/dashboardApi';
+import { computeNiceYAxisScale, formatChartAxisValue } from '../../../utils/chartScaleUtils';
 
 const SpiritualSlide = ({ dateRange = { start: null, end: null, selecting: false }, currentShiftId = '', reportFolderId = null }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -362,29 +363,7 @@ const SpiritualSlide = ({ dateRange = { start: null, end: null, selecting: false
                         {/* Calculate max value for scaling */}
                         {(() => {
                           const maxValue = Math.max(...bucketsData.totalTime.map(item => item.value), 1);
-                          // Round up to nice intervals for minutes
-                          let roundedMax;
-                          if (maxValue <= 10) {
-                            roundedMax = 10;
-                          } else if (maxValue <= 50) {
-                            roundedMax = Math.ceil(maxValue / 10) * 10;
-                          } else if (maxValue <= 100) {
-                            roundedMax = Math.ceil(maxValue / 20) * 20;
-                          } else if (maxValue <= 500) {
-                            roundedMax = Math.ceil(maxValue / 50) * 50;
-                          } else {
-                            roundedMax = Math.ceil(maxValue / 100) * 100;
-                          }
-
-                          // Generate Y-axis values
-                          const yAxisValues = [];
-                          const step = roundedMax <= 10 ? 2 : roundedMax <= 50 ? 10 : roundedMax <= 100 ? 20 : roundedMax <= 500 ? 50 : 100;
-                          for (let i = 0; i <= roundedMax; i += step) {
-                            yAxisValues.push(i);
-                          }
-                          if (yAxisValues[yAxisValues.length - 1] < roundedMax) {
-                            yAxisValues.push(roundedMax);
-                          }
+                          const { roundedMax, yAxisValues } = computeNiceYAxisScale(maxValue);
 
                           return (
                             <>
@@ -406,7 +385,7 @@ const SpiritualSlide = ({ dateRange = { start: null, end: null, selecting: false
                                       fontWeight: '500'
                                     }}
                                   >
-                                    {value}
+                                    {formatChartAxisValue(value)}
                                   </text>
                                 );
                               })}
