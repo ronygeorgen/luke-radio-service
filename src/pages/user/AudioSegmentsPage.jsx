@@ -15,7 +15,6 @@ import SegmentShimmer from '../../components/UserSide/SegmentShimmer';
 import SummaryModal from './SummaryModal';
 import TranscriptionModal from './TranscriptionModal';
 import AudioPlayer from './AudioPlayer';
-import { formatDateForDisplay, formatTimeDisplay } from '../../utils/formatters'
 import useTranscriptionPolling from '../../hooks/useTranscriptionPolling';
 import { openTrimmer } from '../../store/slices/audioTrimmerSlice';
 import AudioTrimmer from './AudioTrimmer';
@@ -1091,7 +1090,6 @@ const AudioSegmentsPage = () => {
         channelInfo={channelInfo}
         channelName={channelName}
         filters={filters}
-        formatTimeDisplay={() => formatTimeDisplay(filters, daypartOptions)}
         localSearchText={localSearchText}
         setLocalSearchText={setLocalSearchText}
         localSearchIn={localSearchIn}

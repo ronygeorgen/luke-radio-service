@@ -1,6 +1,5 @@
 // components/UserSide/Header.jsx
 import React, { useState, useRef, useEffect } from "react";
-import { formatDateForDisplay } from "../../utils/formatters";
 import { useNavigate } from "react-router-dom";
 import { Menu, Settings, ArrowLeft, FileText, BarChart3, Search, Layers, UserCog, Music, Plus, LifeBuoy, Clock, Filter, Radio, Flag, Ban, Upload, ArrowLeftRight } from "lucide-react";
 import { useDispatch, useSelector } from 'react-redux';
@@ -17,7 +16,6 @@ const Header = ({
   channelInfo,
   channelName,
   filters,
-  formatTimeDisplay,
   localSearchText,
   setLocalSearchText,
   localSearchIn,
@@ -63,12 +61,6 @@ const Header = ({
     setIsChannelSelectionOpen(false);
   };
 
-  // Safe formatting function
-  const safeFormatDate = (dateString) => {
-    if (!dateString) return 'Select date';
-    return formatDateForDisplay(dateString);
-  };
-
   const handleLogout = () => {
     reduxDispatch(logout());
   };
@@ -111,14 +103,6 @@ const Header = ({
               <h1 className="text-lg font-bold text-gray-900 truncate">
                 {savedChannelName || "Channel"}
               </h1>
-              <div className="flex items-center space-x-4 text-sm text-gray-600">
-                <span className="flex items-center">
-                  <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {formatTimeDisplay()}
-                </span>
-              </div>
             </div>
 
             {/* Search Bar */}
