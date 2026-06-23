@@ -380,7 +380,11 @@ export const fetchAudioSegmentsV3 = createAsyncThunk(
         else if (errField?.non_field_errors?.length) {
           errorMessage = errField.non_field_errors.join(' ');
         } else if (errorData.message) errorMessage = errorData.message;
-        else if (typeof errorData === 'string') errorMessage = errorData;
+        else if (typeof errorData === 'string') {
+          errorMessage = errorData.trimStart().startsWith('<')
+            ? `API request failed (${err.response.status || 'error'}). Check that VITE_API_URL points to a server with the v3 audio filter endpoint.`
+            : errorData;
+        }
       } else if (err.message) {
         errorMessage = err.message;
       }

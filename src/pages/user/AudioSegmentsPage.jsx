@@ -376,17 +376,20 @@ const AudioSegmentsPage = () => {
     dispatchFetchSegments(slotOverrides);
   };
 
-  // Keep filter date aligned with API slot_date (avoids off-by-one vs dates_with_data)
+  // Keep single-day filter date aligned with API slot_date (avoids off-by-one vs dates_with_data).
+  // Skip when the user chose an explicit date range (date cleared, start/end set).
   useEffect(() => {
     if (!pagination?.slot_date || loading) return;
     const apiDate = parseApiSlotDate(pagination.slot_date);
     if (!apiDate || filters.date === apiDate) return;
+    if (!filters.date && filters.startDate && filters.endDate) return;
+
     dispatch(setFilter({
       date: apiDate,
       startDate: apiDate,
       endDate: apiDate,
     }));
-  }, [pagination?.slot_date, loading, filters.date, dispatch]);
+  }, [pagination?.slot_date, loading, filters.date, filters.startDate, filters.endDate, dispatch]);
 
   // Handle errors with toast instead of replacing entire UI
   useEffect(() => {
