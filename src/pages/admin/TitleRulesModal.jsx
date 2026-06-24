@@ -182,13 +182,12 @@ const TitleRulesModal = ({ isOpen, onClose, category }) => {
               </div>
               <div>
                 <label htmlFor="after_title" className="block text-sm font-medium text-gray-700 mb-1">
-                  After Title *
+                  After Title
                 </label>
                 <input
                   type="text"
                   id="after_title"
                   name="after_title"
-                  required
                   value={formData.after_title}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -331,12 +330,11 @@ const TitleRulesModal = ({ isOpen, onClose, category }) => {
                         />
                       </div>
                       <div>
-                        <label htmlFor={`after_title_${rule.id}`} className="block text-sm font-medium text-gray-700 mb-1">After Title *</label>
+                        <label htmlFor={`after_title_${rule.id}`} className="block text-sm font-medium text-gray-700 mb-1">After Title</label>
                         <input
                           type="text"
                           id={`after_title_${rule.id}`}
                           name="after_title"
-                          required
                           value={editForm.after_title}
                           onChange={handleEditChange}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

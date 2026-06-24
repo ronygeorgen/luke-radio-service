@@ -183,6 +183,9 @@ const audioManagementSlice = createSlice({
           );
           state.currentCategoryTitles.count -= 1;
         }
+      })
+      .addCase(deleteTitleRule.rejected, (state, action) => {
+        state.titleError = action.payload;
       });
   }
 });
