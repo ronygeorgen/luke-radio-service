@@ -59,6 +59,12 @@ const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerTe
     };
   }, [currentChannelId]);
 
+  const openChannelModal = () => {
+    // Always refresh so newly onboarded/assigned channels appear without a full page reload
+    dispatch(fetchUserChannels());
+    setIsModalOpen(true);
+  };
+
   const handleChannelSelect = (channel) => {
     try {
       if (channel?.id) {
@@ -105,7 +111,7 @@ const ChannelSwitcher = ({ onChannelChange, className, style, headerBg, headerTe
   return (
     <>
       <button
-        onClick={() => setIsModalOpen(true)}
+        onClick={openChannelModal}
         className={buttonClassName}
         style={style}
         title="Switch Channel"

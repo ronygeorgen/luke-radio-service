@@ -39,6 +39,13 @@ const AdminLayout = () => {
         }
     }, [dispatch, location.pathname]);
 
+    // Refresh switcher list whenever the "Select a Channel" modal opens (avoids stale data after onboard)
+    useEffect(() => {
+        if (isChannelSelectionOpen) {
+            dispatch(fetchUserChannels());
+        }
+    }, [isChannelSelectionOpen, dispatch]);
+
     // Get current page name from route (channel name shown separately below user, like other pages)
     const getPageName = () => {
         const path = location.pathname;

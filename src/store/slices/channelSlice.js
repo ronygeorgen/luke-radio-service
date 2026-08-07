@@ -22,7 +22,7 @@ export const fetchUserChannels = createAsyncThunk(
 
 export const addChannel = createAsyncThunk(
   'channels/addChannel',
-  async (channelData, { rejectWithValue }) => {
+  async (channelData, { rejectWithValue, dispatch }) => {
     try {
       const channelType = channelData.channelType || 'broadcast';
       let payload = {
@@ -52,6 +52,8 @@ export const addChannel = createAsyncThunk(
       }
       
       const response = await axiosInstance.post('/channels', payload);
+      // Refresh userChannels so channel switchers site-wide see the new channel without a page reload
+      await dispatch(fetchUserChannels());
       return response.data.channel;
     } catch (err) {
       if (err.response && err.response.data && err.response.data.error) {
@@ -287,13 +289,12 @@ const channelSlice = createSlice({
       })
       .addCase(updateChannel.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.channels.findIndex(
-          channel => channel.id === action.payload.id.toString()
-        );
+        const p = action.payload;
+        const id = p.id.toString();
+        const index = state.channels.findIndex(channel => channel.id === id);
         if (index !== -1) {
-          const p = action.payload;
           state.channels[index] = {
-            id: p.id.toString(),
+            id,
             channelType: p.channel_type || 'broadcast',
             channelId: p.channel_id,
             projectId: p.project_id,
@@ -304,6 +305,20 @@ const channelSlice = createSlice({
             createdAt: p.created_at,
             isActive: !p.is_deleted,
             isDefaultSettings: p.is_default_settings === true
+          };
+        }
+        // Keep channel switcher list in sync
+        const userIndex = state.userChannels.findIndex(channel => channel.id === id);
+        if (userIndex !== -1) {
+          state.userChannels[userIndex] = {
+            ...state.userChannels[userIndex],
+            channelType: p.channel_type || 'broadcast',
+            channelId: p.channel_id,
+            projectId: p.project_id,
+            name: p.name || '',
+            timezone: p.timezone || state.userChannels[userIndex].timezone,
+            rssUrl: p.rss_url || '',
+            rssStartDate: p.rss_start_date || '',
           };
         }
       })
@@ -318,9 +333,10 @@ const channelSlice = createSlice({
       })
       .addCase(deleteChannel.fulfilled, (state, action) => {
         state.loading = false;
-        state.channels = state.channels.filter(
-          channel => channel.id !== action.payload.toString()
-        );
+        const id = action.payload.toString();
+        state.channels = state.channels.filter(channel => channel.id !== id);
+        // Keep channel switcher list in sync
+        state.userChannels = state.userChannels.filter(channel => channel.id !== id);
       })
       .addCase(deleteChannel.rejected, (state, action) => {
         state.loading = false;
