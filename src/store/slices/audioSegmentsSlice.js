@@ -5,6 +5,8 @@ import {
   createV3ParamsSerializer,
   computeTotalsFromSegments,
   mapV3ChannelInfo,
+  expandContentTypesForApi,
+  ensureAnnouncerFundraisingContentType,
 } from '../../utils/audioSegmentsApiHelpers';
 
 // audioSegmentsSlice.js - Update the fetchAudioSegments thunk
@@ -250,7 +252,7 @@ export const fetchAudioSegmentsV2 = createAsyncThunk(
       if (contentTypes !== null && contentTypes !== undefined && Array.isArray(contentTypes) && contentTypes.length > 0) {
         // For multiple params with same name, we need to pass them as an array
         // Axios will serialize them correctly
-        params['content_type'] = contentTypes;
+        params['content_type'] = expandContentTypesForApi(contentTypes);
       }
 
       // Add status parameter if provided
@@ -351,7 +353,9 @@ export const fetchAudioSegmentsV3 = createAsyncThunk(
         if (showFlaggedOnly) params.show_flagged_only = true;
       }
 
-      if (contentTypes?.length > 0) params.content_type = contentTypes;
+      if (contentTypes?.length > 0) {
+        params.content_type = expandContentTypesForApi(contentTypes);
+      }
       if (status) params.status = status;
       if (searchText && searchIn) {
         params.search_text = searchText;
@@ -828,7 +832,9 @@ const audioSegmentsSlice = createSlice({
       .addCase(fetchContentTypePrompt.fulfilled, (state, action) => {
         state.contentTypePrompt.loading = false;
         if (action.payload.success && action.payload.data) {
-          state.contentTypePrompt.contentTypes = action.payload.data.content_type_prompt || [];
+          state.contentTypePrompt.contentTypes = ensureAnnouncerFundraisingContentType(
+            action.payload.data.content_type_prompt || []
+          );
           state.contentTypePrompt.searchInOptions = action.payload.data.search_in || [];
         }
       })

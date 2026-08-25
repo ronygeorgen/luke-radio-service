@@ -72,8 +72,45 @@ export const getStatusParamFromFilters = (filters) => {
   return null;
 };
 
+export const ANNOUNCER_CONTENT_TYPE = 'Announcer';
+export const ANNOUNCER_FUNDRAISING_CONTENT_TYPE = 'Announcer fundraising';
+
+const matchesContentType = (value, expected) =>
+  String(value || '').trim().toLowerCase() === expected.toLowerCase();
+
+/** When Announcer is selected, also query Announcer fundraising. */
+export const expandContentTypesForApi = (contentTypes) => {
+  if (!contentTypes?.length) return [];
+  const expanded = [...contentTypes];
+  const hasAnnouncer = expanded.some((type) => matchesContentType(type, ANNOUNCER_CONTENT_TYPE));
+  const hasFundraising = expanded.some((type) =>
+    matchesContentType(type, ANNOUNCER_FUNDRAISING_CONTENT_TYPE)
+  );
+  if (hasAnnouncer && !hasFundraising) {
+    expanded.push(ANNOUNCER_FUNDRAISING_CONTENT_TYPE);
+  }
+  return expanded;
+};
+
+/** Keep Announcer fundraising in the filter list, right after Announcer. */
+export const ensureAnnouncerFundraisingContentType = (contentTypes) => {
+  const list = Array.isArray(contentTypes) ? [...contentTypes] : [];
+  const hasFundraising = list.some((type) =>
+    matchesContentType(type, ANNOUNCER_FUNDRAISING_CONTENT_TYPE)
+  );
+  if (hasFundraising) return list;
+
+  const announcerIdx = list.findIndex((type) => matchesContentType(type, ANNOUNCER_CONTENT_TYPE));
+  if (announcerIdx === -1) return list;
+
+  list.splice(announcerIdx + 1, 0, ANNOUNCER_FUNDRAISING_CONTENT_TYPE);
+  return list;
+};
+
 export const getContentTypesFromFilters = (filters) => {
-  if (filters?.contentTypes?.length > 0) return [...filters.contentTypes];
+  if (filters?.contentTypes?.length > 0) {
+    return expandContentTypesForApi(filters.contentTypes);
+  }
   return [];
 };
 
