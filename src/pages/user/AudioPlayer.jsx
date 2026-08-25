@@ -17,6 +17,20 @@ const AudioPlayer = ({ segment, onClose }) => {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const { isPlaying, currentPlayingId } = useSelector((state) => state.audioSegments);
+  const ignoreMediaEventsRef = useRef(false);
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
+
+  const withIgnoredMediaEvents = (fn) => {
+    ignoreMediaEventsRef.current = true;
+    try {
+      fn();
+    } finally {
+      window.setTimeout(() => {
+        ignoreMediaEventsRef.current = false;
+      }, 0);
+    }
+  };
   
   if (!segment) return null;
   
@@ -30,6 +44,7 @@ const AudioPlayer = ({ segment, onClose }) => {
   // Preload the entire audio file to enable seeking
   const enableSeekingWorkaround = async () => {
     try {
+      ignoreMediaEventsRef.current = true;
       setIsPreloading(true);
       setHasError(false);
       
@@ -166,15 +181,24 @@ const AudioPlayer = ({ segment, onClose }) => {
         setHasError(true);
         setErrorMessage("Failed to load audio. The file may be corrupted or unavailable.");
       }
+    } finally {
+      window.setTimeout(() => {
+        ignoreMediaEventsRef.current = false;
+      }, 0);
     }
   };
 
   // Try to play audio with error handling
   const tryPlayAudio = async (audioElement) => {
+    if (!audioElement) return;
     try {
       await audioElement.play();
       setHasError(false);
     } catch (err) {
+      // Filter refresh / src reload aborts in-flight play(); that is not a real error.
+      if (err?.name === 'AbortError' || err?.name === 'NotAllowedError') {
+        return;
+      }
       console.error("Play failed:", err);
       setHasError(true);
       setErrorMessage("Failed to play audio. The file format may not be supported.");
@@ -318,11 +342,18 @@ const AudioPlayer = ({ segment, onClose }) => {
     };
 
     const handlePlay = () => {
+      if (ignoreMediaEventsRef.current) return;
+      // In-flight play() after the user paused must not flip Redux back to playing.
+      if (!isPlayingRef.current) {
+        audio.pause();
+        return;
+      }
       dispatch(setIsPlaying(true));
       setHasError(false);
     };
 
     const handlePause = () => {
+      if (ignoreMediaEventsRef.current) return;
       dispatch(setIsPlaying(false));
     };
 
@@ -400,11 +431,6 @@ const AudioPlayer = ({ segment, onClose }) => {
     // Check range support when component mounts
     checkRangeSupport();
 
-    // Auto-play when component mounts if this is the current playing segment
-    if (currentPlayingId === segment.id) {
-      tryPlayAudio(audio);
-    }
-
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
@@ -415,34 +441,33 @@ const AudioPlayer = ({ segment, onClose }) => {
       audio.removeEventListener('canplaythrough', handleCanPlayThrough);
       audio.removeEventListener('stalled', handleStalled);
     };
-  }, [segment.id, currentPlayingId, dispatch, fullSrc]);
+  }, [segment.id, dispatch, fullSrc]);
 
   // Effect to handle play/pause from Redux
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    if (String(currentPlayingId) !== String(segment.id)) return;
 
-    // Only control audio if this is the current playing segment
-    if (currentPlayingId === segment.id) {
-      if (isPlaying && audio.paused) {
-        tryPlayAudio(audio);
-      } else if (!isPlaying && !audio.paused) {
-        audio.pause();
-      }
+    if (isPlaying && audio.paused) {
+      tryPlayAudio(audio);
+    } else if (!isPlaying && !audio.paused) {
+      withIgnoredMediaEvents(() => audio.pause());
     }
   }, [isPlaying, currentPlayingId, segment.id]);
 
   const handleExternalPlayPause = () => {
-    if (audioRef.current) {
-      if (isPlaying && currentPlayingId === segment.id) {
-        dispatch(setIsPlaying(false));
-      } else {
-        // If a different segment is playing, change the current playing first
-        if (currentPlayingId !== segment.id) {
-          dispatch(setCurrentPlaying(segment.id));
-        }
-        dispatch(setIsPlaying(true));
+    if (!audioRef.current) return;
+    if (isPlaying && String(currentPlayingId) === String(segment.id)) {
+      isPlayingRef.current = false;
+      dispatch(setIsPlaying(false));
+      withIgnoredMediaEvents(() => audioRef.current.pause());
+    } else {
+      if (String(currentPlayingId) !== String(segment.id)) {
+        dispatch(setCurrentPlaying(segment.id));
       }
+      isPlayingRef.current = true;
+      dispatch(setIsPlaying(true));
     }
   };
 

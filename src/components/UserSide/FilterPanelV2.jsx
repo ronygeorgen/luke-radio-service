@@ -225,41 +225,34 @@ const FilterPanelV2 = ({
   }, [reduxDispatch, channelId, trackedChannelId]);
 
   // Apply default content type when API loads and user has no saved preference (first item on, rest off).
-  // Also persist this default to localStorage so sync effects don't overwrite user toggles.
+  // Only runs while Redux contentTypes is null (uninitialized). [] means the user chose All.
   useEffect(() => {
     const contentTypes = contentTypePrompt?.contentTypes;
 
-    // Only apply default if all these conditions are met:
-    // 1. hasAppliedDefaultRef is true (meaning we haven't applied default yet)
-    // 2. contentTypes are loaded from API
-    // 3. filters.contentTypes is null (uninitialized)
-    // 4. No saved preference exists
     if (!hasAppliedDefaultRef.current || !contentTypes || contentTypes.length === 0) return;
-
-    // Don't apply default if specific content types are already selected
-    if (Array.isArray(filters.contentTypes) && filters.contentTypes.length > 0) {
-      console.log('⏭️ Skipping default application - filters.contentTypes already set:', filters.contentTypes);
-      return;
-    }
+    if (filters.contentTypes !== null) return;
+    // Wait until the page has hydrated local dates (startDate). Initial Redux only has `date`.
+    if (!filters.startDate) return;
 
     const saved = localStorage.getItem('filterV2_savedPreference');
-    if (saved) {
-      console.log('⏭️ Skipping default application - saved preference exists');
-      return;
-    }
+    if (saved) return;
 
-    console.log('🎯 Applying default content type (first time only):', contentTypes[0]);
     hasAppliedDefaultRef.current = false;
     const firstType = contentTypes[0];
-    const defaultPreference = { selectedContentTypes: [firstType], onlyActive: true, activeStatus: 'all' };
     setSelectedContentTypes([firstType]);
     dispatch(setFilter({ contentTypes: [firstType] }));
-    try {
-      localStorage.setItem('filterV2_savedPreference', JSON.stringify(defaultPreference));
-    } catch (err) {
-      console.error('Error persisting default filter preference:', err);
+
+    if (fetchAudioSegments && channelId) {
+      const args = buildFetchAudioSegmentsV3Args(
+        channelId,
+        { ...filters, contentTypes: [firstType] },
+        { slotCalendarDate: filters.startDate || filters.date }
+      );
+      if (args.startDatetime && args.endDatetime) {
+        reduxDispatch(fetchAudioSegments(args));
+      }
     }
-  }, [contentTypePrompt?.contentTypes, filters.contentTypes, dispatch]);
+  }, [contentTypePrompt?.contentTypes, filters, dispatch, fetchAudioSegments, channelId, reduxDispatch]);
 
   // Only set onlyActive/status on mount if needed and no saved preference exists.
   const hasInitializedDefaults = useRef(false);
@@ -288,14 +281,12 @@ const FilterPanelV2 = ({
         setCurrentPredefinedFilterId('');
         setShowFlaggedOnly(false);
 
-        // Clear content type filters when channel changes
+        hasAppliedDefaultRef.current = true;
+        hasSyncedSavedPreferenceToRedux.current = false;
         setSelectedContentTypes([]);
-        // Clear status filters when channel changes
         setOnlyActive(false);
         setActiveStatus('all');
-        // Clear Redux state
         dispatch(setFilter({ contentTypes: null, onlyActive: false, status: null }));
-        // Clear saved filter preference for new channel
         try {
           localStorage.removeItem('filterV2_savedPreference');
         } catch (err) {
@@ -993,9 +984,13 @@ const FilterPanelV2 = ({
 
   const handleAllContentTypesToggle = (checked) => {
     if (checked) {
+      isManuallyUpdatingContentTypes.current = true;
       setSelectedContentTypes([]);
       dispatch(setFilter({ contentTypes: [] }));
       applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, onlyActive, activeStatus, []);
+      setTimeout(() => {
+        isManuallyUpdatingContentTypes.current = false;
+      }, 100);
     }
   };
 

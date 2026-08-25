@@ -103,6 +103,8 @@ const AudioSegmentsPage = () => {
   const dispatch = useDispatch();
   useTranscriptionPolling();
 
+  const [playingSegmentSnapshot, setPlayingSegmentSnapshot] = useState(null);
+
   const {
     segments,
     channelInfo,
@@ -114,6 +116,15 @@ const AudioSegmentsPage = () => {
     pagination,
     availablePages
   } = useSelector((state) => state.audioSegments);
+
+  useEffect(() => {
+    if (!currentPlayingId) {
+      setPlayingSegmentSnapshot(null);
+      return;
+    }
+    const found = segments.find((s) => String(s.id) === String(currentPlayingId));
+    if (found) setPlayingSegmentSnapshot(found);
+  }, [segments, currentPlayingId]);
 
   // Track the current channel ID from localStorage to detect changes
   // This ensures we always use the most up-to-date channel ID, even when switching channels
@@ -160,11 +171,12 @@ const AudioSegmentsPage = () => {
         navigate(`/channels/${newChannelId}/segments?${newParams.toString()}`, { replace: true });
 
         if ((filters.startDate && filters.endDate) || filters.date) {
-          dispatch(
-            fetchAudioSegmentsV3(
-              buildFetchAudioSegmentsV3Args(newChannelId, filters, { slotCalendarDate: filters.date || filters.startDate })
-            )
-          );
+          dispatch(setFilter({
+            contentTypes: null,
+            shiftId: null,
+            predefinedFilterId: null,
+            showFlaggedOnly: false,
+          }));
         }
       }
     };
@@ -252,7 +264,10 @@ const AudioSegmentsPage = () => {
         predefinedFilterId: null
       };
 
-      // Hydrate content types and status from saved preference (single source of truth). Empty array = fetch all.
+      // Hydrate status/content types from saved preference only.
+      // Leave contentTypes null when nothing is saved so the panel can apply its
+      // first-type default. Setting [] here used to mean "All" and raced with that default.
+      let hasSavedContentTypes = false;
       let contentTypesToUse = [];
       let onlyActiveToUse = filters.onlyActive !== undefined ? filters.onlyActive : true;
       let statusToUse = null;
@@ -262,6 +277,7 @@ const AudioSegmentsPage = () => {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed.selectedContentTypes)) {
             contentTypesToUse = parsed.selectedContentTypes;
+            hasSavedContentTypes = true;
           }
           if (typeof parsed.onlyActive === 'boolean') {
             onlyActiveToUse = parsed.onlyActive;
@@ -275,13 +291,14 @@ const AudioSegmentsPage = () => {
         }
       } catch (_) {}
 
-      // Hydrate Redux immediately so all later code (pagination, panel) uses this value. No race with panel.
       const defaultV2Filters = {
         ...lastFilters.current,
         onlyActive: onlyActiveToUse,
         status: statusToUse,
-        contentTypes: contentTypesToUse,
       };
+      if (hasSavedContentTypes) {
+        defaultV2Filters.contentTypes = contentTypesToUse;
+      }
       dispatch(setFilter(defaultV2Filters));
 
       setLocalStartTime('');
@@ -291,14 +308,13 @@ const AudioSegmentsPage = () => {
 
       hasInitialFiltersSet.current = true;
 
-      dispatch(
-        fetchAudioSegmentsV3(
-          buildFetchAudioSegmentsV3Args(channelId, {
-            ...defaultV2Filters,
-            contentTypes: contentTypesToUse,
-          }, { slotCalendarDate: today })
-        )
-      );
+      if (hasSavedContentTypes) {
+        dispatch(
+          fetchAudioSegmentsV3(
+            buildFetchAudioSegmentsV3Args(channelId, defaultV2Filters, { slotCalendarDate: today })
+          )
+        );
+      }
     }
   }, [channelId]);
 
@@ -1248,16 +1264,23 @@ const AudioSegmentsPage = () => {
 
       {currentPlayingId && (
         <div className={`fixed bottom-0 bg-white shadow-lg border-t border-gray-200 p-4 z-50 transition-all duration-300 ${isSidebarOpen ? 'left-64 right-0' : 'left-0 right-0'}`}>
-          {segments.find(s => s.id === currentPlayingId) ? (
+          {playingSegmentSnapshot ? (
             <AudioPlayer
-              segment={segments.find(s => s.id === currentPlayingId)}
-              onClose={() => dispatch(setCurrentPlaying(null))}
+              key={playingSegmentSnapshot.id}
+              segment={playingSegmentSnapshot}
+              onClose={() => {
+                dispatch(setIsPlaying(false));
+                dispatch(setCurrentPlaying(null));
+              }}
             />
           ) : (
             <div className="text-center py-2">
               <p className="text-gray-500">Audio segment no longer available</p>
               <button
-                onClick={() => dispatch(setCurrentPlaying(null))}
+                onClick={() => {
+                  dispatch(setIsPlaying(false));
+                  dispatch(setCurrentPlaying(null));
+                }}
                 className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               >
                 Close Player
