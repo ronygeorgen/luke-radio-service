@@ -107,6 +107,17 @@ export const ensureAnnouncerFundraisingContentType = (contentTypes) => {
   return list;
 };
 
+/** Label in the filter panel. Announcer also returns fundraising results. */
+export const getContentTypeDisplayLabel = (contentType) => {
+  if (matchesContentType(contentType, ANNOUNCER_CONTENT_TYPE)) {
+    return 'Announcer / Announcer fundraising';
+  }
+  return contentType;
+};
+
+export const isBundledAnnouncerFundraisingType = (contentType) =>
+  matchesContentType(contentType, ANNOUNCER_FUNDRAISING_CONTENT_TYPE);
+
 export const getContentTypesFromFilters = (filters) => {
   if (filters?.contentTypes?.length > 0) {
     return expandContentTypesForApi(filters.contentTypes);
