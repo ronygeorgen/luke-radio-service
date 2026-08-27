@@ -6,7 +6,8 @@ import { fetchChannels, fetchUserChannels, setDefaultSettings, selectUserChannel
 import SettingField from './SettingField';
 import BucketManager from './BucketManager';
 import SimpleChannelSelectionModal from '../pages/user/SimpleChannelSelectionModal';
-import { Save, Radio, Star, X, History, RotateCcw, MoreVertical, ChevronDown } from 'lucide-react';
+import { Save, Radio, Star, X, History, RotateCcw, MoreVertical, ChevronDown, Bell } from 'lucide-react';
+import AcrSyncAlertModal from './AcrSyncAlertModal';
 import Toast from './UserSide/Toast';
 import dayjs from 'dayjs';
 
@@ -35,6 +36,7 @@ const GeneralSettings = () => {
   const [revertLoading, setRevertLoading] = useState(false);
   const [revertConfirmVersion, setRevertConfirmVersion] = useState(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [showAcrSyncAlertModal, setShowAcrSyncAlertModal] = useState(false);
   const settingsMenuRef = useRef(null);
   const [expandedBucketId, setExpandedBucketId] = useState(null);
 
@@ -340,6 +342,14 @@ const GeneralSettings = () => {
         </div>
       )}
 
+      <AcrSyncAlertModal
+        isOpen={showAcrSyncAlertModal}
+        onClose={() => setShowAcrSyncAlertModal(false)}
+        channelId={channelId}
+        onSuccess={(message) => setSuccessToast(message)}
+        onError={(message) => setErrorToast(message)}
+      />
+
       {/* Revert confirm modal */}
       {revertConfirmVersion != null && (
         <div
@@ -569,7 +579,7 @@ const GeneralSettings = () => {
               <MoreVertical className="h-5 w-5" />
             </button>
             {settingsMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-56 py-1 bg-white rounded-lg shadow-lg border border-gray-200 z-40">
+              <div className="absolute right-0 top-full mt-1 w-64 py-1 bg-white rounded-lg shadow-lg border border-gray-200 z-40">
                 <button
                   type="button"
                   onClick={() => {
@@ -580,6 +590,17 @@ const GeneralSettings = () => {
                 >
                   <History className="h-4 w-4 flex-shrink-0" />
                   <span>Revert to older version</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAcrSyncAlertModal(true);
+                    setSettingsMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <Bell className="h-4 w-4 flex-shrink-0" />
+                  <span>ACR Cloud sync alerts</span>
                 </button>
                 <button
                   type="button"
