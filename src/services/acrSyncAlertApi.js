@@ -1,29 +1,31 @@
-// import { axiosInstance } from './api';
+import { axiosInstance } from './api';
 
-/**
- * ACR Cloud sync-delay alert settings.
- * Backend endpoints are not ready yet — fill these in when they land.
- *
- * Expected payload shape (adjust when the real API lands):
- * {
- *   emails: string[]
- * }
- */
+const settingsPath = (channelId) => `/monitoring/channels/${channelId}/settings/`;
+
+export const getMonitoringErrorMessage = (err, fallback = 'Request failed') => {
+  const data = err?.response?.data;
+  if (!data) return err?.message || fallback;
+  if (typeof data === 'string') return data;
+  if (typeof data.detail === 'string') return data.detail;
+  if (Array.isArray(data.detail)) return data.detail.filter(Boolean).join(' ');
+
+  const fieldMessages = Object.entries(data)
+    .flatMap(([key, value]) => {
+      if (key === 'detail') return [];
+      if (Array.isArray(value)) return value.map(String);
+      if (typeof value === 'string') return [`${key}: ${value}`];
+      return [];
+    });
+
+  return fieldMessages[0] || fallback;
+};
 
 export const fetchAcrSyncAlertSettings = async (channelId) => {
-  // TODO: GET endpoint, e.g. `/channels/${channelId}/acr-sync-alerts`
-  // const { data } = await axiosInstance.get(`/channels/${channelId}/acr-sync-alerts`);
-  // return data;
-  void channelId;
-  return {
-    emails: [''],
-  };
+  const { data } = await axiosInstance.get(settingsPath(channelId));
+  return data;
 };
 
 export const saveAcrSyncAlertSettings = async (channelId, payload) => {
-  // TODO: PUT/PATCH endpoint, e.g. `/channels/${channelId}/acr-sync-alerts`
-  // const { data } = await axiosInstance.put(`/channels/${channelId}/acr-sync-alerts`, payload);
-  // return data;
-  void channelId;
-  return payload;
+  const { data } = await axiosInstance.put(settingsPath(channelId), payload);
+  return data;
 };
