@@ -6,7 +6,11 @@ import { fetchPredefinedFilters } from '../../store/slices/shiftManagementSlice'
 import { useDispatch, useSelector } from 'react-redux';
 import { selectUserChannels } from '../../store/slices/channelSlice';
 import { convertLocalToUTC } from '../../utils/dateTimeUtils';
-import { buildFetchAudioSegmentsV3Args, getContentTypeDisplayLabel, isBundledAnnouncerFundraisingType } from '../../utils/audioSegmentsApiHelpers';
+import {
+  buildFetchAudioSegmentsV3Args,
+  getContentTypeDisplayLabel,
+  isBundledAnnouncerFundraisingType,
+} from '../../utils/audioSegmentsApiHelpers';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
@@ -76,6 +80,9 @@ const FilterPanelV2 = ({
         return {
           hasSaved: true,
           selectedContentTypes: Array.isArray(parsed.selectedContentTypes) ? parsed.selectedContentTypes : [],
+          exclusiveDefaultContentType: typeof parsed.exclusiveDefaultContentType === 'boolean'
+            ? parsed.exclusiveDefaultContentType
+            : undefined,
           onlyActive: typeof parsed.onlyActive === 'boolean' ? parsed.onlyActive : undefined,
           activeStatus: parsed.activeStatus === 'active' || parsed.activeStatus === 'inactive' || parsed.activeStatus === 'all'
             ? parsed.activeStatus
@@ -89,6 +96,15 @@ const FilterPanelV2 = ({
   };
 
   const initialPreference = loadSavedPreference();
+
+  const getInitialExclusiveDefault = () => {
+    if (!initialPreference.hasSaved) return true;
+    if (typeof initialPreference.exclusiveDefaultContentType === 'boolean') {
+      return initialPreference.exclusiveDefaultContentType;
+    }
+    return Array.isArray(initialPreference.selectedContentTypes)
+      && initialPreference.selectedContentTypes.length === 1;
+  };
 
   // V2 specific filter states — prefer saved preference, then Redux filters, then defaults
   const getInitialStatus = () => {
@@ -115,6 +131,7 @@ const FilterPanelV2 = ({
   const [onlyActive, setOnlyActive] = useState(initialStatus.onlyActive);
   const [activeStatus, setActiveStatus] = useState(initialStatus.activeStatus);
   const [selectedContentTypes, setSelectedContentTypes] = useState(initialPreference.hasSaved ? initialPreference.selectedContentTypes : []);
+  const [isExclusiveDefaultContentType, setIsExclusiveDefaultContentType] = useState(getInitialExclusiveDefault);
   const [preferenceSavedMessage, setPreferenceSavedMessage] = useState('');
   const hasAppliedDefaultRef = useRef(!initialPreference.hasSaved);
   const hasSyncedSavedPreferenceToRedux = useRef(false);
@@ -139,6 +156,7 @@ const FilterPanelV2 = ({
       : (initialStatus.activeStatus === 'all' ? null : initialStatus.activeStatus);
     dispatch(setFilter({
       contentTypes: initialPreference.selectedContentTypes || [],
+      exclusiveDefaultContentType: getInitialExclusiveDefault(),
       onlyActive: initialStatus.onlyActive,
       status: statusForRedux,
     }));
@@ -149,6 +167,7 @@ const FilterPanelV2 = ({
     try {
       localStorage.setItem('filterV2_savedPreference', JSON.stringify({
         selectedContentTypes,
+        exclusiveDefaultContentType: isExclusiveDefaultContentType,
         onlyActive,
         activeStatus,
       }));
@@ -169,9 +188,10 @@ const FilterPanelV2 = ({
   const { contentTypePrompt } = useSelector(state => state.audioSegments);
   const allContentTypes = contentTypePrompt?.contentTypes || [];
   const defaultContentType = allContentTypes[0];
-  const listedContentTypes = allContentTypes.filter((type) => !isBundledAnnouncerFundraisingType(type));
-  const isDefaultContentTypeOnly =
-    selectedContentTypes.length === 1 && selectedContentTypes[0] === defaultContentType;
+  const listedContentTypes = [
+    ...allContentTypes.filter((type) => !isBundledAnnouncerFundraisingType(type)),
+    ...allContentTypes.filter((type) => isBundledAnnouncerFundraisingType(type)),
+  ];
   const userChannels = useSelector(selectUserChannels);
   const reduxDispatch = useDispatch();
 
@@ -245,12 +265,13 @@ const FilterPanelV2 = ({
     hasAppliedDefaultRef.current = false;
     const firstType = contentTypes[0];
     setSelectedContentTypes([firstType]);
-    dispatch(setFilter({ contentTypes: [firstType] }));
+    setIsExclusiveDefaultContentType(true);
+    dispatch(setFilter({ contentTypes: [firstType], exclusiveDefaultContentType: true }));
 
     if (fetchAudioSegments && channelId) {
       const args = buildFetchAudioSegmentsV3Args(
         channelId,
-        { ...filters, contentTypes: [firstType] },
+        { ...filters, contentTypes: [firstType], exclusiveDefaultContentType: true },
         { slotCalendarDate: filters.startDate || filters.date }
       );
       if (args.startDatetime && args.endDatetime) {
@@ -289,9 +310,10 @@ const FilterPanelV2 = ({
         hasAppliedDefaultRef.current = true;
         hasSyncedSavedPreferenceToRedux.current = false;
         setSelectedContentTypes([]);
+        setIsExclusiveDefaultContentType(false);
         setOnlyActive(false);
         setActiveStatus('all');
-        dispatch(setFilter({ contentTypes: null, onlyActive: false, status: null }));
+        dispatch(setFilter({ contentTypes: null, exclusiveDefaultContentType: false, onlyActive: false, status: null }));
         try {
           localStorage.removeItem('filterV2_savedPreference');
         } catch (err) {
@@ -649,6 +671,10 @@ const FilterPanelV2 = ({
     if (currentTypes !== normalizedRedux) {
       setSelectedContentTypes(reduxTypes);
     }
+    if (typeof filters.exclusiveDefaultContentType === 'boolean'
+      && filters.exclusiveDefaultContentType !== isExclusiveDefaultContentType) {
+      setIsExclusiveDefaultContentType(filters.exclusiveDefaultContentType);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.contentTypes]);
 
@@ -956,46 +982,46 @@ const FilterPanelV2 = ({
     applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, newOnlyActive, newActiveStatus, selectedContentTypes);
   };
 
-  const handleContentTypeToggle = (contentType, checked) => {
-    console.log('🔄 handleContentTypeToggle called:', { contentType, checked });
+  const applySelectedContentTypes = (updatedContentTypes, exclusive = false) => {
     isManuallyUpdatingContentTypes.current = true;
-    setSelectedContentTypes(prev => {
-      let updatedContentTypes;
-      if (checked) {
-        // Add the content type if it's not already in the list
-        updatedContentTypes = prev.includes(contentType) ? prev : [...prev, contentType];
-      } else {
-        // Remove the content type
-        updatedContentTypes = prev.filter(type => type !== contentType);
-      }
-
-      console.log('📝 Updated content types:', updatedContentTypes);
-
-      // Update Redux state immediately with the new content types
-      dispatch(setFilter({ contentTypes: updatedContentTypes }));
-
-      // Apply filters with the updated content types immediately
-      // Use the calculated value directly to avoid race conditions
-      applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, onlyActive, activeStatus, updatedContentTypes);
-
-      return updatedContentTypes;
-    });
-
-    // Reset flag after a short delay to allow state updates to complete
+    setSelectedContentTypes(updatedContentTypes);
+    setIsExclusiveDefaultContentType(exclusive);
+    dispatch(setFilter({
+      contentTypes: updatedContentTypes,
+      exclusiveDefaultContentType: exclusive,
+    }));
+    applyFiltersV2WithStatusAndContentTypes(
+      { ...filters, exclusiveDefaultContentType: exclusive },
+      currentShiftId,
+      onlyActive,
+      activeStatus,
+      updatedContentTypes
+    );
     setTimeout(() => {
       isManuallyUpdatingContentTypes.current = false;
     }, 100);
   };
 
+  const handleExclusiveDefaultContentTypeToggle = (checked) => {
+    if (!defaultContentType) return;
+    applySelectedContentTypes(checked ? [defaultContentType] : [], checked);
+  };
+
+  const handleContentTypeToggle = (contentType, checked) => {
+    let updatedContentTypes;
+    if (checked) {
+      updatedContentTypes = selectedContentTypes.includes(contentType)
+        ? selectedContentTypes
+        : [...selectedContentTypes, contentType];
+    } else {
+      updatedContentTypes = selectedContentTypes.filter((type) => type !== contentType);
+    }
+    applySelectedContentTypes(updatedContentTypes, false);
+  };
+
   const handleAllContentTypesToggle = (checked) => {
     if (checked) {
-      isManuallyUpdatingContentTypes.current = true;
-      setSelectedContentTypes([]);
-      dispatch(setFilter({ contentTypes: [] }));
-      applyFiltersV2WithStatusAndContentTypes(filters, currentShiftId, onlyActive, activeStatus, []);
-      setTimeout(() => {
-        isManuallyUpdatingContentTypes.current = false;
-      }, 100);
+      applySelectedContentTypes([], false);
     }
   };
 
@@ -1027,6 +1053,7 @@ const FilterPanelV2 = ({
           ? activeStatusValue
           : null,
       contentTypes: selectedContentTypesValue || [],
+      exclusiveDefaultContentType: filterState.exclusiveDefaultContentType === true,
       duration: rangeFilters.duration,
       durationSecondsMin: rangeFilters.durationSecondsMin,
       durationSecondsMax: rangeFilters.durationSecondsMax,
@@ -1051,7 +1078,13 @@ const FilterPanelV2 = ({
 
   // Apply filters using V2 API (uses current state values)
   const applyFiltersV2 = (filterState, shiftId) => {
-    applyFiltersV2WithStatusAndContentTypes(filterState, shiftId, onlyActive, activeStatus, selectedContentTypes);
+    applyFiltersV2WithStatusAndContentTypes(
+      { ...filterState, exclusiveDefaultContentType: isExclusiveDefaultContentType },
+      shiftId,
+      onlyActive,
+      activeStatus,
+      selectedContentTypes
+    );
   };
 
   // Wrapper function to handle Apply button click
@@ -1436,11 +1469,11 @@ const FilterPanelV2 = ({
             ) : listedContentTypes.length > 0 ? (
               <>
                 <ToggleSwitch
-                  checked={isDefaultContentTypeOnly}
-                  onChange={(checked) => handleContentTypeToggle(defaultContentType, checked)}
+                  checked={isExclusiveDefaultContentType}
+                  onChange={handleExclusiveDefaultContentTypeToggle}
                   label={getContentTypeDisplayLabel(defaultContentType)}
                 />
-                {!isDefaultContentTypeOnly && (
+                {!isExclusiveDefaultContentType && (
                   <div className="space-y-1 pl-0">
                     <ToggleSwitch
                       checked={selectedContentTypes.length === 0}
@@ -1452,7 +1485,7 @@ const FilterPanelV2 = ({
                         key={contentType}
                         checked={selectedContentTypes.includes(contentType)}
                         onChange={(checked) => handleContentTypeToggle(contentType, checked)}
-                        label={getContentTypeDisplayLabel(contentType)}
+                        label={contentType}
                       />
                     ))}
                   </div>
@@ -1672,11 +1705,11 @@ const FilterPanelV2 = ({
                 ) : listedContentTypes.length > 0 ? (
                   <>
                     <ToggleSwitch
-                      checked={isDefaultContentTypeOnly}
-                      onChange={(checked) => handleContentTypeToggle(defaultContentType, checked)}
+                      checked={isExclusiveDefaultContentType}
+                      onChange={handleExclusiveDefaultContentTypeToggle}
                       label={getContentTypeDisplayLabel(defaultContentType)}
                     />
-                    {!isDefaultContentTypeOnly && (
+                    {!isExclusiveDefaultContentType && (
                       <>
                         <div className="border-t border-gray-200 mt-1 pt-1">
                           <ToggleSwitch
@@ -1689,7 +1722,7 @@ const FilterPanelV2 = ({
                               key={contentType}
                               checked={selectedContentTypes.includes(contentType)}
                               onChange={(checked) => handleContentTypeToggle(contentType, checked)}
-                              label={getContentTypeDisplayLabel(contentType)}
+                              label={contentType}
                             />
                           ))}
                         </div>
@@ -1933,11 +1966,11 @@ const FilterPanelV2 = ({
                 ) : listedContentTypes.length ? (
                   <>
                     <ToggleSwitch
-                      checked={isDefaultContentTypeOnly}
-                      onChange={(checked) => handleContentTypeToggle(defaultContentType, checked)}
+                      checked={isExclusiveDefaultContentType}
+                      onChange={handleExclusiveDefaultContentTypeToggle}
                       label={getContentTypeDisplayLabel(defaultContentType)}
                     />
-                    {!isDefaultContentTypeOnly && (
+                    {!isExclusiveDefaultContentType && (
                       <div className="mt-2 space-y-1 pl-4 border-t border-gray-200 pt-2 max-h-64 overflow-y-auto">
                         <ToggleSwitch
                           checked={selectedContentTypes.length === 0}
@@ -1949,7 +1982,7 @@ const FilterPanelV2 = ({
                             key={contentType}
                             checked={selectedContentTypes.includes(contentType)}
                             onChange={(checked) => handleContentTypeToggle(contentType, checked)}
-                            label={getContentTypeDisplayLabel(contentType)}
+                            label={contentType}
                           />
                         ))}
                       </div>

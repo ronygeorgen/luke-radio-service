@@ -173,6 +173,7 @@ const AudioSegmentsPage = () => {
         if ((filters.startDate && filters.endDate) || filters.date) {
           dispatch(setFilter({
             contentTypes: null,
+            exclusiveDefaultContentType: false,
             shiftId: null,
             predefinedFilterId: null,
             showFlaggedOnly: false,
@@ -269,6 +270,7 @@ const AudioSegmentsPage = () => {
       // first-type default. Setting [] here used to mean "All" and raced with that default.
       let hasSavedContentTypes = false;
       let contentTypesToUse = [];
+      let exclusiveDefaultContentTypeToUse = false;
       let onlyActiveToUse = filters.onlyActive !== undefined ? filters.onlyActive : true;
       let statusToUse = null;
       try {
@@ -278,6 +280,9 @@ const AudioSegmentsPage = () => {
           if (Array.isArray(parsed.selectedContentTypes)) {
             contentTypesToUse = parsed.selectedContentTypes;
             hasSavedContentTypes = true;
+            exclusiveDefaultContentTypeToUse = typeof parsed.exclusiveDefaultContentType === 'boolean'
+              ? parsed.exclusiveDefaultContentType
+              : parsed.selectedContentTypes.length === 1;
           }
           if (typeof parsed.onlyActive === 'boolean') {
             onlyActiveToUse = parsed.onlyActive;
@@ -298,6 +303,7 @@ const AudioSegmentsPage = () => {
       };
       if (hasSavedContentTypes) {
         defaultV2Filters.contentTypes = contentTypesToUse;
+        defaultV2Filters.exclusiveDefaultContentType = exclusiveDefaultContentTypeToUse;
       }
       dispatch(setFilter(defaultV2Filters));
 
@@ -787,6 +793,7 @@ const AudioSegmentsPage = () => {
       sentimentMax: null,
       onlyActive: true,
       contentTypes: [], // Reset to "all"
+      exclusiveDefaultContentType: false,
       showFlaggedOnly: false
     };
 

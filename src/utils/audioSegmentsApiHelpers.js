@@ -73,7 +73,7 @@ export const getStatusParamFromFilters = (filters) => {
 };
 
 export const ANNOUNCER_CONTENT_TYPE = 'Announcer';
-export const ANNOUNCER_FUNDRAISING_CONTENT_TYPE = 'Announcer fundraising';
+export const ANNOUNCER_FUNDRAISING_CONTENT_TYPE = 'Announcer Fundraising';
 
 const matchesContentType = (value, expected) =>
   String(value || '').trim().toLowerCase() === expected.toLowerCase();
@@ -92,13 +92,16 @@ export const expandContentTypesForApi = (contentTypes) => {
   return expanded;
 };
 
-/** Keep Announcer fundraising in the filter list, right after Announcer. */
+/** Keep Announcer Fundraising in the filter list, at canonical casing. */
 export const ensureAnnouncerFundraisingContentType = (contentTypes) => {
   const list = Array.isArray(contentTypes) ? [...contentTypes] : [];
-  const hasFundraising = list.some((type) =>
+  const fundraisingIdx = list.findIndex((type) =>
     matchesContentType(type, ANNOUNCER_FUNDRAISING_CONTENT_TYPE)
   );
-  if (hasFundraising) return list;
+  if (fundraisingIdx >= 0) {
+    list[fundraisingIdx] = ANNOUNCER_FUNDRAISING_CONTENT_TYPE;
+    return list;
+  }
 
   const announcerIdx = list.findIndex((type) => matchesContentType(type, ANNOUNCER_CONTENT_TYPE));
   if (announcerIdx === -1) return list;
@@ -110,7 +113,7 @@ export const ensureAnnouncerFundraisingContentType = (contentTypes) => {
 /** Label in the filter panel. Announcer also returns fundraising results. */
 export const getContentTypeDisplayLabel = (contentType) => {
   if (matchesContentType(contentType, ANNOUNCER_CONTENT_TYPE)) {
-    return 'Announcer / Announcer fundraising';
+    return 'Announcer / Announcer Fundraising';
   }
   return contentType;
 };
@@ -118,11 +121,29 @@ export const getContentTypeDisplayLabel = (contentType) => {
 export const isBundledAnnouncerFundraisingType = (contentType) =>
   matchesContentType(contentType, ANNOUNCER_FUNDRAISING_CONTENT_TYPE);
 
+export const isAnnouncerContentType = (contentType) =>
+  matchesContentType(contentType, ANNOUNCER_CONTENT_TYPE);
+
+/** UI/Redux keep Announcer only; fundraising is added at request time. */
+export const normalizeSelectedContentTypes = (contentTypes) => {
+  const types = Array.isArray(contentTypes) ? [...contentTypes] : [];
+  const hasAnnouncer = types.some(isAnnouncerContentType);
+  const hasFundraising = types.some(isBundledAnnouncerFundraisingType);
+  const others = types.filter(
+    (type) => !isAnnouncerContentType(type) && !isBundledAnnouncerFundraisingType(type)
+  );
+  if (hasAnnouncer && hasFundraising && others.length === 0) {
+    return types.filter((type) => !isBundledAnnouncerFundraisingType(type));
+  }
+  return types;
+};
+
 export const getContentTypesFromFilters = (filters) => {
-  if (filters?.contentTypes?.length > 0) {
+  if (!filters?.contentTypes?.length) return [];
+  if (filters.exclusiveDefaultContentType) {
     return expandContentTypesForApi(filters.contentTypes);
   }
-  return [];
+  return [...filters.contentTypes];
 };
 
 export const buildFetchAudioSegmentsV3Args = (channelId, filters, overrides = {}) => {

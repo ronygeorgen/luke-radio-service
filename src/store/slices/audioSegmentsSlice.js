@@ -5,7 +5,6 @@ import {
   createV3ParamsSerializer,
   computeTotalsFromSegments,
   mapV3ChannelInfo,
-  expandContentTypesForApi,
   ensureAnnouncerFundraisingContentType,
 } from '../../utils/audioSegmentsApiHelpers';
 
@@ -252,7 +251,7 @@ export const fetchAudioSegmentsV2 = createAsyncThunk(
       if (contentTypes !== null && contentTypes !== undefined && Array.isArray(contentTypes) && contentTypes.length > 0) {
         // For multiple params with same name, we need to pass them as an array
         // Axios will serialize them correctly
-        params['content_type'] = expandContentTypesForApi(contentTypes);
+        params['content_type'] = contentTypes;
       }
 
       // Add status parameter if provided
@@ -354,7 +353,7 @@ export const fetchAudioSegmentsV3 = createAsyncThunk(
       }
 
       if (contentTypes?.length > 0) {
-        params.content_type = expandContentTypesForApi(contentTypes);
+        params.content_type = contentTypes;
       }
       if (status) params.status = status;
       if (searchText && searchIn) {
@@ -571,6 +570,7 @@ const audioSegmentsSlice = createSlice({
       sentimentMax: null,
       showFlaggedOnly: false, // Show flagged only when shift is selected
       contentTypes: null, // V2: null = uninitialized, [] = all, [type, ...] = filter
+      exclusiveDefaultContentType: false,
       onlyActive: true, // V2: Only Active toggle state (default: true)
     },
     contentTypePrompt: {
