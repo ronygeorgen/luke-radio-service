@@ -1,8 +1,11 @@
 // utils/dateTimeUtils.js
-export const convertLocalToUTC = (dateString, timeString = '00:00') => {
+export const convertLocalToUTC = (dateString, timeString = '00:00', timezoneOverride) => {
   if (!dateString) return null;
 
-  const tz = ((typeof localStorage !== 'undefined' && localStorage.getItem('channelTimezone')) || 'UTC').trim();
+  const tz = (timezoneOverride
+    || (typeof localStorage !== 'undefined' && localStorage.getItem('channelTimezone'))
+    || 'UTC'
+  ).trim();
 
   // Normalize to HH:mm:ss
   const normalizeTime = (t) => {

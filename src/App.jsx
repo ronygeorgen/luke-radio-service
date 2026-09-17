@@ -8,6 +8,7 @@ import ChannelsPage from './pages/admin/ChannelsPage';
 import SettingsPage from './pages/admin/SettingsPage';
 import UserChannelsPage from './pages/user/UserChannelsPage';
 import UserAudioSegmentsPage from './pages/user/AudioSegmentsPage';
+import AudioRecoveryPage from './pages/user/AudioRecoveryPage';
 import DashboardV2 from './components/DashboardUserSide/DashboardV2';
 import DashboardSettingsPage from './components/DashboardUserSide/DashboardSettingsPage';
 import ReportsPage from './pages/user/ReportsPage';
@@ -81,6 +82,11 @@ function App() {
                 </ProtectedRoute>
               } />
             )}
+            <Route path="/audio-recovery" element={
+              <ProtectedRoute>
+                <AudioRecoveryPage />
+              </ProtectedRoute>
+            } />
 
             {/* Protected User Report Routes */}
             <Route path="/reports" element={
