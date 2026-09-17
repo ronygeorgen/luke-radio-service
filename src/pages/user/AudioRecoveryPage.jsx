@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { ArrowLeft, RotateCcw, Loader, Calendar, RefreshCw, Radio, Trash2 } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Loader, Calendar, RefreshCw, Radio, Trash2, History, X } from 'lucide-react';
 import { axiosInstance } from '../../services/api';
 import { fetchUserChannels, selectUserChannels } from '../../store/slices/channelSlice';
 import { setCurrentPlaying, setIsPlaying } from '../../store/slices/audioSegmentsSlice';
@@ -19,6 +19,20 @@ const toDatetimeLocalValue = (date) => {
   const pad = (n) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
+
+const STATUS_BADGE_STYLES = {
+  success: 'bg-green-100 text-green-700',
+  completed: 'bg-green-100 text-green-700',
+  failed: 'bg-red-100 text-red-700',
+  error: 'bg-red-100 text-red-700',
+  running: 'bg-blue-100 text-blue-700',
+  in_progress: 'bg-blue-100 text-blue-700',
+  pending: 'bg-yellow-100 text-yellow-700',
+  queued: 'bg-yellow-100 text-yellow-700',
+};
+
+const getStatusBadgeStyle = (status) =>
+  STATUS_BADGE_STYLES[String(status || '').toLowerCase()] || 'bg-gray-100 text-gray-700';
 
 /** "Now" as a datetime-local value (YYYY-MM-DDTHH:mm), expressed as wall-clock time in the given timezone. */
 const nowDatetimeLocalInTimezone = (timezone) => {
@@ -80,6 +94,12 @@ const AudioRecoveryPage = () => {
   const [deleteForm, setDeleteForm] = useState({ id: '', reason: '' });
   const [deleteErrors, setDeleteErrors] = useState({});
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [recoveryHistory, setRecoveryHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
 
   const [playingSegmentSnapshot, setPlayingSegmentSnapshot] = useState(null);
   const [selectedSegment, setSelectedSegment] = useState(null);
@@ -162,6 +182,43 @@ const AudioRecoveryPage = () => {
     fetchSegmentsForDate(dateStr);
   }, [dateStr, fetchSegmentsForDate]);
 
+  const fetchRecoveryHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const response = await axiosInstance.get('/audio-recovery/recover/');
+      const data = response.data;
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.results)
+          ? data.results
+          : Array.isArray(data?.data)
+            ? data.data
+            : [];
+      setRecoveryHistory(list);
+    } catch (err) {
+      const message =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to load recovery requests.';
+      setHistoryError(message);
+      setRecoveryHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isHistoryModalOpen) {
+      fetchRecoveryHistory();
+    } else {
+      setExpandedHistoryId(null);
+    }
+  }, [isHistoryModalOpen, fetchRecoveryHistory]);
+
+  const openHistoryModal = () => setIsHistoryModalOpen(true);
+
   useEffect(() => {
     if (!currentPlayingId) {
       setPlayingSegmentSnapshot(null);
@@ -224,6 +281,7 @@ const AudioRecoveryPage = () => {
       setToast({ type: 'success', message: 'Audio recovery started successfully.' });
       setRecoveryForm((prev) => ({ ...prev, url: '' }));
       fetchSegmentsForDate(dateStr);
+      fetchRecoveryHistory();
     } catch (err) {
       const message =
         err.response?.data?.error ||
@@ -381,16 +439,26 @@ const AudioRecoveryPage = () => {
 
         {/* Recovery Upload Form */}
         <section className="bg-white rounded-xl shadow-md p-6">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
-              <RotateCcw className="w-5 h-5 text-blue-600" />
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
+                <RotateCcw className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Recover Audio from URL</h2>
+                <p className="text-sm text-gray-500">
+                  Pull a recording in from a direct link (e.g. Dropbox) into {recoveryChannelName ? `"${recoveryChannelName}"` : `channel ${RECOVERY_CHANNEL_ID}`}.
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Recover Audio from URL</h2>
-              <p className="text-sm text-gray-500">
-                Pull a recording in from a direct link (e.g. Dropbox) into {recoveryChannelName ? `"${recoveryChannelName}"` : `channel ${RECOVERY_CHANNEL_ID}`}.
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={openHistoryModal}
+              className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shrink-0"
+            >
+              <History className="w-4 h-4 text-gray-500" />
+              <span>Recovery Requests</span>
+            </button>
           </div>
 
           <form onSubmit={handleRecoverySubmit} className="space-y-5">
@@ -610,6 +678,129 @@ const AudioRecoveryPage = () => {
         title="Select a Channel"
         description="Choose which channel to recover audio into"
       />
+
+      {isHistoryModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={() => setIsHistoryModalOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
+          <div
+            className="relative bg-white rounded-xl shadow-2xl w-full max-w-[64.68rem] mx-4 overflow-hidden max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50 shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center justify-center w-10 h-10 bg-purple-100 rounded-lg">
+                  <History className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Recovery Requests</h2>
+                  <p className="text-sm text-gray-500">GET /audio-recovery/recover/ — status of past audio recovery requests.</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={fetchRecoveryHistory}
+                  className="p-2 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition-colors"
+                  aria-label="Refresh"
+                  title="Refresh"
+                >
+                  <RefreshCw className={`w-4 h-4 text-gray-600 ${historyLoading ? 'animate-spin' : ''}`} />
+                </button>
+                <button
+                  onClick={() => setIsHistoryModalOpen(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-y-auto">
+              {historyError ? (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                  {historyError}
+                </div>
+              ) : historyLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="h-10 bg-gray-100 rounded-lg animate-pulse" />
+                  ))}
+                </div>
+              ) : recoveryHistory.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  No recovery requests found.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs font-semibold text-gray-500 uppercase border-b border-gray-200">
+                        <th className="py-2 pr-4">ID</th>
+                        <th className="py-2 pr-4">URL</th>
+                        <th className="py-2 pr-4">Channel</th>
+                        <th className="py-2 pr-4">Status</th>
+                        <th className="py-2 pr-4">Recorded At</th>
+                        <th className="py-2 pr-4">Created At</th>
+                        <th className="py-2 pr-4">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recoveryHistory.map((item, i) => {
+                        const id = item.id ?? item.pk ?? i;
+                        const url = item.url ?? item.source_url ?? '';
+                        const channel = item.channel_id ?? item.channel ?? '';
+                        const status = item.status ?? item.state ?? '';
+                        const recordedAt = item.recorded_at ?? item.recordedAt ?? '';
+                        const createdAt = item.created_at ?? item.createdAt ?? '';
+                        const isExpanded = expandedHistoryId === id;
+                        return (
+                          <React.Fragment key={id}>
+                            <tr className="border-b border-gray-100 align-top">
+                              <td className="py-2 pr-4 whitespace-nowrap">{id}</td>
+                              <td className="py-2 pr-4 max-w-xs truncate" title={url}>{url || '—'}</td>
+                              <td className="py-2 pr-4 whitespace-nowrap">{channel || '—'}</td>
+                              <td className="py-2 pr-4 whitespace-nowrap">
+                                {status ? (
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeStyle(status)}`}>
+                                    {status}
+                                  </span>
+                                ) : '—'}
+                              </td>
+                              <td className="py-2 pr-4 whitespace-nowrap">{recordedAt || '—'}</td>
+                              <td className="py-2 pr-4 whitespace-nowrap">{createdAt || '—'}</td>
+                              <td className="py-2 pr-4">
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedHistoryId(isExpanded ? null : id)}
+                                  className="text-blue-600 text-xs hover:underline whitespace-nowrap"
+                                >
+                                  {isExpanded ? 'Hide' : 'Raw'}
+                                </button>
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr className="border-b border-gray-100">
+                                <td colSpan={7} className="py-2 pr-4 bg-gray-50">
+                                  <pre className="p-3 bg-white border border-gray-200 rounded text-xs whitespace-pre-wrap break-all">
+                                    {JSON.stringify(item, null, 2)}
+                                  </pre>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

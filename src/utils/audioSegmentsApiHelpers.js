@@ -113,7 +113,7 @@ export const ensureAnnouncerFundraisingContentType = (contentTypes) => {
 /** Label in the filter panel. Announcer also returns fundraising results. */
 export const getContentTypeDisplayLabel = (contentType) => {
   if (matchesContentType(contentType, ANNOUNCER_CONTENT_TYPE)) {
-    return 'Announcer / Announcer Fundraising';
+    return 'All Announcer';
   }
   return contentType;
 };
