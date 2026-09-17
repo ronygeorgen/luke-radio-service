@@ -34,6 +34,27 @@ const STATUS_BADGE_STYLES = {
 const getStatusBadgeStyle = (status) =>
   STATUS_BADGE_STYLES[String(status || '').toLowerCase()] || 'bg-gray-100 text-gray-700';
 
+/** Extract a readable message from an axios error whose body may be a string, an array of
+ *  strings (e.g. `["This URL already has a pending, running, or completed recovery job."]`),
+ *  a DRF-style {field: [messages]} object, or {error}/{message}/{detail}. */
+const extractErrorMessage = (err, fallback) => {
+  const data = err.response?.data;
+  if (Array.isArray(data) && data.length > 0) {
+    return data.join(' ');
+  }
+  if (data && typeof data === 'object') {
+    if (typeof data.error === 'string') return data.error;
+    if (Array.isArray(data.error)) return data.error.join(' ');
+    if (typeof data.message === 'string') return data.message;
+    if (typeof data.detail === 'string') return data.detail;
+    const firstValue = Object.values(data)[0];
+    if (Array.isArray(firstValue)) return firstValue.join(' ');
+    if (typeof firstValue === 'string') return firstValue;
+  }
+  if (typeof data === 'string' && data.trim()) return data;
+  return err.message || fallback;
+};
+
 /** "Now" as a datetime-local value (YYYY-MM-DDTHH:mm), expressed as wall-clock time in the given timezone. */
 const nowDatetimeLocalInTimezone = (timezone) => {
   const fmt = new Intl.DateTimeFormat('en-US', {
@@ -166,11 +187,7 @@ const AudioRecoveryPage = () => {
       });
       setSegments(response.data?.data || []);
     } catch (err) {
-      const message =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        'Failed to load audio segments for this date.';
+      const message = extractErrorMessage(err, 'Failed to load audio segments for this date.');
       setSegmentsError(message);
       setSegments([]);
     } finally {
@@ -197,11 +214,7 @@ const AudioRecoveryPage = () => {
             : [];
       setRecoveryHistory(list);
     } catch (err) {
-      const message =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        'Failed to load recovery requests.';
+      const message = extractErrorMessage(err, 'Failed to load recovery requests.');
       setHistoryError(message);
       setRecoveryHistory([]);
     } finally {
@@ -283,11 +296,7 @@ const AudioRecoveryPage = () => {
       fetchSegmentsForDate(dateStr);
       fetchRecoveryHistory();
     } catch (err) {
-      const message =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        'Failed to recover audio. Please try again.';
+      const message = extractErrorMessage(err, 'Failed to recover audio. Please try again.');
       setToast({ type: 'error', message });
     } finally {
       setIsRecovering(false);
@@ -325,11 +334,7 @@ const AudioRecoveryPage = () => {
       setSegments((prev) => prev.filter((s) => String(s.id) !== idTrimmed));
       setDeleteForm((prev) => ({ ...prev, id: '' }));
     } catch (err) {
-      const message =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        'Failed to delete audio segment.';
+      const message = extractErrorMessage(err, 'Failed to delete audio segment.');
       setToast({ type: 'error', message });
     } finally {
       setIsDeleting(false);
