@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { ArrowLeft, RotateCcw, Loader, Calendar, RefreshCw, Radio, Trash2, History, X } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Loader, Calendar, RefreshCw, Radio, Trash2, History, X, Eraser } from 'lucide-react';
 import { axiosInstance } from '../../services/api';
 import { fetchUserChannels, selectUserChannels } from '../../store/slices/channelSlice';
 import { setCurrentPlaying, setIsPlaying } from '../../store/slices/audioSegmentsSlice';
-import { getUTCDateTimeRange, convertLocalToUTC } from '../../utils/dateTimeUtils';
+import { getUTCDateTimeRange, convertLocalToUTC, formatSegmentDateTimeInChannelTz } from '../../utils/dateTimeUtils';
 import { formatSlotDateForApi } from '../../utils/audioSegmentsApiHelpers';
 import SimpleChannelSelectionModal from './SimpleChannelSelectionModal';
 import SegmentCard from '../../components/UserSide/SegmentCard';
@@ -66,6 +66,8 @@ const nowDatetimeLocalInTimezone = (timezone) => {
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour === '24' ? '00' : parts.hour}:${parts.minute}`;
 };
 
+const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
 /** Pull a "YYYY-MM-DD HH-MM-SS" (or similar) stamp out of a filename embedded in a URL, e.g.
  *  ".../89.9TheLight%20%5BFM%5D%202026-07-23%2000-00-00.mp3?..." -> "2026-07-23T00:00". */
 const extractRecordedAtFromUrl = (url) => {
@@ -121,6 +123,7 @@ const AudioRecoveryPage = () => {
   const [historyError, setHistoryError] = useState(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+  const [cleaningUpId, setCleaningUpId] = useState(null);
 
   const [playingSegmentSnapshot, setPlayingSegmentSnapshot] = useState(null);
   const [selectedSegment, setSelectedSegment] = useState(null);
@@ -229,6 +232,23 @@ const AudioRecoveryPage = () => {
       setExpandedHistoryId(null);
     }
   }, [isHistoryModalOpen, fetchRecoveryHistory]);
+
+  const handleCleanupRecovery = async (id) => {
+    const confirmed = window.confirm(`Run cleanup for recovery request ${id}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    setCleaningUpId(id);
+    try {
+      await axiosInstance.post(`/audio-recovery/recover/${id}/cleanup/`);
+      setToast({ type: 'success', message: `Cleanup started for request ${id}.` });
+      fetchRecoveryHistory();
+    } catch (err) {
+      const message = extractErrorMessage(err, 'Failed to run cleanup.');
+      setToast({ type: 'error', message });
+    } finally {
+      setCleaningUpId(null);
+    }
+  };
 
   const openHistoryModal = () => setIsHistoryModalOpen(true);
 
@@ -747,9 +767,10 @@ const AudioRecoveryPage = () => {
                         <th className="py-2 pr-4">URL</th>
                         <th className="py-2 pr-4">Channel</th>
                         <th className="py-2 pr-4">Status</th>
-                        <th className="py-2 pr-4">Recorded At</th>
-                        <th className="py-2 pr-4">Created At</th>
+                        <th className="py-2 pr-4">Recorded At ({recoveryChannelTimezone})</th>
+                        <th className="py-2 pr-4">Created At ({BROWSER_TIMEZONE})</th>
                         <th className="py-2 pr-4">Details</th>
+                        <th className="py-2 pr-4">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -765,7 +786,25 @@ const AudioRecoveryPage = () => {
                           <React.Fragment key={id}>
                             <tr className="border-b border-gray-100 align-top">
                               <td className="py-2 pr-4 whitespace-nowrap">{id}</td>
-                              <td className="py-2 pr-4 max-w-xs truncate" title={url}>{url || '—'}</td>
+                              <td className="py-2 pr-4 max-w-xs truncate">
+                                {url ? (
+                                  <button
+                                    type="button"
+                                    title={`${url}\n(click to copy)`}
+                                    onClick={async () => {
+                                      try {
+                                        await navigator.clipboard.writeText(url);
+                                        setToast({ type: 'success', message: 'URL copied to clipboard.' });
+                                      } catch (e) {
+                                        setToast({ type: 'error', message: 'Failed to copy URL.' });
+                                      }
+                                    }}
+                                    className="text-left text-blue-600 hover:underline truncate max-w-full"
+                                  >
+                                    {url}
+                                  </button>
+                                ) : '—'}
+                              </td>
                               <td className="py-2 pr-4 whitespace-nowrap">{channel || '—'}</td>
                               <td className="py-2 pr-4 whitespace-nowrap">
                                 {status ? (
@@ -774,8 +813,12 @@ const AudioRecoveryPage = () => {
                                   </span>
                                 ) : '—'}
                               </td>
-                              <td className="py-2 pr-4 whitespace-nowrap">{recordedAt || '—'}</td>
-                              <td className="py-2 pr-4 whitespace-nowrap">{createdAt || '—'}</td>
+                              <td className="py-2 pr-4 whitespace-nowrap">
+                                {recordedAt ? formatSegmentDateTimeInChannelTz(recordedAt, recoveryChannelTimezone) : '—'}
+                              </td>
+                              <td className="py-2 pr-4 whitespace-nowrap">
+                                {createdAt ? formatSegmentDateTimeInChannelTz(createdAt, BROWSER_TIMEZONE) : '—'}
+                              </td>
                               <td className="py-2 pr-4">
                                 <button
                                   type="button"
@@ -785,10 +828,26 @@ const AudioRecoveryPage = () => {
                                   {isExpanded ? 'Hide' : 'Raw'}
                                 </button>
                               </td>
+                              <td className="py-2 pr-4">
+                                <button
+                                  type="button"
+                                  onClick={() => handleCleanupRecovery(id)}
+                                  disabled={cleaningUpId === id}
+                                  title="Delete the recovered file/resources for this request"
+                                  className="flex items-center space-x-1 text-red-600 text-xs hover:underline whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {cleaningUpId === id ? (
+                                    <Loader className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Eraser className="w-3 h-3" />
+                                  )}
+                                  <span>Cleanup</span>
+                                </button>
+                              </td>
                             </tr>
                             {isExpanded && (
                               <tr className="border-b border-gray-100">
-                                <td colSpan={7} className="py-2 pr-4 bg-gray-50">
+                                <td colSpan={8} className="py-2 pr-4 bg-gray-50">
                                   <pre className="p-3 bg-white border border-gray-200 rounded text-xs whitespace-pre-wrap break-all">
                                     {JSON.stringify(item, null, 2)}
                                   </pre>
