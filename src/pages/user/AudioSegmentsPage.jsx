@@ -36,9 +36,13 @@ const AudioSegmentsPage = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const date = searchParams.get('date');
+  const startDate = searchParams.get('startDate');
+  const endDate = searchParams.get('endDate');
   const startTime = searchParams.get('startTime');
   const endTime = searchParams.get('endTime');
   const daypart = searchParams.get('daypart');
+  const urlSearchText = searchParams.get('searchText');
+  const urlSearchIn = searchParams.get('searchIn');
 
   const [localSearchText, setLocalSearchText] = useState('');
   const [localSearchIn, setLocalSearchIn] = useState('transcription');
@@ -245,22 +249,32 @@ const AudioSegmentsPage = () => {
       isInitialLoad.current = false;
 
       const today = new Date().toLocaleDateString('en-CA');
+      const hasUrlDateRange = Boolean(startDate && endDate);
+      const hasUrlDate = Boolean(date);
+      const initialSearchIn = urlSearchIn || 'transcription';
 
-      setSearchParams({
-        date: today,
-        searchIn: 'transcription'
-      });
+      // Only stamp default date/searchIn into the URL when the loaded URL didn't
+      // already specify one, so a pasted URL with its own filters isn't clobbered.
+      if (!hasUrlDateRange && !hasUrlDate) {
+        setSearchParams({
+          date: today,
+          searchIn: initialSearchIn
+        });
+      }
 
-      // Store current filters to detect changes
+      // Store current filters to detect changes.
+      // Note: when a single date (not a range) is in play, startDate/endDate are kept
+      // in sync with it — FilterPanelV2 waits for filters.startDate to be truthy before
+      // applying its default content type, so it must never be left null here.
       lastFilters.current = {
-        date: today,
-        startDate: today,
-        endDate: today,
-        startTime: '00:00:00',
-        endTime: '23:59:59',
-        daypart: 'none',
-        searchText: '',
-        searchIn: 'transcription',
+        date: hasUrlDateRange ? null : (date || today),
+        startDate: hasUrlDateRange ? startDate : (date || today),
+        endDate: hasUrlDateRange ? endDate : (date || today),
+        startTime: startTime || '00:00:00',
+        endTime: endTime || '23:59:59',
+        daypart: daypart || 'none',
+        searchText: urlSearchText || '',
+        searchIn: initialSearchIn,
         shiftId: null,
         predefinedFilterId: null
       };
@@ -307,17 +321,19 @@ const AudioSegmentsPage = () => {
       }
       dispatch(setFilter(defaultV2Filters));
 
-      setLocalStartTime('');
-      setLocalEndTime('');
-      setLocalSearchText('');
-      setLocalSearchIn('transcription');
+      setLocalStartTime(defaultV2Filters.startTime?.substring(0, 5) || '');
+      setLocalEndTime(defaultV2Filters.endTime?.substring(0, 5) || '');
+      setLocalSearchText(defaultV2Filters.searchText || '');
+      setLocalSearchIn(defaultV2Filters.searchIn || 'transcription');
 
       hasInitialFiltersSet.current = true;
 
       if (hasSavedContentTypes) {
         dispatch(
           fetchAudioSegmentsV3(
-            buildFetchAudioSegmentsV3Args(channelId, defaultV2Filters, { slotCalendarDate: today })
+            buildFetchAudioSegmentsV3Args(channelId, defaultV2Filters, {
+              slotCalendarDate: defaultV2Filters.date || defaultV2Filters.startDate,
+            })
           )
         );
       }
