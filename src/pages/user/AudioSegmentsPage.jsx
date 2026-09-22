@@ -109,6 +109,12 @@ const AudioSegmentsPage = () => {
 
   const [playingSegmentSnapshot, setPlayingSegmentSnapshot] = useState(null);
 
+  // Measured height of the fixed audio player bar, so the segment list's bottom
+  // padding always clears it regardless of how tall its content gets (error/seek
+  // banners can grow it past a fixed guess).
+  const playerBarRef = useRef(null);
+  const [playerBarHeight, setPlayerBarHeight] = useState(0);
+
   const {
     segments,
     channelInfo,
@@ -129,6 +135,21 @@ const AudioSegmentsPage = () => {
     const found = segments.find((s) => String(s.id) === String(currentPlayingId));
     if (found) setPlayingSegmentSnapshot(found);
   }, [segments, currentPlayingId]);
+
+  useEffect(() => {
+    if (!currentPlayingId) {
+      setPlayerBarHeight(0);
+      return;
+    }
+    const el = playerBarRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      setPlayerBarHeight(entry.contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [currentPlayingId, playingSegmentSnapshot]);
 
   // Track the current channel ID from localStorage to detect changes
   // This ensures we always use the most up-to-date channel ID, even when switching channels
@@ -1234,7 +1255,10 @@ const AudioSegmentsPage = () => {
           )}
 
           {/* Segments Grid */}
-          <div className={`space-y-4 ${currentPlayingId ? 'pb-56' : ''}`}>
+          <div
+            className="space-y-4"
+            style={currentPlayingId ? { paddingBottom: playerBarHeight + 16 } : undefined}
+          >
             {loading ? (
               // Show shimmer loaders for all expected segments when loading
               Array.from({ length: 10 }).map((_, i) => (
@@ -1286,7 +1310,10 @@ const AudioSegmentsPage = () => {
       />
 
       {currentPlayingId && (
-        <div className={`fixed bottom-0 bg-white shadow-lg border-t border-gray-200 p-4 z-50 transition-all duration-300 ${isSidebarOpen ? 'left-64 right-0' : 'left-0 right-0'}`}>
+        <div
+          ref={playerBarRef}
+          className={`fixed bottom-0 bg-white shadow-lg border-t border-gray-200 p-4 z-50 transition-all duration-300 ${isSidebarOpen ? 'left-64 right-0' : 'left-0 right-0'}`}
+        >
           {playingSegmentSnapshot ? (
             <AudioPlayer
               key={playingSegmentSnapshot.id}

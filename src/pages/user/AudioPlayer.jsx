@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { Play, Pause, Loader2 } from 'lucide-react';
 import { setIsPlaying, setCurrentPlaying } from '../../store/slices/audioSegmentsSlice';
 import dayjs from "dayjs";
 import { formatSegmentDateTimeInChannelTz } from '../../utils/dateTimeUtils';
@@ -512,30 +513,29 @@ const AudioPlayer = ({ segment, onClose }) => {
 
   // Calculate the max value for the progress bar
   const progressMax = duration > 0 ? duration : (segment.duration_seconds || 0);
+  const progressPercent = progressMax > 0 ? (currentTime / progressMax) * 100 : 0;
 
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
       {/* Header with close button and external play/pause control */}
       <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-500 to-indigo-600">
         <div className="flex items-center space-x-4">
-          <button 
+          <button
             onClick={handleExternalPlayPause}
-            className="p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-colors duration-200"
+            className={`p-2 rounded-full transition-colors duration-200 ${
+              isPlaying && currentPlayingId === segment.id
+                ? 'bg-yellow-600 hover:bg-yellow-700'
+                : 'bg-green-600 hover:bg-green-700'
+            }`}
             aria-label={isPlaying && currentPlayingId === segment.id ? 'Pause' : 'Play'}
             disabled={isPreloading || hasError}
           >
             {isPreloading ? (
-              <svg className="w-6 h-6 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <Loader2 className="w-6 h-6 text-white animate-spin" />
             ) : (isPlaying && currentPlayingId === segment.id) ? (
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
-              </svg>
+              <Pause className="w-6 h-6 text-white" />
             ) : (
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              </svg>
+              <Play className="w-6 h-6 text-white" />
             )}
           </button>
           <div className="min-w-0">
@@ -545,16 +545,15 @@ const AudioPlayer = ({ segment, onClose }) => {
               ) : (
                 `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
                   segment.title_before && segment.title_after ? " - " : ""
-                }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() || 
+                }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() ||
                 "Untitled Report Item"
               )}
-              <p className="text-sm text-blue-100">
-                Duration: {formatTime(segment.duration_seconds)} • 
-                Start: {formatSegmentDateTimeInChannelTz(segment.start_time)} • 
-                End: {formatSegmentDateTimeInChannelTz(segment.end_time)}
-              </p>
-
             </h3>
+            <p className="text-sm text-blue-100">
+              Duration: {formatTime(segment.duration_seconds)} •
+              Start: {formatSegmentDateTimeInChannelTz(segment.start_time)} •
+              End: {formatSegmentDateTimeInChannelTz(segment.end_time)}
+            </p>
           </div>
         </div>
         <button 
@@ -581,6 +580,8 @@ const AudioPlayer = ({ segment, onClose }) => {
             value={currentTime}
             onChange={handleSeek}
             disabled={!isSeekable || isPreloading || hasError}
+            aria-label="Seek audio position"
+            aria-valuetext={`${formatTime(currentTime)} of ${formatTime(progressMax)}`}
             className={`flex-1 h-2 rounded-lg appearance-none cursor-pointer 
               [&::-webkit-slider-thumb]:appearance-none 
               [&::-webkit-slider-thumb]:h-4 
@@ -590,12 +591,12 @@ const AudioPlayer = ({ segment, onClose }) => {
                 ? 'bg-gray-200 [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:cursor-pointer' 
                 : 'bg-gray-100 [&::-webkit-slider-thumb]:bg-gray-400 [&::-webkit-slider-thumb]:cursor-not-allowed'}`}
             style={{
-              background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(currentTime/progressMax)*100}%, #e5e7eb ${(currentTime/progressMax)*100}%, #e5e7eb 100%)`
+              background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${progressPercent}%, #e5e7eb ${progressPercent}%, #e5e7eb 100%)`
             }}
           />
           <span className="text-xs text-gray-500 w-10">{formatTime(progressMax)}</span>
         </div>
-        
+
         {isPreloading && (
           <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded-md">
             <div className="flex items-center">
@@ -606,7 +607,13 @@ const AudioPlayer = ({ segment, onClose }) => {
             </div>
           </div>
         )}
-        
+
+        {!isSeekable && !isPreloading && !isLoading && !hasError && (
+          <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded-md">
+            Seeking isn't available for this audio — you can still play it from the start.
+          </div>
+        )}
+
         {hasError && (
           <div className="text-xs text-red-600 bg-red-50 p-3 rounded-md">
             <div className="flex justify-between items-start">
@@ -634,39 +641,16 @@ const AudioPlayer = ({ segment, onClose }) => {
           Your browser does not support the audio element.
         </audio>
         
-        {/* Custom controls and download button */}
+        {/* Status and download button */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button 
-              onClick={handleExternalPlayPause}
-              className="p-2 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors duration-200"
-              aria-label={isPlaying && currentPlayingId === segment.id ? 'Pause' : 'Play'}
-              disabled={isPreloading || hasError}
-            >
-              {isPreloading ? (
-                <svg className="w-5 h-5 text-blue-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              ) : (isPlaying && currentPlayingId === segment.id) ? (
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                </svg>
-              )}
-            </button>
-            
-            <span className="text-sm text-gray-600">
-              {hasError ? 'Error' : 
-                isPreloading ? 'Preloading...' : 
-                isLoading ? 'Loading...' : 
-                (isPlaying && currentPlayingId === segment.id) ? 'Playing' : 'Paused'} • {formatTime(currentTime)} / {formatTime(progressMax)}
-            </span>
-          </div>
-          
-          <button 
+          <span className="text-sm text-gray-600">
+            {hasError ? 'Error' :
+              isPreloading ? 'Preloading...' :
+              isLoading ? 'Loading...' :
+              (isPlaying && currentPlayingId === segment.id) ? 'Playing' : 'Paused'} • {formatTime(currentTime)} / {formatTime(progressMax)}
+          </span>
+
+          <button
             onClick={handleDownload}
             className="flex items-center px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors duration-200"
             disabled={isLoading || isPreloading || hasError}
