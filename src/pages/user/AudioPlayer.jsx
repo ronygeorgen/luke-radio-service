@@ -1,9 +1,22 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Play, Pause, Loader2 } from 'lucide-react';
+import { Play, Pause, Loader2, Download, X } from 'lucide-react';
 import { setIsPlaying, setCurrentPlaying } from '../../store/slices/audioSegmentsSlice';
 import dayjs from "dayjs";
 import { formatSegmentDateTimeInChannelTz } from '../../utils/dateTimeUtils';
+
+// Auto-recovery re-points the audio element at a freshly fetched source, which can
+// itself fail and re-fire `error`. Capping the attempts keeps a broken source (404,
+// undecodable body) from looping fetches forever.
+const MAX_RECOVERY_ATTEMPTS = 2;
+
+class HttpError extends Error {
+  constructor(status) {
+    super(`HTTP error! status: ${status}`);
+    this.name = 'HttpError';
+    this.status = status;
+  }
+}
 
 const AudioPlayer = ({ segment, onClose }) => {
   const dispatch = useDispatch();
@@ -14,11 +27,14 @@ const AudioPlayer = ({ segment, onClose }) => {
   const [isSeekable, setIsSeekable] = useState(true);
   const [seekWarningDismissed, setSeekWarningDismissed] = useState(false);
   const [isPreloading, setIsPreloading] = useState(false);
-  const [preloadedUrls, setPreloadedUrls] = useState({});
+  // A ref, not state: nothing renders from it, and cleanup must see the current
+  // URLs to revoke them (a state closure would go stale and leak).
+  const preloadedUrlsRef = useRef({});
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const { isPlaying, currentPlayingId } = useSelector((state) => state.audioSegments);
   const ignoreMediaEventsRef = useRef(false);
+  const recoveryAttemptsRef = useRef(0);
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
 
@@ -32,7 +48,16 @@ const AudioPlayer = ({ segment, onClose }) => {
       }, 0);
     }
   };
-  
+
+  // Release every blob this player created. The parent keys <AudioPlayer> by segment
+  // id, so a segment change unmounts and runs this too.
+  useEffect(() => {
+    return () => {
+      Object.values(preloadedUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
+      preloadedUrlsRef.current = {};
+    };
+  }, []);
+
   if (!segment) return null;
   
   // Use audio_url if available (for podcast segments), otherwise use file_path
@@ -42,6 +67,15 @@ const AudioPlayer = ({ segment, onClose }) => {
 
 
 
+  // Replacing a cached blob for the same segment orphans the old one, so release it.
+  const rememberPreloadedUrl = (blobUrl) => {
+    const replaced = preloadedUrlsRef.current[segment.id];
+    if (replaced && replaced !== blobUrl) {
+      URL.revokeObjectURL(replaced);
+    }
+    preloadedUrlsRef.current[segment.id] = blobUrl;
+  };
+
   // Preload the entire audio file to enable seeking
   const enableSeekingWorkaround = async () => {
     try {
@@ -50,8 +84,8 @@ const AudioPlayer = ({ segment, onClose }) => {
       setHasError(false);
       
       // Check if we've already preloaded this audio
-      if (preloadedUrls[segment.id]) {
-        audioRef.current.src = preloadedUrls[segment.id];
+      if (preloadedUrlsRef.current[segment.id]) {
+        audioRef.current.src = preloadedUrlsRef.current[segment.id];
         setIsSeekable(true);
         setIsPreloading(false);
         
@@ -98,9 +132,9 @@ const AudioPlayer = ({ segment, onClose }) => {
         
         const blob = await response.blob();
         const blobUrl = URL.createObjectURL(blob);
-        
-        // Store the preloaded URL for future use
-        setPreloadedUrls(prev => ({ ...prev, [segment.id]: blobUrl }));
+
+        // Store the preloaded URL for future use, releasing any it replaces
+        rememberPreloadedUrl(blobUrl);
         
         // Store the current time before changing the source
         const currentTime = audioRef.current.currentTime;
@@ -135,12 +169,18 @@ const AudioPlayer = ({ segment, onClose }) => {
       
       // For local files, use standard fetch
       const response = await fetch(fullSrc);
-      
+
+      // fetch() only rejects on network failure, so a 404/500 arrives here as a
+      // normal response. Without this check its error body becomes the "audio" blob.
+      if (!response.ok) {
+        throw new HttpError(response.status);
+      }
+
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
-      
-      // Store the preloaded URL for future use
-      setPreloadedUrls(prev => ({ ...prev, [segment.id]: blobUrl }));
+
+      // Store the preloaded URL for future use, releasing any it replaces
+      rememberPreloadedUrl(blobUrl);
       
       // Store the current time before changing the source
       const currentTime = audioRef.current.currentTime;
@@ -180,7 +220,13 @@ const AudioPlayer = ({ segment, onClose }) => {
         setIsSeekable(false);
       } else {
         setHasError(true);
-        setErrorMessage("Failed to load audio. The file may be corrupted or unavailable.");
+        setErrorMessage(
+          error instanceof HttpError
+            ? error.status === 404
+              ? "This audio file is no longer available on the server."
+              : `Couldn't load audio (server returned ${error.status}).`
+            : "Failed to load audio. The file may be corrupted or unavailable."
+        );
       }
     } finally {
       window.setTimeout(() => {
@@ -214,6 +260,9 @@ const AudioPlayer = ({ segment, onClose }) => {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    // Fresh source, fresh recovery budget.
+    recoveryAttemptsRef.current = 0;
 
     // Set up event listeners
     const handleLoadedMetadata = () => {
@@ -369,7 +418,13 @@ const AudioPlayer = ({ segment, onClose }) => {
       setIsSeekable(false);
       setHasError(true);
       setErrorMessage("Failed to load audio. The file may be corrupted or unavailable.");
-      
+
+      if (recoveryAttemptsRef.current >= MAX_RECOVERY_ATTEMPTS) {
+        console.warn(`Giving up after ${MAX_RECOVERY_ATTEMPTS} recovery attempts.`);
+        return;
+      }
+      recoveryAttemptsRef.current += 1;
+
       // Try to preload as a fallback
       enableSeekingWorkaround();
     };
@@ -377,6 +432,7 @@ const AudioPlayer = ({ segment, onClose }) => {
     const handleCanPlayThrough = () => {
       setIsLoading(false);
       setHasError(false);
+      recoveryAttemptsRef.current = 0;
     };
 
     const handleStalled = () => {
@@ -498,6 +554,7 @@ const AudioPlayer = ({ segment, onClose }) => {
   const handleRetry = () => {
     setHasError(false);
     setIsLoading(true);
+    recoveryAttemptsRef.current = 0;
     
     // Reset the audio element
     if (audioRef.current) {
@@ -516,152 +573,120 @@ const AudioPlayer = ({ segment, onClose }) => {
   const progressPercent = progressMax > 0 ? (currentTime / progressMax) * 100 : 0;
 
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-      {/* Header with close button and external play/pause control */}
-      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-500 to-indigo-600">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={handleExternalPlayPause}
-            className={`p-2 rounded-full transition-colors duration-200 ${
-              isPlaying && currentPlayingId === segment.id
-                ? 'bg-yellow-600 hover:bg-yellow-700'
-                : 'bg-green-600 hover:bg-green-700'
-            }`}
-            aria-label={isPlaying && currentPlayingId === segment.id ? 'Pause' : 'Play'}
-            disabled={isPreloading || hasError}
+    <div>
+      {/* Compact single-row player: play control, title + inline progress, download, close */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleExternalPlayPause}
+          className="shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+          aria-label={isPlaying && currentPlayingId === segment.id ? 'Pause' : 'Play'}
+          disabled={isPreloading || hasError}
+        >
+          {isPreloading ? (
+            <Loader2 className="w-6 h-6 text-white animate-spin" />
+          ) : (isPlaying && currentPlayingId === segment.id) ? (
+            <Pause className="w-6 h-6 text-white" />
+          ) : (
+            <Play className="w-6 h-6 text-white ml-0.5" />
+          )}
+        </button>
+
+        <div className="flex-1 min-w-0">
+          <p
+            className="text-sm font-medium text-gray-900 truncate"
+            title={`Start: ${formatSegmentDateTimeInChannelTz(segment.start_time)} • End: ${formatSegmentDateTimeInChannelTz(segment.end_time)}`}
           >
-            {isPreloading ? (
-              <Loader2 className="w-6 h-6 text-white animate-spin" />
-            ) : (isPlaying && currentPlayingId === segment.id) ? (
-              <Pause className="w-6 h-6 text-white" />
+            {segment.title ? (
+              segment.title
             ) : (
-              <Play className="w-6 h-6 text-white" />
+              `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
+                segment.title_before && segment.title_after ? " - " : ""
+              }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() ||
+              "Untitled Report Item"
             )}
-          </button>
-          <div className="min-w-0">
-            <h3 className="font-semibold text-white text-lg truncate">
-              {segment.title ? (
-                segment.title
-              ) : (
-                `${segment.title_before ? "Audio Before: " + segment.title_before : ""}${
-                  segment.title_before && segment.title_after ? " - " : ""
-                }${segment.title_after ? "Audio After: " + segment.title_after : ""}`.trim() ||
-                "Untitled Report Item"
-              )}
-            </h3>
-            <p className="text-sm text-blue-100">
-              Duration: {formatTime(segment.duration_seconds)} •
-              Start: {formatSegmentDateTimeInChannelTz(segment.start_time)} •
-              End: {formatSegmentDateTimeInChannelTz(segment.end_time)}
-            </p>
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-xs text-gray-500 tabular-nums w-9 shrink-0">{formatTime(currentTime)}</span>
+            <input
+              type="range"
+              min="0"
+              max={progressMax}
+              value={currentTime}
+              onChange={handleSeek}
+              disabled={!isSeekable || isPreloading || hasError}
+              aria-label="Seek audio position"
+              aria-valuetext={`${formatTime(currentTime)} of ${formatTime(progressMax)}`}
+              className={`flex-1 h-1.5 rounded-full appearance-none cursor-pointer
+                [&::-webkit-slider-thumb]:appearance-none
+                [&::-webkit-slider-thumb]:h-3
+                [&::-webkit-slider-thumb]:w-3
+                [&::-webkit-slider-thumb]:rounded-full
+                ${isSeekable && !isPreloading && !hasError
+                  ? '[&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:cursor-pointer'
+                  : '[&::-webkit-slider-thumb]:bg-gray-400 [&::-webkit-slider-thumb]:cursor-not-allowed'}`}
+              style={{
+                background: `linear-gradient(to right, #2563eb 0%, #2563eb ${progressPercent}%, #e5e7eb ${progressPercent}%, #e5e7eb 100%)`
+              }}
+            />
+            <span className="text-xs text-gray-500 tabular-nums w-9 shrink-0 text-right">{formatTime(progressMax)}</span>
           </div>
         </div>
-        <button 
+
+        <button
+          onClick={handleDownload}
+          className="shrink-0 p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-200"
+          title="Download audio"
+          aria-label="Download audio"
+          disabled={isLoading || isPreloading || hasError}
+        >
+          <Download className="w-5 h-5" />
+        </button>
+
+        <button
           onClick={onClose}
-          className="p-1 rounded-full hover:bg-blue-400 transition-colors duration-200"
+          className="shrink-0 p-2 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors duration-200"
           aria-label="Close audio player"
           disabled={isPreloading}
         >
-          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <X className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Custom audio controls */}
-      <div className="p-4 space-y-4">
-        {/* Progress bar */}
-        <div className="flex items-center space-x-3">
-          <span className="text-xs text-gray-500 w-10">{formatTime(currentTime)}</span>
-          <input
-            type="range"
-            min="0"
-            max={progressMax}
-            value={currentTime}
-            onChange={handleSeek}
-            disabled={!isSeekable || isPreloading || hasError}
-            aria-label="Seek audio position"
-            aria-valuetext={`${formatTime(currentTime)} of ${formatTime(progressMax)}`}
-            className={`flex-1 h-2 rounded-lg appearance-none cursor-pointer 
-              [&::-webkit-slider-thumb]:appearance-none 
-              [&::-webkit-slider-thumb]:h-4 
-              [&::-webkit-slider-thumb]:w-4 
-              [&::-webkit-slider-thumb]:rounded-full 
-              ${isSeekable && !isPreloading && !hasError
-                ? 'bg-gray-200 [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:cursor-pointer' 
-                : 'bg-gray-100 [&::-webkit-slider-thumb]:bg-gray-400 [&::-webkit-slider-thumb]:cursor-not-allowed'}`}
-            style={{
-              background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${progressPercent}%, #e5e7eb ${progressPercent}%, #e5e7eb 100%)`
-            }}
-          />
-          <span className="text-xs text-gray-500 w-10">{formatTime(progressMax)}</span>
+      {/* Status banners — only take up space when there's something to say */}
+      {isPreloading && (
+        <div className="mt-2 px-3 py-1.5 rounded-md bg-blue-50 text-xs text-blue-600 flex items-center gap-1.5">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Preparing audio for seeking...
         </div>
+      )}
 
-        {isPreloading && (
-          <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded-md">
-            <div className="flex items-center">
-              <svg className="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>Preloading audio for seeking functionality...</span>
-            </div>
-          </div>
-        )}
+      {!isSeekable && !isPreloading && !isLoading && !hasError && (
+        <div className="mt-2 px-3 py-1.5 rounded-md bg-amber-50 text-xs text-amber-700">
+          Seeking isn't available for this audio — you can still play it from the start.
+        </div>
+      )}
 
-        {!isSeekable && !isPreloading && !isLoading && !hasError && (
-          <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded-md">
-            Seeking isn't available for this audio — you can still play it from the start.
-          </div>
-        )}
-
-        {hasError && (
-          <div className="text-xs text-red-600 bg-red-50 p-3 rounded-md">
-            <div className="flex justify-between items-start">
-              <div>
-                <strong>Error playing audio</strong>
-                <p className="mt-1">{errorMessage}</p>
-              </div>
-              <button 
-                onClick={handleRetry}
-                className="ml-2 px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm font-medium transition-colors duration-200"
-              >
-                Retry
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {/* Browser audio element (hidden but functional) */}
-        <audio 
-          ref={audioRef}
-          preload="metadata"
-          src={fullSrc}
-          className="hidden"
-        >
-          Your browser does not support the audio element.
-        </audio>
-        
-        {/* Status and download button */}
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">
-            {hasError ? 'Error' :
-              isPreloading ? 'Preloading...' :
-              isLoading ? 'Loading...' :
-              (isPlaying && currentPlayingId === segment.id) ? 'Playing' : 'Paused'} • {formatTime(currentTime)} / {formatTime(progressMax)}
-          </span>
-
+      {hasError && (
+        <div className="mt-2 px-3 py-2 rounded-md bg-red-50 flex items-center justify-between gap-3">
+          <span className="text-xs text-red-600">{errorMessage}</span>
           <button
-            onClick={handleDownload}
-            className="flex items-center px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors duration-200"
-            disabled={isLoading || isPreloading || hasError}
+            onClick={handleRetry}
+            className="shrink-0 px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs font-medium transition-colors duration-200"
           >
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Download
+            Retry
           </button>
         </div>
-      </div>
+      )}
+
+      {/* Browser audio element (hidden but functional) */}
+      <audio
+        ref={audioRef}
+        preload="metadata"
+        src={fullSrc}
+        className="hidden"
+      >
+        Your browser does not support the audio element.
+      </audio>
     </div>
   );
 };

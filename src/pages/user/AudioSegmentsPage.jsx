@@ -109,9 +109,11 @@ const AudioSegmentsPage = () => {
 
   const [playingSegmentSnapshot, setPlayingSegmentSnapshot] = useState(null);
 
-  // Measured height of the fixed audio player bar, so the segment list's bottom
+  // Measured height of the floating audio player bar, so the segment list's bottom
   // padding always clears it regardless of how tall its content gets (error/seek
-  // banners can grow it past a fixed guess).
+  // banners can grow it past a fixed guess). PLAYER_BAR_BOTTOM_GAP mirrors the
+  // `bottom-4` offset the bar is floated by, so the two stay in sync.
+  const PLAYER_BAR_BOTTOM_GAP = 16;
   const playerBarRef = useRef(null);
   const [playerBarHeight, setPlayerBarHeight] = useState(0);
 
@@ -1257,7 +1259,7 @@ const AudioSegmentsPage = () => {
           {/* Segments Grid */}
           <div
             className="space-y-4"
-            style={currentPlayingId ? { paddingBottom: playerBarHeight + 16 } : undefined}
+            style={currentPlayingId ? { paddingBottom: playerBarHeight + PLAYER_BAR_BOTTOM_GAP * 2 } : undefined}
           >
             {loading ? (
               // Show shimmer loaders for all expected segments when loading
@@ -1312,7 +1314,7 @@ const AudioSegmentsPage = () => {
       {currentPlayingId && (
         <div
           ref={playerBarRef}
-          className={`fixed bottom-0 bg-white shadow-lg border-t border-gray-200 p-4 z-50 transition-all duration-300 ${isSidebarOpen ? 'left-64 right-0' : 'left-0 right-0'}`}
+          className={`fixed bottom-4 right-4 mx-auto max-w-2xl bg-white shadow-2xl border border-gray-200 rounded-2xl p-5 z-50 transition-all duration-300 ${isSidebarOpen ? 'left-64' : 'left-4'}`}
         >
           {playingSegmentSnapshot ? (
             <AudioPlayer
