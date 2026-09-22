@@ -6,6 +6,7 @@ import { fetchAudioSegmentsV3, setCurrentPlaying, setIsPlaying, setFilter, clear
 import {
   buildFetchAudioSegmentsV3Args,
   formatSlotDateForApi,
+  parseApiCalendarDate,
   parseApiSlotDate,
 } from '../../utils/audioSegmentsApiHelpers';
 import Header from '../../components/UserSide/Header';
@@ -35,9 +36,11 @@ const AudioSegmentsPage = () => {
   const channelId = storedChannelId && storedChannelId !== channelIdFromParams ? storedChannelId : (channelIdFromParams || storedChannelId);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const date = searchParams.get('date');
-  const startDate = searchParams.get('startDate');
-  const endDate = searchParams.get('endDate');
+  // URL dates arrive in several shapes (YYYY-MM-DD, YYYYMMDD, ISO datetimes) — normalize
+  // to YYYY-MM-DD before they reach the filters, and drop anything unparseable.
+  const date = parseApiCalendarDate(searchParams.get('date'));
+  const startDate = parseApiCalendarDate(searchParams.get('startDate'));
+  const endDate = parseApiCalendarDate(searchParams.get('endDate'));
   const startTime = searchParams.get('startTime');
   const endTime = searchParams.get('endTime');
   const daypart = searchParams.get('daypart');

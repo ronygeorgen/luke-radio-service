@@ -382,8 +382,7 @@ const AudioRecoveryPage = () => {
 
   const handleEditRedirect = () => {
     if (!channelId) return;
-    const apiDate = dateStr.replace(/-/g, '');
-    navigate(`/channels/${channelId}/segments?date=${apiDate}&hour=0&name=${encodeURIComponent(channelName || '')}`);
+    navigate(`/channels/${channelId}/segments?date=${dateStr}&hour=0&name=${encodeURIComponent(channelName || '')}`);
   };
 
   return (

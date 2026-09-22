@@ -1,4 +1,33 @@
 // utils/dateTimeUtils.js
+
+/**
+ * Calendar date from the formats that reach us (YYYY-MM-DD, YYYYMMDD, ISO datetime)
+ * → { y, m, d }, or null when the value can't be read as a date.
+ * Callers pass URL params and stored values straight through, so anything goes.
+ */
+const parseCalendarDateParts = (dateString) => {
+  const str = String(dateString || '').trim();
+
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/) || str.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (!match) return null;
+
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const d = Number(match[3]);
+  if (!y || m < 1 || m > 12 || d < 1 || d > 31) return null;
+
+  return { y, m, d };
+};
+
+const parseTimeParts = (timeString) => {
+  const parts = String(timeString || '00:00').split(':');
+  const [hh, mm, ss] = parts.map((p) => Number(p));
+  if (!Number.isInteger(hh) || hh < 0 || hh > 23) return null;
+  if (parts.length > 1 && (!Number.isInteger(mm) || mm < 0 || mm > 59)) return null;
+  if (parts.length > 2 && (!Number.isInteger(ss) || ss < 0 || ss > 59)) return null;
+  return { hh, mm: parts.length > 1 ? mm : 0, ss: parts.length > 2 ? ss : 0 };
+};
+
 export const convertLocalToUTC = (dateString, timeString = '00:00', timezoneOverride) => {
   if (!dateString) return null;
 
@@ -7,28 +36,41 @@ export const convertLocalToUTC = (dateString, timeString = '00:00', timezoneOver
     || 'UTC'
   ).trim();
 
-  // Normalize to HH:mm:ss
-  const normalizeTime = (t) => {
-    const parts = String(t || '00:00').split(':');
-    if (parts.length === 2) return `${parts[0].padStart(2,'0')}:${parts[1].padStart(2,'0')}:00`;
-    if (parts.length === 3) return `${parts[0].padStart(2,'0')}:${parts[1].padStart(2,'0')}:${parts[2].padStart(2,'0')}`;
-    return '00:00:00';
-  };
+  const dateParts = parseCalendarDateParts(dateString);
+  if (!dateParts) {
+    console.warn('convertLocalToUTC: unrecognized date', dateString);
+    return null;
+  }
 
-  const safeTime = normalizeTime(timeString);
+  const timeParts = parseTimeParts(timeString);
+  if (!timeParts) {
+    console.warn('convertLocalToUTC: unrecognized time', timeString);
+    return null;
+  }
 
-  const [y, m, d] = dateString.split('-').map(Number);
-  const [hh, mm, ss] = safeTime.split(':').map(Number);
+  const { y, m, d } = dateParts;
+  const { hh, mm, ss } = timeParts;
 
   // Initial UTC guess for desired wall time
-  const initialGuess = new Date(Date.UTC(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, ss || 0));
+  const initialGuess = new Date(Date.UTC(y, m - 1, d, hh, mm, ss));
+  if (Number.isNaN(initialGuess.getTime())) {
+    console.warn('convertLocalToUTC: out-of-range date/time', dateString, timeString);
+    return null;
+  }
 
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    hour12: false,
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit'
-  });
+  let fmt;
+  try {
+    fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hour12: false,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+  } catch (error) {
+    // Unknown timezone (e.g. a stale channelTimezone) — treat the wall time as UTC
+    console.warn('convertLocalToUTC: unknown timezone, falling back to UTC', tz);
+    return initialGuess.toISOString();
+  }
 
   const partsToObj = (date) => Object.fromEntries(fmt.formatToParts(date).map(p => [p.type, p.value]));
   const apparent = partsToObj(initialGuess);
@@ -36,7 +78,7 @@ export const convertLocalToUTC = (dateString, timeString = '00:00', timezoneOver
   // The wall time produced by formatting the guess in tz, expressed as a UTC timestamp
   const apparentUTC = Date.UTC(+apparent.year, +apparent.month - 1, +apparent.day, +apparent.hour, +apparent.minute, +apparent.second);
   // The desired wall time (same clock time/date), expressed as if it were UTC
-  const desiredUTC = Date.UTC(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, ss || 0);
+  const desiredUTC = Date.UTC(y, m - 1, d, hh, mm, ss);
 
   // Shift the instant so the wall time in tz matches the desired wall time
   const corrected = new Date(initialGuess.getTime() + (desiredUTC - apparentUTC));
